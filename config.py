@@ -19,7 +19,7 @@ REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v2")
 USE_GPU = os.getenv("USE_GPU", "false").lower() == "true"
 COMPUTE_TYPE = "float16" if USE_GPU else "int8"
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", "8"))  # Reduced for CPU
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "16"))  # Increased for better CPU utilization
 NUM_WORKERS = int(os.getenv("NUM_WORKERS", "4"))  # Number of CPU workers
 LANGUAGE = os.getenv("LANGUAGE", "en")
 
