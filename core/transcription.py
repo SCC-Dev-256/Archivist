@@ -3,7 +3,10 @@ import os
 import torch
 from loguru import logger
 from typing import Tuple
-from config import WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR
+from config import (
+    WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
+    BATCH_SIZE, NUM_WORKERS, LANGUAGE
+)
 
 def run_whisperx(video_path: str) -> Tuple[bool, str]:
     """
@@ -22,9 +25,6 @@ def run_whisperx(video_path: str) -> Tuple[bool, str]:
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Video file not found: {video_path}")
             
-        if not video_path.lower().endswith('.mp4'):
-            raise ValueError("Only .mp4 files are supported")
-            
         # Prepare output paths
         video_name = os.path.basename(video_path)
         srt_name = os.path.splitext(video_name)[0] + ".srt"
@@ -41,26 +41,28 @@ def run_whisperx(video_path: str) -> Tuple[bool, str]:
             "--output_dir", OUTPUT_DIR,
             "--output_format", "srt",
             "--compute_type", COMPUTE_TYPE,
-            "--batch_size", "16",  # Optimize for memory usage
-            "--language", "en"      # Default to English
+            "--batch_size", str(BATCH_SIZE),
+            "--language", LANGUAGE,
+            "--device", "cpu",
+            "--threads", str(NUM_WORKERS)
         ]
-        
-        # Add GPU-specific options if available
-        if torch.cuda.is_available():
-            command.extend(["--device", "cuda"])
-            logger.info("Using GPU for transcription")
-        else:
-            command.extend(["--device", "cpu"])
-            logger.warning("GPU not available, falling back to CPU")
             
         # Run WhisperX
         logger.info(f"Starting transcription of {video_path}")
+        logger.info(f"Using command: {' '.join(command)}")
+        
         result = subprocess.run(
             command,
             check=True,
             capture_output=True,
             text=True
         )
+        
+        # Log the output for debugging
+        if result.stdout:
+            logger.info(f"WhisperX output: {result.stdout}")
+        if result.stderr:
+            logger.warning(f"WhisperX warnings: {result.stderr}")
         
         # Verify output
         if not os.path.exists(srt_path):

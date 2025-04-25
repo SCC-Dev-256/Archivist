@@ -7,8 +7,8 @@ load_dotenv()
 
 # Base paths
 BASE_DIR = Path(__file__).parent
-NAS_PATH = os.getenv("NAS_PATH", "/mnt/nas/media")
-OUTPUT_DIR = os.getenv("OUTPUT_DIR", str(BASE_DIR / "output"))
+NAS_PATH = os.getenv("NAS_PATH", "/mnt/flex-9")  # Updated to use flex-N scheme
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(NAS_PATH, "transcriptions"))
 
 # Redis configuration
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -17,23 +17,27 @@ REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 
 # WhisperX configuration
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v2")
-COMPUTE_TYPE = "float16" if os.getenv("USE_GPU", "true").lower() == "true" else "int8"
+USE_GPU = os.getenv("USE_GPU", "false").lower() == "true"
+COMPUTE_TYPE = "float16" if USE_GPU else "int8"
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "8"))  # Reduced for CPU
+NUM_WORKERS = int(os.getenv("NUM_WORKERS", "4"))  # Number of CPU workers
+LANGUAGE = os.getenv("LANGUAGE", "en")
 
 # API configuration
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8000"))
-API_WORKERS = int(os.getenv("API_WORKERS", "1"))
+API_WORKERS = int(os.getenv("API_WORKERS", "4"))
 
 # Create output directory if it doesn't exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # PostgreSQL configuration
 POSTGRES_CONFIG = {
-    "shared_buffers": "17GB",          # 25% of RAM
-    "effective_cache_size": "53GB",    # 75% of RAM
-    "maintenance_work_mem": "2GB",
-    "work_mem": "128MB",
-    "max_worker_processes": 16,        # Match CPU cores
-    "max_parallel_workers": 16,
-    "max_parallel_workers_per_gather": 8
+    "shared_buffers": "4GB",           # Reduced for CPU-only system
+    "effective_cache_size": "12GB",    # Reduced for CPU-only system
+    "maintenance_work_mem": "1GB",
+    "work_mem": "64MB",
+    "max_worker_processes": 4,         # Reduced for CPU-only system
+    "max_parallel_workers": 4,
+    "max_parallel_workers_per_gather": 2
 } 
