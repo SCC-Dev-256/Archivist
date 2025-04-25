@@ -53,12 +53,23 @@ def main():
         return
     
     logger.info(f"Starting transcription for video: {video_path}")
+    logger.info(f"Video size: {os.path.getsize(video_path) / (1024*1024):.2f} MB")
+    logger.info(f"Using batch size: {BATCH_SIZE}")
+    logger.info(f"Using {NUM_WORKERS} CPU workers")
+    
+    import time
+    start_time = time.time()
+    
     success, result = run_whisperx(video_path)
     
+    end_time = time.time()
+    duration = end_time - start_time
+    
     if success:
-        logger.info(f"Transcription completed successfully. SRT file saved at: {result}")
+        logger.info(f"Transcription completed successfully in {duration/60:.2f} minutes")
+        logger.info(f"SRT file saved at: {result}")
     else:
-        logger.error(f"Transcription failed: {result}")
+        logger.error(f"Transcription failed after {duration/60:.2f} minutes: {result}")
 
 if __name__ == "__main__":
     main()

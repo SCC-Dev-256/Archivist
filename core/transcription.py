@@ -51,18 +51,31 @@ def run_whisperx(video_path: str) -> Tuple[bool, str]:
         logger.info(f"Starting transcription of {video_path}")
         logger.info(f"Using command: {' '.join(command)}")
         
-        result = subprocess.run(
+        # Create a process that shows real-time output
+        process = subprocess.Popen(
             command,
-            check=True,
-            capture_output=True,
-            text=True
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,  # Line buffered
+            universal_newlines=True
         )
         
-        # Log the output for debugging
-        if result.stdout:
-            logger.info(f"WhisperX output: {result.stdout}")
-        if result.stderr:
-            logger.warning(f"WhisperX warnings: {result.stderr}")
+        # Read output in real-time
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                logger.info(output.strip())
+        
+        # Get the return code
+        return_code = process.wait()
+        
+        # Check for errors
+        if return_code != 0:
+            error_msg = process.stderr.read()
+            raise subprocess.CalledProcessError(return_code, command, stderr=error_msg)
         
         # Verify output
         if not os.path.exists(srt_path):
