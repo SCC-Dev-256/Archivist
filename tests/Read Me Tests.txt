@@ -1,0 +1,32 @@
+# Testing the Transcription Pipeline
+
+## What’s Covered
+- `test_transcription.py`: Verifies WhisperX integration using mocks
+- `test_main.py`: Integration test for FastAPI endpoints
+
+## Setup
+Ensure you have:
+- `pytest` installed
+- The backend service structured correctly
+- A mounted path `/mnt/nas/` with at least one `.mp4` file
+
+## Running Tests
+```bash
+pytest tests/
+```
+
+## Notes
+- WhisperX is mocked in unit tests to avoid long runtimes
+- You can test the real WhisperX pipeline by creating a 5-second `.mp4` and running it manually:
+```bash
+python -c 'from transcription import run_whisperx; print(run_whisperx("/mnt/nas/sample.mp4"))'
+```
+
+## Test Directory Structure
+```
+tests/
+├── test_main.py           # REST API endpoint tests
+└── test_transcription.py  # Subprocess + GPU fallback checks
+```
+
+Happy testing!
