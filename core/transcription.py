@@ -25,20 +25,21 @@ def run_whisperx(video_path: str) -> Tuple[bool, str]:
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Video file not found: {video_path}")
             
-        # Prepare output paths
+        # Prepare output paths - use input directory as output directory
+        video_dir = os.path.dirname(video_path)
         video_name = os.path.basename(video_path)
         srt_name = os.path.splitext(video_name)[0] + ".srt"
-        srt_path = os.path.join(OUTPUT_DIR, srt_name)
+        srt_path = os.path.join(video_dir, srt_name)
         
         # Ensure output directory exists
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        os.makedirs(video_dir, exist_ok=True)
         
         # Build WhisperX command
         command = [
             "whisperx",
             video_path,
             "--model", WHISPER_MODEL,
-            "--output_dir", OUTPUT_DIR,
+            "--output_dir", video_dir,  # Use input directory as output directory
             "--output_format", "srt",
             "--compute_type", COMPUTE_TYPE,
             "--batch_size", str(BATCH_SIZE),

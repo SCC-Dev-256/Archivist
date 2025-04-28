@@ -4,12 +4,13 @@ import sys
 import os
 import subprocess
 from typing import List, Dict
+from config import BATCH_SIZE, NUM_WORKERS, NAS_PATH
 
 def check_flex_mounts() -> Dict[str, List[str]]:
     """Check all Flex mount points and their duplicates"""
     mount_map = {}
     try:
-        # Check all flex-N mount points
+        # Check all Flex-N mount points
         for i in range(1, 10):
             flex_path = f"/mnt/flex-{i}"
             if os.path.exists(flex_path):
@@ -45,7 +46,7 @@ def main():
     video_filename = "10845-1-Birchwood City Council (20160614).mpeg"
     
     # Since we know the exact location, we can bypass the mount check
-    video_path = "/mnt/flex-1/" + video_filename
+    video_path = NAS_PATH + video_filename
     
     if not os.path.exists(video_path):
         logger.error(f"Could not find video file at: {video_path}")
