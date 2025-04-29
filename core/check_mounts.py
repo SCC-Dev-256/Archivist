@@ -13,6 +13,30 @@ def list_mount_contents(mount_path: str) -> List[str]:
         logger.error(f"Error accessing {mount_path}: {e}")
         return []
 
+def verify_critical_mounts():
+    critical_mounts = {
+        "flex-N": [
+            "/mnt/flex-1",
+            "/mnt/flex-2",
+            "/mnt/flex-3",
+            "/mnt/flex-4",
+            "/mnt/flex-5",
+            "/mnt/flex-6",
+            "/mnt/flex-7",
+            "/mnt/flex-8",
+            "/mnt/flex-9"
+        ],
+        "other": [
+            "/mnt/smb_share"
+        ]
+    }
+    
+    for mount, purpose in critical_mounts.items():
+        if not os.path.ismount(mount):
+            logger.critical(f"Critical mount point {mount} for {purpose} is not mounted!")
+            return False
+    return True
+
 def main():
     # Define all possible mount points
     mount_points = {

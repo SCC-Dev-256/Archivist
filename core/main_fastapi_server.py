@@ -6,10 +6,12 @@ from typing import List
 import os
 from loguru import logger
 from config import NAS_PATH, OUTPUT_DIR
+import sys
 
 from core.transcription import run_whisperx
-from core.summarizer import summarize_srt
+from core.scc_summarizer import summarize_srt
 from core.queue import enqueue_transcription, get_job_status
+from core.check_mounts import verify_critical_mounts
 
 app = FastAPI(
     title="Video Transcription API",
@@ -72,6 +74,12 @@ async def get_summary(video_id: str):
     except Exception as e:
         logger.error(f"Error getting summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.on_event("startup")
+async def startup_event():
+    if not verify_critical_mounts():
+        logger.critical("Critical mounts missing - preventing startup!")
+        sys.exit(1)
 
 if __name__ == "__main__":
     import uvicorn

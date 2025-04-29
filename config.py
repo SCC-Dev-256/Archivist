@@ -7,7 +7,7 @@ load_dotenv()
 
 # Base paths
 BASE_DIR = Path(__file__).parent
-NAS_PATH = os.getenv("NAS_PATH", "/mnt/flex-9")  # Updated to use flex-N scheme
+NAS_PATH = os.getenv("NAS_PATH", "/mnt/flex-1/")  # Updated to use correct flex mount with video file
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(NAS_PATH, "transcriptions"))
 
 # Redis configuration

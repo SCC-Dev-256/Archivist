@@ -6,6 +6,11 @@ import subprocess
 from typing import List, Dict
 from config import BATCH_SIZE, NUM_WORKERS, NAS_PATH
 
+# Configure logger to show more details
+logger.remove()
+logger.add(sys.stderr, level="DEBUG")
+logger.add("transcription.log", rotation="1 MB")
+
 def check_flex_mounts() -> Dict[str, List[str]]:
     """Check all Flex mount points and their duplicates"""
     mount_map = {}
@@ -42,35 +47,55 @@ def find_video_file(filename: str, mount_map: Dict[str, List[str]]) -> str:
     return ""
 
 def main():
-    # Video filename - updated to use the new file
-    video_filename = "10845-1-Birchwood City Council (20160614).mpeg"
-    
-    # Since we know the exact location, we can bypass the mount check
-    video_path = NAS_PATH + video_filename
-    
-    if not os.path.exists(video_path):
-        logger.error(f"Could not find video file at: {video_path}")
-        logger.info("Please verify the correct path and mount point")
-        return
-    
-    logger.info(f"Starting transcription for video: {video_path}")
-    logger.info(f"Video size: {os.path.getsize(video_path) / (1024*1024):.2f} MB")
-    logger.info(f"Using batch size: {BATCH_SIZE}")
-    logger.info(f"Using {NUM_WORKERS} CPU workers")
-    
-    import time
-    start_time = time.time()
-    
-    success, result = run_whisperx(video_path)
-    
-    end_time = time.time()
-    duration = end_time - start_time
-    
-    if success:
-        logger.info(f"Transcription completed successfully in {duration/60:.2f} minutes")
-        logger.info(f"SRT file saved at: {result}")
-    else:
-        logger.error(f"Transcription failed after {duration/60:.2f} minutes: {result}")
+    try:
+        # Video filename - updated to use the new file
+        video_filename = "10845-1-Birchwood City Council (20160614).mpeg"
+        
+        # Since we know the exact location, we can bypass the mount check
+        video_path = os.path.join(NAS_PATH, video_filename)
+        
+        if not os.path.exists(video_path):
+            logger.error(f"Could not find video file at: {video_path}")
+            logger.info("Please verify the correct path and mount point")
+            return
+        
+        logger.info(f"Starting transcription for video: {video_path}")
+        logger.info(f"Video size: {os.path.getsize(video_path) / (1024*1024):.2f} MB")
+        logger.info(f"Using batch size: {BATCH_SIZE}")
+        logger.info(f"Using {NUM_WORKERS} CPU workers")
+        
+        # Check available system resources
+        import psutil
+        logger.info(f"Available memory: {psutil.virtual_memory().available / (1024*1024):.2f} MB")
+        logger.info(f"CPU usage: {psutil.cpu_percent()}%")
+        
+        import time
+        start_time = time.time()
+        
+        success, result = run_whisperx(video_path)
+        
+        end_time = time.time()
+        duration = end_time - start_time
+        
+        if success:
+            logger.info(f"Transcription completed successfully in {duration/60:.2f} minutes")
+            logger.info(f"SRT file saved at: {result}")
+            
+            # Verify the SRT file exists and has content
+            if os.path.exists(result):
+                srt_size = os.path.getsize(result)
+                logger.info(f"SRT file size: {srt_size} bytes")
+                if srt_size == 0:
+                    logger.error("SRT file is empty!")
+            else:
+                logger.error("SRT file was not created!")
+        else:
+            logger.error(f"Transcription failed after {duration/60:.2f} minutes")
+            logger.error(f"Error details: {result}")
+            
+    except Exception as e:
+        logger.exception("Unexpected error during transcription:")
+        raise
 
 if __name__ == "__main__":
     main()
