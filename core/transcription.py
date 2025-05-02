@@ -3,7 +3,7 @@ import os
 import torch
 from loguru import logger
 from typing import Tuple
-from config import (
+from core.config import (
     WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
     BATCH_SIZE, NUM_WORKERS, LANGUAGE
 )

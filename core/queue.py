@@ -1,6 +1,7 @@
 from redis import Redis
-from rq import Queue, Worker
+from rq import Queue, Worker, job
 from loguru import logger
+from typing import List, Dict, Optional
 from config import REDIS_HOST, REDIS_PORT, REDIS_DB
 
 # Initialize Redis connection
@@ -9,36 +10,146 @@ redis_conn = Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 # Initialize queue
 transcription_queue = Queue('transcription', connection=redis_conn)
 
-def get_job_status(job_id: str) -> dict:
-    """Get the status of a job by its ID."""
-    try:
-        job = transcription_queue.fetch_job(job_id)
-        if job is None:
-            return {"status": "unknown", "error": "Job not found"}
+class QueueManager:
+    def __init__(self):
+        self.redis = redis_conn
+        self.queue = transcription_queue
         
-        if job.is_failed:
-            return {"status": "error", "error": str(job.exc_info)}
+    def get_all_jobs(self) -> List[Dict]:
+        """Get all jobs in the queue and their status."""
+        jobs = []
+        # Get started jobs
+        started_job_ids = self.queue.started_job_registry.get_job_ids()
+        # Get queued jobs
+        queued_job_ids = self.queue.get_job_ids()
+        # Get finished jobs
+        finished_job_ids = self.queue.finished_job_registry.get_job_ids()
+        # Get failed jobs
+        failed_job_ids = self.queue.failed_job_registry.get_job_ids()
         
-        if job.is_finished:
-            return {"status": "done", "result": job.result}
+        all_jobs = []
+        for job_id in started_job_ids + queued_job_ids + finished_job_ids + failed_job_ids:
+            job = self.queue.fetch_job(job_id)
+            if job:
+                all_jobs.append({
+                    'id': job.id,
+                    'status': self._get_job_status(job),
+                    'created_at': job.created_at.isoformat() if job.created_at else None,
+                    'video_path': job.args[0] if job.args else None,
+                    'position': job.meta.get('position', 0),
+                    'progress': job.meta.get('progress', 0),
+                    'status_message': job.meta.get('status_message', '')
+                })
         
-        if job.is_started:
-            return {"status": "running"}
-        
-        return {"status": "queued"}
-    except Exception as e:
-        logger.error(f"Error getting job status: {e}")
-        return {"status": "error", "error": str(e)}
+        return sorted(all_jobs, key=lambda x: x['position'])
 
-def enqueue_transcription(video_path: str) -> str:
-    """Enqueue a transcription job and return the job ID."""
-    try:
-        job = transcription_queue.enqueue(
-            'core.transcription.run_whisperx',
-            video_path,
-            job_timeout='1h'
-        )
-        return job.id
-    except Exception as e:
-        logger.error(f"Error enqueueing transcription job: {e}")
-        raise 
+    def enqueue_transcription(self, video_path: str, position: Optional[int] = None) -> str:
+        """Enqueue a transcription job with optional position."""
+        try:
+            # Get current max position if none specified
+            if position is None:
+                current_jobs = self.get_all_jobs()
+                position = max([job['position'] for job in current_jobs], default=0) + 1
+            
+            job = self.queue.enqueue(
+                'core.transcription.run_whisperx',
+                video_path,
+                job_timeout='1h'
+            )
+            
+            # Store position in job metadata
+            job.meta['position'] = position
+            job.save_meta()
+            
+            return job.id
+        except Exception as e:
+            logger.error(f"Error enqueueing transcription job: {e}")
+            raise
+
+    def reorder_job(self, job_id: str, new_position: int) -> bool:
+        """Change the position of a job in the queue."""
+        try:
+            job = self.queue.fetch_job(job_id)
+            if not job:
+                return False
+                
+            # Update position in job metadata
+            job.meta['position'] = new_position
+            job.save_meta()
+            
+            # Reorder other jobs if needed
+            all_jobs = self.get_all_jobs()
+            for other_job in all_jobs:
+                if other_job['id'] != job_id:
+                    other_job_obj = self.queue.fetch_job(other_job['id'])
+                    if other_job_obj:
+                        if other_job['position'] >= new_position:
+                            other_job_obj.meta['position'] = other_job['position'] + 1
+                            other_job_obj.save_meta()
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error reordering job: {e}")
+            return False
+
+    def stop_job(self, job_id: str) -> bool:
+        """Stop a running job."""
+        try:
+            job = self.queue.fetch_job(job_id)
+            if not job:
+                return False
+            
+            # Cancel the job if it's still in queue
+            if job.get_status() == 'queued':
+                self.queue.remove(job)
+                return True
+                
+            # Stop the job if it's running
+            if job.get_status() == 'started':
+                job.cancel()
+                job.delete()
+                return True
+                
+            return False
+        except Exception as e:
+            logger.error(f"Error stopping job: {e}")
+            return False
+
+    def _get_job_status(self, job) -> str:
+        """Get detailed status of a job."""
+        if job.is_failed:
+            return 'failed'
+        if job.is_finished:
+            return 'completed'
+        if job.is_started:
+            return 'processing'
+        return 'queued'
+
+    def get_job_status(self, job_id: str) -> dict:
+        """Get the status of a job by its ID."""
+        try:
+            job = self.queue.fetch_job(job_id)
+            if job is None:
+                return {"status": "unknown", "error": "Job not found"}
+            
+            status = self._get_job_status(job)
+            
+            response = {
+                "status": status,
+                "progress": job.meta.get('progress', 0),
+                "status_message": job.meta.get('status_message', ''),
+                "position": job.meta.get('position', 0)
+            }
+            
+            if status == 'failed':
+                response["error"] = str(job.exc_info)
+            elif status == 'completed' and job.result:
+                response.update(job.result)
+                
+            return response
+        except Exception as e:
+            logger.error(f"Error getting job status: {e}")
+            return {"status": "error", "error": str(e)}
+
+# Create global queue manager instance
+queue_manager = QueueManager() 

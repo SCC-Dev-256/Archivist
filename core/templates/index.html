@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archivist - Video Transcription</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Archivist Video Transcription</h1>
+            <p class="text-gray-600">Browse and transcribe video files from your server</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- File Browser -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">File Browser</h2>
+                <div class="mb-4">
+                    <nav class="flex" aria-label="Breadcrumb">
+                        <ol class="inline-flex items-center space-x-1 md:space-x-3" id="breadcrumb">
+                            <li class="inline-flex items-center">
+                                <a href="#" class="text-gray-700 hover:text-blue-600" data-path="">Root</a>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="border rounded-lg overflow-hidden">
+                    <!-- Table Header -->
+                    <div class="grid grid-cols-12 gap-2 bg-gray-50 p-3 border-b text-sm font-medium text-gray-500">
+                        <div class="col-span-7">Name</div>
+                        <div class="col-span-3">Type</div>
+                        <div class="col-span-2 text-right">Size</div>
+                    </div>
+                    <!-- File List -->
+                    <div class="divide-y h-96 overflow-y-auto" id="file-list">
+                        <!-- File list will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processing Queue -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Processing Queue</h2>
+                
+                <!-- Selected File -->
+                <div class="mb-6 hidden" id="selected-file">
+                    <h3 class="font-semibold mb-2">Selected File</h3>
+                    <div class="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                        <span id="selected-filename" class="text-gray-700"></span>
+                        <button id="add-to-queue" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
+                            Add to Queue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Queue List -->
+                <div class="border rounded-lg overflow-hidden">
+                    <div class="bg-gray-50 p-3 border-b">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium text-gray-700">Queue</span>
+                            <button id="auto-queue" class="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors">
+                                Auto Queue Mode: <span id="auto-queue-status">Off</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="queue-list" class="divide-y max-h-96 overflow-y-auto">
+                        <!-- Queue items will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPath = '';
+        let selectedFile = null;
+        let autoQueueMode = false;
+        let queueUpdateInterval = null;
+        
+        // Initialize Sortable for queue list
+        const queueList = document.getElementById('queue-list');
+        const sortable = new Sortable(queueList, {
+            animation: 150,
+            onEnd: function(evt) {
+                const jobId = evt.item.dataset.jobId;
+                const newPosition = evt.newIndex;
+                reorderJob(jobId, newPosition);
+            }
+        });
+
+        // Load directory contents
+        async function loadDirectory(path = '') {
+            try {
+                const response = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                const fileList = document.getElementById('file-list');
+                fileList.innerHTML = '';
+                
+                data.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'grid grid-cols-12 gap-2 p-3 hover:bg-gray-50 cursor-pointer items-center text-sm';
+                    
+                    // Add selected state
+                    if (selectedFile && selectedFile.path === item.path) {
+                        itemDiv.classList.add('bg-blue-50');
+                    }
+                    
+                    // Name column with icon
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'col-span-7 flex items-center space-x-2';
+                    
+                    const icon = document.createElement('i');
+                    if (item.type === 'directory') {
+                        icon.className = item.mount ? 
+                            'fas fa-server text-purple-500' : 
+                            'fas fa-folder text-yellow-500';
+                    } else {
+                        icon.className = 'fas fa-video text-blue-500';
+                    }
+                    
+                    const name = document.createElement('span');
+                    name.className = 'truncate';
+                    name.textContent = item.name;
+                    
+                    nameDiv.appendChild(icon);
+                    nameDiv.appendChild(name);
+                    
+                    // Type column
+                    const typeDiv = document.createElement('div');
+                    typeDiv.className = 'col-span-3';
+                    typeDiv.textContent = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                    
+                    // Size column
+                    const sizeDiv = document.createElement('div');
+                    sizeDiv.className = 'col-span-2 text-right';
+                    sizeDiv.textContent = item.size || '-';
+                    
+                    itemDiv.appendChild(nameDiv);
+                    itemDiv.appendChild(typeDiv);
+                    itemDiv.appendChild(sizeDiv);
+                    
+                    if (item.type === 'directory') {
+                        itemDiv.onclick = () => loadDirectory(item.path);
+                    } else {
+                        itemDiv.onclick = () => selectFile(item);
+                    }
+                    
+                    fileList.appendChild(itemDiv);
+                });
+                
+                updateBreadcrumb(path);
+                currentPath = path;
+                
+                // Check for auto-queue mode
+                if (autoQueueMode) {
+                    checkForUnprocessedVideos(data);
+                }
+            } catch (error) {
+                console.error('Error loading directory:', error);
+                alert('Error loading directory. Please try again.');
+            }
+        }
+
+        // Select a file for processing
+        function selectFile(file) {
+            selectedFile = file;
+            document.getElementById('selected-file').classList.remove('hidden');
+            document.getElementById('selected-filename').textContent = file.name;
+        }
+
+        // Add file to processing queue
+        async function addToQueue() {
+            if (!selectedFile) return;
+            
+            try {
+                const response = await fetch('/api/transcribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ path: selectedFile.path }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    selectedFile = null;
+                    document.getElementById('selected-file').classList.add('hidden');
+                    updateQueue();
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error adding to queue:', error);
+                alert('Error adding to queue. Please try again.');
+            }
+        }
+
+        // Update queue display
+        async function updateQueue() {
+            try {
+                const response = await fetch('/api/queue');
+                const jobs = await response.json();
+                
+                const queueList = document.getElementById('queue-list');
+                queueList.innerHTML = '';
+                
+                jobs.forEach(job => {
+                    const jobDiv = document.createElement('div');
+                    jobDiv.className = 'p-4';
+                    jobDiv.dataset.jobId = job.id;
+                    
+                    const content = document.createElement('div');
+                    content.className = 'flex items-center justify-between';
+                    
+                    // File info and progress
+                    const info = document.createElement('div');
+                    info.className = 'flex-1';
+                    
+                    const filename = document.createElement('div');
+                    filename.className = 'font-medium text-gray-700';
+                    filename.textContent = job.video_path.split('/').pop();
+                    
+                    const status = document.createElement('div');
+                    status.className = 'text-sm text-gray-500';
+                    status.textContent = `${job.status_message || job.status} - ${job.progress}%`;
+                    
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'w-full bg-gray-200 rounded-full h-2 mt-2';
+                    progressBar.innerHTML = `<div class="bg-blue-600 h-2 rounded-full" style="width: ${job.progress}%"></div>`;
+                    
+                    info.appendChild(filename);
+                    info.appendChild(status);
+                    info.appendChild(progressBar);
+                    
+                    // Controls
+                    const controls = document.createElement('div');
+                    controls.className = 'flex items-center space-x-2 ml-4';
+                    
+                    if (job.status === 'processing' || job.status === 'queued') {
+                        const stopBtn = document.createElement('button');
+                        stopBtn.className = 'text-red-600 hover:text-red-800 transition-colors';
+                        stopBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                        stopBtn.onclick = () => stopJob(job.id);
+                        controls.appendChild(stopBtn);
+                    }
+                    
+                    if (job.status === 'completed') {
+                        const downloadSrt = document.createElement('a');
+                        downloadSrt.href = `/api/download/${job.srt_path}`;
+                        downloadSrt.className = 'text-blue-600 hover:text-blue-800 transition-colors';
+                        downloadSrt.innerHTML = '<i class="fas fa-file-alt"></i>';
+                        controls.appendChild(downloadSrt);
+                        
+                        const downloadSummary = document.createElement('a');
+                        downloadSummary.href = `/api/download/${job.summary_path}`;
+                        downloadSummary.className = 'text-green-600 hover:text-green-800 transition-colors ml-2';
+                        downloadSummary.innerHTML = '<i class="fas fa-file-alt"></i>';
+                        controls.appendChild(downloadSummary);
+                    }
+                    
+                    content.appendChild(info);
+                    content.appendChild(controls);
+                    jobDiv.appendChild(content);
+                    queueList.appendChild(jobDiv);
+                });
+            } catch (error) {
+                console.error('Error updating queue:', error);
+            }
+        }
+
+        // Stop a job
+        async function stopJob(jobId) {
+            try {
+                const response = await fetch(`/api/queue/stop/${jobId}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    updateQueue();
+                } else {
+                    throw new Error('Failed to stop job');
+                }
+            } catch (error) {
+                console.error('Error stopping job:', error);
+                alert('Error stopping job. Please try again.');
+            }
+        }
+
+        // Reorder a job in the queue
+        async function reorderJob(jobId, newPosition) {
+            try {
+                const response = await fetch('/api/queue/reorder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ job_id: jobId, position: newPosition }),
+                });
+                
+                if (response.ok) {
+                    updateQueue();
+                } else {
+                    throw new Error('Failed to reorder queue');
+                }
+            } catch (error) {
+                console.error('Error reordering queue:', error);
+                alert('Error reordering queue. Please try again.');
+            }
+        }
+
+        // Toggle auto-queue mode
+        function toggleAutoQueue() {
+            autoQueueMode = !autoQueueMode;
+            document.getElementById('auto-queue-status').textContent = autoQueueMode ? 'On' : 'Off';
+            
+            if (autoQueueMode) {
+                loadDirectory(currentPath);
+            }
+        }
+
+        // Check for unprocessed videos in current directory
+        async function checkForUnprocessedVideos(files) {
+            const videoFiles = files.filter(file => file.type === 'file');
+            const queueResponse = await fetch('/api/queue');
+            const queueJobs = await queueResponse.json();
+            
+            const processedPaths = new Set(queueJobs.map(job => job.video_path));
+            const unprocessedVideos = videoFiles.filter(file => !processedPaths.has(file.path));
+            
+            // Add up to 5 unprocessed videos to the queue
+            for (let i = 0; i < Math.min(5, unprocessedVideos.length); i++) {
+                const file = unprocessedVideos[i];
+                await fetch('/api/transcribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ path: file.path }),
+                });
+            }
+            
+            updateQueue();
+        }
+
+        // Update breadcrumb navigation
+        function updateBreadcrumb(path) {
+            const breadcrumb = document.getElementById('breadcrumb');
+            breadcrumb.innerHTML = '<li class="inline-flex items-center"><a href="#" class="text-gray-700 hover:text-blue-600" data-path="">Root</a></li>';
+            
+            if (path) {
+                const parts = path.split('/');
+                let currentPath = '';
+                
+                parts.forEach((part, index) => {
+                    currentPath += (index === 0 ? '' : '/') + part;
+                    
+                    const separator = document.createElement('li');
+                    separator.className = 'flex items-center';
+                    separator.innerHTML = '<i class="fas fa-chevron-right mx-2 text-gray-400"></i>';
+                    breadcrumb.appendChild(separator);
+                    
+                    const li = document.createElement('li');
+                    li.className = 'inline-flex items-center';
+                    
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.className = 'text-gray-700 hover:text-blue-600';
+                    link.textContent = part;
+                    link.dataset.path = currentPath;
+                    link.onclick = (e) => {
+                        e.preventDefault();
+                        loadDirectory(currentPath);
+                    };
+                    
+                    li.appendChild(link);
+                    breadcrumb.appendChild(li);
+                });
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDirectory();
+            document.getElementById('add-to-queue').onclick = addToQueue;
+            document.getElementById('auto-queue').onclick = toggleAutoQueue;
+            
+            // Start queue update interval
+            queueUpdateInterval = setInterval(updateQueue, 2000);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (queueUpdateInterval) {
+                clearInterval(queueUpdateInterval);
+            }
+        });
+    </script>
+</body>
+</html> 
