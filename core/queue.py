@@ -2,7 +2,7 @@ from redis import Redis
 from rq import Queue, Worker, job
 from loguru import logger
 from typing import List, Dict, Optional
-from config import REDIS_HOST, REDIS_PORT, REDIS_DB
+from core.config import REDIS_HOST, REDIS_PORT, REDIS_DB
 
 # Initialize Redis connection
 redis_conn = Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
@@ -52,14 +52,11 @@ class QueueManager:
                 position = max([job['position'] for job in current_jobs], default=0) + 1
             
             job = self.queue.enqueue(
-                'core.transcription.run_whisperx',
+                'core.web_app.process_video_task',
                 video_path,
-                job_timeout='1h'
+                job_timeout='1h',
+                meta={'position': position}
             )
-            
-            # Store position in job metadata
-            job.meta['position'] = position
-            job.save_meta()
             
             return job.id
         except Exception as e:
@@ -115,6 +112,42 @@ class QueueManager:
             logger.error(f"Error stopping job: {e}")
             return False
 
+    def pause_job(self, job_id: str) -> bool:
+        """Pause a running job."""
+        try:
+            job = self.queue.fetch_job(job_id)
+            if not job:
+                return False
+            
+            # Store pause state in job metadata
+            if job.get_status() == 'started':
+                job.meta['paused'] = True
+                job.save_meta()
+                return True
+                
+            return False
+        except Exception as e:
+            logger.error(f"Error pausing job: {e}")
+            return False
+
+    def resume_job(self, job_id: str) -> bool:
+        """Resume a paused job."""
+        try:
+            job = self.queue.fetch_job(job_id)
+            if not job:
+                return False
+            
+            # Remove pause state from job metadata
+            if job.meta.get('paused', False):
+                job.meta['paused'] = False
+                job.save_meta()
+                return True
+                
+            return False
+        except Exception as e:
+            logger.error(f"Error resuming job: {e}")
+            return False
+
     def _get_job_status(self, job) -> str:
         """Get detailed status of a job."""
         if job.is_failed:
@@ -122,7 +155,7 @@ class QueueManager:
         if job.is_finished:
             return 'completed'
         if job.is_started:
-            return 'processing'
+            return 'paused' if job.meta.get('paused', False) else 'processing'
         return 'queued'
 
     def get_job_status(self, job_id: str) -> dict:
@@ -151,5 +184,22 @@ class QueueManager:
             logger.error(f"Error getting job status: {e}")
             return {"status": "error", "error": str(e)}
 
+    def get_current_job(self):
+        """Get the currently running job."""
+        try:
+            # Get the first started job
+            started_jobs = self.queue.started_job_registry.get_job_ids()
+            if started_jobs:
+                return self.queue.fetch_job(started_jobs[0])
+            return None
+        except Exception as e:
+            logger.error(f"Error getting current job: {e}")
+            return None
+
 # Create global queue manager instance
-queue_manager = QueueManager() 
+queue_manager = QueueManager()
+
+if __name__ == '__main__':
+    # Start RQ worker
+    worker = Worker([transcription_queue], connection=redis_conn)
+    worker.work() 

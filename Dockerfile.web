@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements/ requirements/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements/prod.txt
+
+# Copy application code
+COPY . .
+
+# Set environment variables
+ENV FLASK_APP=core.web_app
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app
+
+# Run the application
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "core.web_app:app"] 

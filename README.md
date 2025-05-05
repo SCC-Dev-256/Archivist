@@ -1,118 +1,86 @@
-# Video Transcription API
+# Archivist - Audio Transcription and Analysis Service
 
-A FastAPI-based backend service for video transcription and summarization using WhisperX and local LLaMA models.
+A Flask-based REST API service for audio transcription and analysis, built with modern best practices and optimized for production deployment.
 
 ## Features
 
-- List MP4 files from a configured NAS directory
-- Transcribe videos using WhisperX
-- Generate meeting minutes summaries
-- Asynchronous job processing with Redis queue
-- RESTful API endpoints
-- Comprehensive error handling and logging
+- Audio transcription using WhisperX
+- Speaker diarization with Pyannote
+- RESTful API with OpenAPI documentation
+- PostgreSQL database with SQLAlchemy ORM
+- Redis caching and rate limiting
+- Prometheus metrics and Grafana dashboards
+- Docker support with HTTPS via Let's Encrypt
 
-## Prerequisites
+## Requirements
 
-- Python 3.10+
-- Redis server
-- NAS mount with video files
-- CUDA (optional, for GPU acceleration)
+- Python 3.11+
+- PostgreSQL 14+
+- Redis 6+
+- CUDA-compatible GPU (recommended)
 
-## Installation
+## Setup
 
-1. Clone the repository:
+1. Create and activate a virtual environment:
 ```bash
-git clone <repository-url>
-cd video-transcription-api
+python3.11 -m venv venv_py311
+source venv_py311/bin/activate
 ```
 
-2. Create and activate a virtual environment:
+2. Install dependencies:
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# For development
+pip install -r requirements/dev.txt
+
+# For production
+pip install -r requirements/prod.txt
 ```
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Create a `.env` file:
+3. Set up environment variables:
 ```bash
 cp .env.example .env
+# Edit .env with your configuration
 ```
 
-5. Configure the environment variables in `.env`:
-```env
-NAS_PATH=/mnt/nas/media
-OUTPUT_DIR=./output
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_DB=0
-WHISPER_MODEL=large-v2
-USE_GPU=true
-API_HOST=0.0.0.0
-API_PORT=8000
-API_WORKERS=1
-```
-
-## Running the Service
-
-1. Start Redis:
+4. Initialize the database:
 ```bash
-redis-server
+flask db upgrade
 ```
 
-2. Start the RQ worker:
+5. Run the development server:
 ```bash
-rq worker transcription
-```
-
-3. Start the FastAPI server:
-```bash
-uvicorn main_fastapi_server:app --reload
-```
-
-The API will be available at `http://localhost:8000`
-
-## API Documentation
-
-Once the server is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-## Endpoints
-
-- `GET /files` - List available video files
-- `POST /transcribe` - Start transcription of a video
-- `GET /status/{job_id}` - Check job status
-- `GET /summary/{video_id}` - Get meeting minutes summary
-
-## Testing
-
-Run the test suite:
-```bash
-pytest tests/
+flask run
 ```
 
 ## Development
 
-/opt/archivist/
-├── docker/
-│   ├── docker-compose.yml
-│   ├── nginx/
-│   │   └── nginx.conf
-│   ├── postgres/
-│   │   └── postgresql.conf
-│   └── prometheus/
-│       └── prometheus.yml
-├── src/
-│   └── (your existing code)
-├── scripts/
-│   ├── deploy.sh
-│   ├── backup.sh
-│   └── monitor.sh
-└── .env
+- Run tests: `pytest`
+- Format code: `black .`
+- Sort imports: `isort .`
+- Type checking: `mypy .`
+
+## Production Deployment
+
+1. Build and run with Docker:
+```bash
+docker-compose up -d
+```
+
+2. Set up HTTPS with Let's Encrypt:
+```bash
+certbot --nginx -d your-domain.com
+```
+
+## API Documentation
+
+Once the server is running, visit:
+- Swagger UI: `http://localhost:5000/api/`
+- ReDoc: `http://localhost:5000/api/redoc`
+
+## Monitoring
+
+- Prometheus metrics: `http://localhost:5000/metrics`
+- Grafana dashboards: `http://localhost:3000`
 
 ## License
 
