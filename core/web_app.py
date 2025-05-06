@@ -6,7 +6,7 @@ from loguru import logger
 from core.config import NAS_PATH, OUTPUT_DIR
 from core.transcription import run_whisperx
 from core.scc_summarizer import summarize_srt
-from core.queue import queue_manager
+from core.task_queue import queue_manager
 from core.models import (
     BrowseRequest, TranscribeRequest, QueueReorderRequest,
     JobStatus, FileItem, ErrorResponse, SuccessResponse

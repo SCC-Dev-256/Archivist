@@ -5,9 +5,11 @@ venv/
 # Python
 __pycache__/
 *.py[cod]
+Python-3.8.18/
 *$py.class
 *.so
 .Python
+
 build/
 develop-eggs/
 dist/
@@ -23,6 +25,12 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+#venv
+venv_py38/
+venv_py311/
+
+
 
 # IDE
 .idea/

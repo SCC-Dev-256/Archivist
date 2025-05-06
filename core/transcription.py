@@ -2,14 +2,20 @@ import subprocess
 import os
 from loguru import logger
 from typing import Tuple
-from rq import get_current_job
+import time
+import re
+import traceback
 from core.config import (
     WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
     BATCH_SIZE, NUM_WORKERS, LANGUAGE
 )
-import time
-import re
-import traceback
+
+def get_current_job():
+    try:
+        from rq import get_current_job as rq_get_current_job
+        return rq_get_current_job()
+    except:
+        return None
 
 def run_whisperx(video_path: str):
     """Run WhisperX transcription on a video file"""
@@ -54,12 +60,12 @@ def run_whisperx(video_path: str):
         
         # Start the process
         try:
-        process = subprocess.Popen(
+            process = subprocess.Popen(
                 cmd.split(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        )
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
+            )
         except subprocess.SubprocessError as e:
             raise RuntimeError(f"Failed to start WhisperX process: {str(e)}")
         

@@ -1,20 +1,30 @@
-from redis import Redis
-from rq import Queue, Worker, job
 from loguru import logger
 from typing import List, Dict, Optional
 from core.config import REDIS_HOST, REDIS_PORT, REDIS_DB
 
-# Initialize Redis connection
-redis_conn = Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
-
-# Initialize queue
-transcription_queue = Queue('transcription', connection=redis_conn)
-
 class QueueManager:
+    _instance = None
+    _queue = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(QueueManager, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self):
-        self.redis = redis_conn
-        self.queue = transcription_queue
-        
+        if self._queue is None:
+            self._queue = self._init_queue()
+    
+    def _init_queue(self):
+        import redis
+        from rq import Queue
+        redis_conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+        return Queue('transcription', connection=redis_conn)
+    
+    @property
+    def queue(self):
+        return self._queue
+
     def get_all_jobs(self) -> List[Dict]:
         """Get all jobs in the queue and their status."""
         jobs = []
@@ -201,5 +211,6 @@ queue_manager = QueueManager()
 
 if __name__ == '__main__':
     # Start RQ worker
-    worker = Worker([transcription_queue], connection=redis_conn)
+    from rq import Worker
+    worker = Worker([queue_manager.queue], connection=queue_manager.queue.connection)
     worker.work() 

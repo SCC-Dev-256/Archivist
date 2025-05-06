@@ -20,8 +20,7 @@ def create_app():
         SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SECRET_KEY=os.getenv('SECRET_KEY'),
-        CACHE_TYPE='redis',
-        CACHE_REDIS_URL=os.getenv('REDIS_URL'),
+        CACHE_TYPE='simple',
         RATELIMIT_STORAGE_URL=os.getenv('REDIS_URL'),
         RATELIMIT_STRATEGY='fixed-window',
         RATELIMIT_DEFAULT=os.getenv('API_RATE_LIMIT', '100/minute')
