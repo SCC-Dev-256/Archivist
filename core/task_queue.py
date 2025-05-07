@@ -1,6 +1,7 @@
 from loguru import logger
 from typing import List, Dict, Optional
 from core.config import REDIS_HOST, REDIS_PORT, REDIS_DB
+import time
 
 class QueueManager:
     _instance = None
@@ -41,17 +42,22 @@ class QueueManager:
         for job_id in started_job_ids + queued_job_ids + finished_job_ids + failed_job_ids:
             job = self.queue.fetch_job(job_id)
             if job:
+                status = self._get_job_status(job)
                 all_jobs.append({
                     'id': job.id,
-                    'status': self._get_job_status(job),
-                    'created_at': job.created_at.isoformat() if job.created_at else None,
                     'video_path': job.args[0] if job.args else None,
-                    'position': job.meta.get('position', 0),
+                    'status': status,
                     'progress': job.meta.get('progress', 0),
-                    'status_message': job.meta.get('status_message', '')
+                    'status_message': job.meta.get('status_message', ''),
+                    'error_details': {'error': str(job.exc_info)} if job.is_failed else None,
+                    'start_time': job.started_at.timestamp() if job.started_at else None,
+                    'time_remaining': job.meta.get('time_remaining', None),
+                    'transcribed_duration': job.meta.get('transcribed_duration', None),
+                    'total_duration': job.meta.get('total_duration', None),
+                    'position': job.meta.get('position', 0)
                 })
         
-        return sorted(all_jobs, key=lambda x: x['position'])
+        return sorted(all_jobs, key=lambda x: x.get('position', 0))
 
     def enqueue_transcription(self, video_path: str, position: Optional[int] = None) -> str:
         """Enqueue a transcription job with optional position."""
@@ -205,6 +211,30 @@ class QueueManager:
         except Exception as e:
             logger.error(f"Error getting current job: {e}")
             return None
+
+    def remove_job(self, job_id: str) -> bool:
+        """Remove a job from the queue, regardless of status."""
+        try:
+            job = self.queue.fetch_job(job_id)
+            if not job:
+                return False
+            job.delete()
+            return True
+        except Exception as e:
+            logger.error(f"Error removing job: {e}")
+            return False
+
+    def cleanup_failed_jobs(self):
+        """Remove failed jobs older than 1 minute and log the action."""
+        failed_job_ids = self.queue.failed_job_registry.get_job_ids()
+        now = time.time()
+        for job_id in failed_job_ids:
+            job = self.queue.fetch_job(job_id)
+            if job and job.ended_at:
+                age = now - job.ended_at.timestamp()
+                if age > 60:
+                    logger.info(f"Automatically removing failed job {job.id} (failed for {age:.1f} seconds)")
+                    job.delete()
 
 # Create global queue manager instance
 queue_manager = QueueManager()

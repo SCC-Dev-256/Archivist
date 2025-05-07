@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -13,15 +13,18 @@ cache = Cache()
 limiter = Limiter(key_func=get_remote_address)
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__,
+        template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
+        static_folder=os.path.join(os.path.dirname(__file__), 'static')
+    )
     
     # Load configuration
     app.config.from_mapping(
-        SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL'),
+        SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL', 'sqlite:///archivist.db'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        SECRET_KEY=os.getenv('SECRET_KEY'),
+        SECRET_KEY=os.getenv('SECRET_KEY', 'dev-key'),
         CACHE_TYPE='simple',
-        RATELIMIT_STORAGE_URL=os.getenv('REDIS_URL'),
+        RATELIMIT_STORAGE_URL=os.getenv('REDIS_URL', 'redis://localhost:6379/0'),
         RATELIMIT_STRATEGY='fixed-window',
         RATELIMIT_DEFAULT=os.getenv('API_RATE_LIMIT', '100/minute')
     )
@@ -32,18 +35,16 @@ def create_app():
     cache.init_app(app)
     limiter.init_app(app)
     
-    # Register blueprints
-    from .web_app import bp as web_bp
-    from .api_docs import bp as api_docs_bp
+    # Import routes after app creation to avoid circular imports
+    from .web_app import register_routes
+    register_routes(app, limiter)
     
-    app.register_blueprint(web_bp)
-    app.register_blueprint(api_docs_bp, url_prefix='/api/docs')
-    
-    # Health check endpoint
-    @app.route('/health')
-    def health_check():
-        return {'status': 'healthy'}, 200
-    
+    return app
+
+def create_app_with_config(config_object=None):
+    app = create_app()
+    if config_object:
+        app.config.from_object(config_object)
     return app
 
 app = create_app() 

@@ -156,6 +156,10 @@
                     <button onclick="controlJob('resume', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Resume</button>
                     <button onclick="controlJob('stop', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Stop</button>
                 `;
+            } else if (job.status === 'failed') {
+                return `
+                    <button onclick="removeJob('${job.id}')" class="bg-red-600 text-white px-3 py-1 rounded text-sm">Remove</button>
+                `;
             }
             return '';
         }
@@ -170,6 +174,20 @@
         // Update queue every 5 seconds
         setInterval(updateQueue, 5000);
         updateQueue();
+
+        function removeJob(jobId) {
+            fetch(`/api/queue/remove/${jobId}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Remove the job from the UI (reload or update DOM)
+                        location.reload();
+                    } else {
+                        alert('Failed to remove job: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(err => alert('Error: ' + err));
+        }
     </script>
 </body>
 </html> 
