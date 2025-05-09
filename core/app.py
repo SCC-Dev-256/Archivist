@@ -5,18 +5,19 @@ from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import os
+from core.logging_config import setup_logging
 
 # Initialize extensions
 db = SQLAlchemy()
 migrate = Migrate()
 cache = Cache()
-limiter = Limiter(key_func=get_remote_address)
 
 def create_app():
     app = Flask(__name__,
         template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
         static_folder=os.path.join(os.path.dirname(__file__), 'static')
     )
+    setup_logging()
     
     # Load configuration
     app.config.from_mapping(
@@ -33,7 +34,13 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     cache.init_app(app)
-    limiter.init_app(app)
+    
+    # Initialize limiter
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"]
+    )
     
     # Import routes after app creation to avoid circular imports
     from .web_app import register_routes

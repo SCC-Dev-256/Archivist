@@ -68,7 +68,7 @@ class QueueManager:
                 position = max([job['position'] for job in current_jobs], default=0) + 1
             
             job = self.queue.enqueue(
-                'core.web_app.process_video_task',
+                'core.transcription.run_whisperx',
                 video_path,
                 job_timeout='1h',
                 meta={'position': position}

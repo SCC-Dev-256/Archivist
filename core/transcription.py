@@ -7,7 +7,7 @@ import re
 import traceback
 from core.config import (
     WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
-    BATCH_SIZE, NUM_WORKERS, LANGUAGE
+    BATCH_SIZE, NUM_WORKERS, LANGUAGE, NAS_PATH
 )
 
 def get_current_job():
@@ -46,12 +46,18 @@ def run_whisperx(video_path: str):
         if not os.access(video_path, os.R_OK):
             raise PermissionError(f"No read permission for file: {video_path}")
 
-        # Build WhisperX command with compatibility flags
-        output_dir = os.path.dirname(video_path)
-        if not os.access(output_dir, os.W_OK):
-            raise PermissionError(f"No write permission for output directory: {output_dir}")
+        # Use OUTPUT_DIR for output files
+        if not os.access(OUTPUT_DIR, os.W_OK):
+            raise PermissionError(f"No write permission for output directory: {OUTPUT_DIR}")
 
-        cmd = f"whisperx {video_path} --model {WHISPER_MODEL} --output_dir {output_dir} " \
+        # Get relative path structure
+        rel_path = os.path.relpath(video_path, NAS_PATH)
+        output_subdir = os.path.dirname(rel_path)
+        output_path = os.path.join(OUTPUT_DIR, output_subdir)
+        os.makedirs(output_path, exist_ok=True)
+
+        # Build WhisperX command with compatibility flags
+        cmd = f"whisperx {video_path} --model {WHISPER_MODEL} --output_dir {output_path} " \
               f"--output_format srt --compute_type {COMPUTE_TYPE} --batch_size {BATCH_SIZE} " \
               f"--language {LANGUAGE} --device cpu --threads {NUM_WORKERS} " \
               f"--model_dir {OUTPUT_DIR}/models --no_speaker_diarization"

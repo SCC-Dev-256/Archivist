@@ -21,11 +21,14 @@ import time
 # Set up logging
 setup_logging()
 
-def register_routes(app, limiter):
+# Initialize limiter
+limiter = Limiter(key_func=get_remote_address)
+
+def register_routes(app, limiter=limiter):
     # Initialize API documentation on its own blueprint
     bp_api = Blueprint('api', __name__, url_prefix='/api')
     api = Api(bp_api, doc='/docs')
-    ns = api.namespace('', description='Archivist API')  # Changed from 'api' to '' since we already have /api prefix
+    ns = api.namespace('', description='Archivist API')
     # Register the API blueprint on the main app
     app.register_blueprint(bp_api)
 
@@ -86,7 +89,7 @@ def register_routes(app, limiter):
                 # Start from NAS_PATH if no path provided
                 current_path = browse_req.path
                 full_path = os.path.join(NAS_PATH, current_path) if current_path else NAS_PATH
-
+                
                 if not current_path:
                     # At root: list only flex* directories
                     items = []
@@ -289,7 +292,4 @@ def register_routes(app, limiter):
     @app.route('/health')
     def health_check():
         """Health check endpoint"""
-        return {'status': 'healthy'}, 200
-
-# Ensure no @app.route or @app.errorhandler decorators are below this line
-# All routes and error handlers must be defined inside the register_routes function. 
+        return {'status': 'healthy'}, 200 

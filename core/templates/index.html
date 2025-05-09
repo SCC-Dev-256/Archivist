@@ -146,22 +146,23 @@
 
         // Get job control buttons
         function getJobControls(job) {
+            let controls = '';
             if (job.status === 'processing') {
-                return `
+                controls += `
                     <button onclick="controlJob('pause', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Pause</button>
                     <button onclick="controlJob('stop', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Stop</button>
                 `;
             } else if (job.status === 'paused') {
-                return `
+                controls += `
                     <button onclick="controlJob('resume', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Resume</button>
                     <button onclick="controlJob('stop', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Stop</button>
                 `;
-            } else if (job.status === 'failed') {
-                return `
-                    <button onclick="removeJob('${job.id}')" class="bg-red-600 text-white px-3 py-1 rounded text-sm">Remove</button>
-                `;
             }
-            return '';
+            // Add Remove button for all jobs
+            controls += `
+                <button onclick="removeJob('${job.id}')" class="bg-red-600 text-white px-3 py-1 rounded text-sm">Remove</button>
+            `;
+            return controls;
         }
 
         // Control job (pause/resume/stop)
