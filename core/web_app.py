@@ -21,10 +21,7 @@ import time
 # Set up logging
 setup_logging()
 
-# Initialize limiter
-limiter = Limiter(key_func=get_remote_address)
-
-def register_routes(app, limiter=limiter):
+def register_routes(app, limiter):
     # Initialize API documentation on its own blueprint
     bp_api = Blueprint('api', __name__, url_prefix='/api')
     api = Api(bp_api, doc='/docs')

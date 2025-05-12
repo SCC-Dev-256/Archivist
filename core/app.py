@@ -11,6 +11,7 @@ from core.logging_config import setup_logging
 db = SQLAlchemy()
 migrate = Migrate()
 cache = Cache()
+limiter = Limiter(key_func=get_remote_address)
 
 def create_app():
     app = Flask(__name__,
@@ -34,17 +35,12 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     cache.init_app(app)
-    
-    # Initialize limiter
-    limiter = Limiter(
-        app=app,
-        key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"]
-    )
+    limiter.init_app(app)
     
     # Import routes after app creation to avoid circular imports
-    from .web_app import register_routes
-    register_routes(app, limiter)
+    with app.app_context():
+        from .web_app import register_routes
+        register_routes(app, limiter)
     
     return app
 
@@ -54,4 +50,5 @@ def create_app_with_config(config_object=None):
         app.config.from_object(config_object)
     return app
 
+# Create the application instance
 app = create_app() 

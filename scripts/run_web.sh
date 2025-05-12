@@ -12,6 +12,6 @@ mkdir -p core/templates
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
 # Run the Flask application
-export FLASK_APP=core.web_app
+export FLASK_APP=core
 export FLASK_ENV=development
 flask run --host=0.0.0.0 --port=5000 
