@@ -2,6 +2,12 @@ from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Literal
 import os
 from pathlib import Path
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+
+db = SQLAlchemy()
+
+Base = db.Model
 
 class BrowseRequest(BaseModel):
     path: str = Field(default="", description="Path to browse, relative to NAS_PATH")
@@ -53,4 +59,50 @@ class ErrorResponse(BaseModel):
 
 class SuccessResponse(BaseModel):
     status: Literal['success']
-    job_id: Optional[str] = None 
+    job_id: Optional[str] = None
+
+class TranscriptionJob(BaseModel):
+    id: str
+    video_path: str
+    status: Literal['queued', 'processing', 'paused', 'completed', 'failed']
+    progress: Optional[float] = Field(None, ge=0, le=100)
+    status_message: Optional[str]
+    error_details: Optional[dict]
+    start_time: Optional[float]
+    time_remaining: Optional[float]
+    transcribed_duration: Optional[float]
+    total_duration: Optional[float]
+    position: Optional[int]
+
+class TranscriptionResult(BaseModel):
+    id: str
+    video_path: str
+    completed_at: str  # ISO format string
+    status: Literal['completed', 'failed']
+    output_path: Optional[str]
+    error_details: Optional[dict] = None
+
+class TranscriptionJobORM(db.Model):
+    __tablename__ = 'transcription_jobs'
+    id = db.Column(db.String, primary_key=True)
+    video_path = db.Column(db.String, nullable=False)
+    status = db.Column(db.String, nullable=False)
+    progress = db.Column(db.Float)
+    status_message = db.Column(db.String)
+    error_details = db.Column(db.JSON)
+    start_time = db.Column(db.Float)
+    time_remaining = db.Column(db.Float)
+    transcribed_duration = db.Column(db.Float)
+    total_duration = db.Column(db.Float)
+    position = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class TranscriptionResultORM(db.Model):
+    __tablename__ = 'transcription_results'
+    id = db.Column(db.String, primary_key=True)
+    video_path = db.Column(db.String, nullable=False)
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String, nullable=False)
+    output_path = db.Column(db.String)
+    error_details = db.Column(db.JSON) 

@@ -9,12 +9,15 @@ from core.scc_summarizer import summarize_srt
 from core.task_queue import queue_manager
 from core.models import (
     BrowseRequest, TranscribeRequest, QueueReorderRequest,
-    JobStatus, FileItem, ErrorResponse, SuccessResponse
+    JobStatus, FileItem, ErrorResponse, SuccessResponse,
+    TranscriptionJob, TranscriptionResult
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_restx import Api, Resource, Namespace, fields
 from core.logging_config import setup_logging
+from core.file_manager import file_manager
+from datetime import datetime
 import json
 import time
 
@@ -24,9 +27,74 @@ setup_logging()
 def register_routes(app, limiter):
     # Initialize API documentation on its own blueprint
     bp_api = Blueprint('api', __name__, url_prefix='/api')
+
+    # Move all function-based endpoints here BEFORE registering the blueprint
+    @bp_api.route('/api/file-details')
+    @limiter.limit("30/minute")
+    def get_file_details():
+        path = request.args.get('path')
+        if not path:
+            return jsonify({'error': 'Path is required'}), 400
+        try:
+            details = file_manager.get_file_details(path)
+            return jsonify(details)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @bp_api.route('/transcriptions')
+    @limiter.limit("30/minute")
+    def get_transcriptions():
+        try:
+            from core.models import TranscriptionResultORM
+            transcriptions = TranscriptionResultORM.query.order_by(
+                TranscriptionResultORM.completed_at.desc()
+            ).all()
+            return jsonify([{
+                'id': t.id,
+                'video_path': t.video_path,
+                'completed_at': t.completed_at.isoformat(),
+                'status': t.status,
+                'output_path': t.output_path
+            } for t in transcriptions])
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @bp_api.route('/transcriptions/<transcription_id>/view')
+    @limiter.limit("30/minute")
+    def view_transcription(transcription_id):
+        try:
+            from core.models import TranscriptionResultORM
+            transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
+            if not os.path.exists(transcription.output_path):
+                return jsonify({'error': 'Transcription file not found'}), 404
+            return send_file(
+                transcription.output_path,
+                mimetype='text/plain',
+                as_attachment=False
+            )
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @bp_api.route('/transcriptions/<transcription_id>/download')
+    @limiter.limit("30/minute")
+    def download_transcription(transcription_id):
+        try:
+            from core.models import TranscriptionResultORM
+            transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
+            if not os.path.exists(transcription.output_path):
+                return jsonify({'error': 'Transcription file not found'}), 404
+            return send_file(
+                transcription.output_path,
+                mimetype='text/plain',
+                as_attachment=True,
+                download_name=f"{os.path.basename(transcription.video_path)}.txt"
+            )
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    # Now register the blueprint
     api = Api(bp_api, doc='/docs')
     ns = api.namespace('', description='Archivist API')
-    # Register the API blueprint on the main app
     app.register_blueprint(bp_api)
 
     # Model definitions for Swagger docs
@@ -131,7 +199,7 @@ def register_routes(app, limiter):
                                 name=item,
                                 type='file',
                                 path=rel_path,
-                                size=f"{os.path.getsize(item_path) / (1024*1024):.1f} MB"
+                                size=os.path.getsize(item_path)  # Always return bytes
                             ).dict())
                 return jsonify(sorted(items, key=lambda x: (x['type'] != 'directory', x['name'].lower())))
             except ValueError as e:

@@ -3,77 +3,284 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archivist - Video Transcription Service</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Archivist - Video Transcription</title>
+    <!-- Use local Tailwind CSS -->
+    <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
-    <style>
-        body {
-            background-color: #1a1a1a;
-            color: #e0e0e0;
-        }
-        .card {
-            background-color: #2d2d2d;
-            border: 1px solid #404040;
-        }
-        .btn-primary {
-            background-color: #4a5568;
-            color: white;
-        }
-        .btn-primary:hover {
-            background-color: #2d3748;
-        }
-    </style>
 </head>
-<body class="min-h-screen">
+<body class="bg-gray-900 text-white min-h-screen">
     <div class="container mx-auto px-4 py-8">
-        <header class="text-center mb-12">
-            <h1 class="text-4xl font-bold mb-4">Archivist</h1>
-            <p class="text-xl text-gray-400">Video Transcription Service</p>
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold mb-2">Archivist</h1>
+            <p class="text-gray-400">Video Transcription System</p>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Search Bar -->
+        <div class="mb-6">
+            <div class="flex gap-4">
+                <input type="text" id="search-input" placeholder="Search files or transcriptions..." 
+                       class="flex-1 bg-gray-700 text-white px-4 py-2 rounded">
+                <select id="search-type" class="bg-gray-700 text-white px-4 py-2 rounded">
+                    <option value="files">Files</option>
+                    <option value="transcriptions">Transcriptions</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
             <!-- File Browser -->
-            <div class="card rounded-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4">File Browser</h2>
-                <div id="file-browser" class="min-h-[300px] border border-gray-700 rounded p-4">
-                    <div class="flex items-center mb-4">
-                        <input type="text" id="current-path" class="flex-grow bg-gray-800 text-gray-300 px-3 py-2 rounded" readonly>
-                        <button onclick="navigateUp()" class="btn-primary px-4 py-2 rounded ml-2">↑</button>
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">File Browser</h2>
+                    <div class="flex gap-2">
+                        <button onclick="refreshFiles()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                            Refresh
+                        </button>
+                        <button onclick="showFileDetails()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                            Details
+                        </button>
                     </div>
-                    <div id="file-list" class="space-y-2"></div>
+                </div>
+                <div class="mb-4">
+                    <div class="flex gap-2">
+                        <input type="text" id="current-path" class="flex-1 bg-gray-700 text-white px-4 py-2 rounded" readonly>
+                        <button onclick="navigateUp()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                            Up
+                        </button>
+                    </div>
+                </div>
+                <div id="file-list" class="space-y-2 max-h-96 overflow-y-auto">
+                    <!-- Files will be listed here -->
                 </div>
             </div>
 
-            <!-- Queue -->
-            <div class="card rounded-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4">Processing Queue</h2>
-                <div id="queue" class="min-h-[300px] space-y-4"></div>
+            <!-- Queue Status -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Transcription Queue</h2>
+                    <button onclick="refreshQueue()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                        Refresh
+                    </button>
+                </div>
+                <div id="queue-list" class="space-y-4 max-h-96 overflow-y-auto">
+                    <!-- Queue items will be listed here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Transcriptions -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Completed Transcriptions</h2>
+                <div class="flex gap-2">
+                    <input type="text" id="transcription-search" placeholder="Search transcriptions..." 
+                           class="bg-gray-700 text-white px-4 py-2 rounded">
+                    <button onclick="refreshTranscriptions()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                        Refresh
+                    </button>
+                </div>
+            </div>
+            <div id="completed-list" class="space-y-4 max-h-96 overflow-y-auto">
+                <!-- Completed transcriptions will be listed here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- File Details Modal -->
+    <div id="file-details-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">File Details</h3>
+                <button onclick="closeFileDetails()" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div id="file-details-content" class="space-y-4">
+                <!-- File details will be shown here -->
             </div>
         </div>
     </div>
 
     <script>
         let currentPath = '';
+        let queueUpdateInterval;
+        let selectedFile = null;
 
-        // Load initial file list
+        // Initialize
         loadFiles();
+        updateQueue();
+        loadCompletedTranscriptions();
+        queueUpdateInterval = setInterval(updateQueue, 5000);
+
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            const searchType = document.getElementById('search-type').value;
+            if (searchType === 'files') {
+                searchFiles(e.target.value);
+            } else {
+                searchTranscriptions(e.target.value);
+            }
+        });
 
         // Load files from current path
         function loadFiles() {
             fetch(`/api/browse?path=${encodeURIComponent(currentPath)}`)
                 .then(response => response.json())
                 .then(items => {
+                    if (!Array.isArray(items)) {
+                        showNotification('Error loading files. Please try again.', 'error');
+                        return;
+                    }
                     const fileList = document.getElementById('file-list');
                     document.getElementById('current-path').value = currentPath || '/';
                     
                     fileList.innerHTML = items.map(item => `
                         <div class="flex items-center justify-between p-2 hover:bg-gray-700 rounded cursor-pointer"
-                             onclick="${item.type === 'directory' ? `navigate('${item.path}')` : `transcribe('${item.path}')`}">
-                            <span>${item.name}</span>
-                            <span class="text-sm text-gray-400">${item.type === 'file' ? item.size : ''}</span>
+                             onclick="${item.type === 'directory' ? `navigate('${item.path}')` : `selectFile('${item.path}')`}">
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">${item.type === 'directory' ? '📁' : '📄'}</span>
+                                <span>${item.name}</span>
+                            </div>
+                            <span class="text-sm text-gray-400">${item.type === 'file' ? formatSize(item.size) : ''}</span>
                         </div>
                     `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading files:', error);
+                    showNotification('Error loading files. Please try again.', 'error');
                 });
+        }
+
+        // Load completed transcriptions
+        function loadCompletedTranscriptions() {
+            fetch('/api/transcriptions')
+                .then(response => response.json())
+                .then(transcriptions => {
+                    const completedList = document.getElementById('completed-list');
+                    completedList.innerHTML = transcriptions.map(trans => `
+                        <div class="bg-gray-700 rounded p-4">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-semibold">${trans.video_path.split('/').pop()}</h3>
+                                    <p class="text-sm text-gray-400">Completed: ${new Date(trans.completed_at).toLocaleString()}</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="viewTranscription('${trans.id}')" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                                        View
+                                    </button>
+                                    <button onclick="downloadTranscription('${trans.id}')"
+                                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
+                                        Download
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading transcriptions:', error);
+                    showNotification('Error loading transcriptions. Please try again.', 'error');
+                });
+        }
+
+        // Select file for transcription
+        function selectFile(path) {
+            selectedFile = path;
+            const fileList = document.getElementById('file-list');
+            const items = fileList.getElementsByClassName('hover:bg-gray-700');
+            Array.from(items).forEach(item => {
+                item.classList.remove('bg-blue-600');
+            });
+            event.currentTarget.classList.add('bg-blue-600');
+            
+            // Show transcribe button
+            const transcribeButton = document.createElement('button');
+            transcribeButton.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded';
+            transcribeButton.textContent = 'Transcribe Selected File';
+            transcribeButton.onclick = () => transcribe(selectedFile);
+            
+            const existingButton = fileList.querySelector('button');
+            if (existingButton) {
+                existingButton.remove();
+            }
+            fileList.appendChild(transcribeButton);
+        }
+
+        // Show file details
+        function showFileDetails() {
+            if (!selectedFile) {
+                showNotification('Please select a file first', 'warning');
+                return;
+            }
+
+            fetch(`/api/file-details?path=${encodeURIComponent(selectedFile)}`)
+                .then(response => response.json())
+                .then(details => {
+                    const modal = document.getElementById('file-details-modal');
+                    const content = document.getElementById('file-details-content');
+                    
+                    content.innerHTML = `
+                        <div class="space-y-2">
+                            <p><strong>Name:</strong> ${details.name}</p>
+                            <p><strong>Size:</strong> ${formatSize(details.size)}</p>
+                            <p><strong>Type:</strong> ${details.type}</p>
+                            <p><strong>Created:</strong> ${new Date(details.created_at).toLocaleString()}</p>
+                            <p><strong>Modified:</strong> ${new Date(details.modified_at).toLocaleString()}</p>
+                            ${details.metadata ? `
+                                <div class="mt-4">
+                                    <h4 class="font-semibold mb-2">Metadata</h4>
+                                    <pre class="bg-gray-700 p-2 rounded text-sm">${JSON.stringify(details.metadata, null, 2)}</pre>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    modal.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error loading file details:', error);
+                    showNotification('Error loading file details', 'error');
+                });
+        }
+
+        // Close file details modal
+        function closeFileDetails() {
+            document.getElementById('file-details-modal').classList.add('hidden');
+        }
+
+        // View transcription
+        function viewTranscription(id) {
+            window.open(`/api/transcriptions/${id}/view`, '_blank');
+        }
+
+        // Download transcription
+        function downloadTranscription(id) {
+            window.location.href = `/api/transcriptions/${id}/download`;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg ${
+                type === 'error' ? 'bg-red-600' :
+                type === 'warning' ? 'bg-yellow-600' :
+                'bg-green-600'
+            } text-white`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 5000);
+        }
+
+        // Format file size
+        function formatSize(size) {
+            if (typeof size !== 'number' || isNaN(size) || size === 0) return '';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let s = size;
+            let unitIndex = 0;
+            while (s >= 1024 && unitIndex < units.length - 1) {
+                s /= 1024;
+                unitIndex++;
+            }
+            return `${s.toFixed(1)} ${units[unitIndex]}`;
         }
 
         // Navigate to directory
@@ -103,7 +310,13 @@
             .then(data => {
                 if (data.job_id) {
                     updateQueue();
+                } else {
+                    alert('Error starting transcription. Please try again.');
                 }
+            })
+            .catch(error => {
+                console.error('Error starting transcription:', error);
+                alert('Error starting transcription. Please try again.');
             });
         }
 
@@ -112,83 +325,49 @@
             fetch('/api/queue')
                 .then(response => response.json())
                 .then(jobs => {
-                    const queue = document.getElementById('queue');
-                    queue.innerHTML = jobs.map(job => `
-                        <div class="card p-4 space-y-2">
-                            <div class="flex justify-between items-center">
-                                <span class="font-medium">${job.video_path.split('/').pop()}</span>
-                                <span class="px-2 py-1 rounded text-sm ${getStatusClass(job.status)}">${job.status}</span>
+                    const queueList = document.getElementById('queue-list');
+                    queueList.innerHTML = jobs.map(job => `
+                        <div class="bg-gray-700 rounded p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 class="font-semibold">${job.video_path.split('/').pop()}</h3>
+                                    <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
+                                </div>
+                                <span class="px-2 py-1 rounded text-sm ${
+                                    job.status === 'completed' ? 'bg-green-600' :
+                                    job.status === 'failed' ? 'bg-red-600' :
+                                    job.status === 'processing' ? 'bg-blue-600' :
+                                    'bg-gray-600'
+                                }">${job.status}</span>
                             </div>
-                            ${job.progress ? `
-                            <div class="w-full bg-gray-700 rounded-full h-2.5">
-                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${job.progress}%"></div>
-                            </div>
+                            ${job.progress !== null ? `
+                                <div class="w-full bg-gray-600 rounded-full h-2 mb-2">
+                                    <div class="bg-blue-600 h-2 rounded-full" style="width: ${job.progress}%"></div>
+                                </div>
+                                <p class="text-sm text-gray-400">${job.progress.toFixed(1)}% complete</p>
                             ` : ''}
-                            <div class="text-sm text-gray-400">${job.status_message || ''}</div>
-                            <div class="flex space-x-2">
-                                ${getJobControls(job)}
-                            </div>
+                            ${job.time_remaining ? `
+                                <p class="text-sm text-gray-400 mt-2">
+                                    Estimated time remaining: ${formatTimeRemaining(job.time_remaining)}
+                                </p>
+                            ` : ''}
                         </div>
                     `).join('');
+                })
+                .catch(error => {
+                    console.error('Error updating queue:', error);
                 });
         }
 
-        // Get status-specific CSS classes
-        function getStatusClass(status) {
-            const classes = {
-                'queued': 'bg-gray-600',
-                'processing': 'bg-blue-600',
-                'paused': 'bg-yellow-600',
-                'completed': 'bg-green-600',
-                'failed': 'bg-red-600'
-            };
-            return classes[status] || 'bg-gray-600';
-        }
-
-        // Get job control buttons
-        function getJobControls(job) {
-            let controls = '';
-            if (job.status === 'processing') {
-                controls += `
-                    <button onclick="controlJob('pause', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Pause</button>
-                    <button onclick="controlJob('stop', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Stop</button>
-                `;
-            } else if (job.status === 'paused') {
-                controls += `
-                    <button onclick="controlJob('resume', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Resume</button>
-                    <button onclick="controlJob('stop', '${job.id}')" class="btn-primary px-3 py-1 rounded text-sm">Stop</button>
-                `;
+        // Format time remaining
+        function formatTimeRemaining(seconds) {
+            if (seconds > 3600) {
+                return `${(seconds / 3600).toFixed(1)} hours`;
+            } else if (seconds > 60) {
+                return `${(seconds / 60).toFixed(0)} minutes`;
+            } else {
+                return `${seconds.toFixed(0)} seconds`;
             }
-            // Add Remove button for all jobs
-            controls += `
-                <button onclick="removeJob('${job.id}')" class="bg-red-600 text-white px-3 py-1 rounded text-sm">Remove</button>
-            `;
-            return controls;
-        }
-
-        // Control job (pause/resume/stop)
-        function controlJob(action, jobId) {
-            fetch(`/api/queue/${action}/${jobId}`, { method: 'POST' })
-                .then(response => response.json())
-                .then(() => updateQueue());
-        }
-
-        // Update queue every 5 seconds
-        setInterval(updateQueue, 5000);
-        updateQueue();
-
-        function removeJob(jobId) {
-            fetch(`/api/queue/remove/${jobId}`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Remove the job from the UI (reload or update DOM)
-                        location.reload();
-                    } else {
-                        alert('Failed to remove job: ' + (data.error || 'Unknown error'));
-                    }
-                })
-                .catch(err => alert('Error: ' + err));
         }
     </script>
 </body>

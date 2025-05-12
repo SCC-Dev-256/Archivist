@@ -74,13 +74,13 @@ certbot --nginx -d your-domain.com
 ## API Documentation
 
 Once the server is running, visit:
-- Swagger UI: `http://localhost:5000/api/`
-- ReDoc: `http://localhost:5000/api/redoc`
+- Swagger UI: `http://192.168.181.154:5050/api/`
+- ReDoc: `http://192.168.181.154:5050/api/redoc`
 
 ## Monitoring
 
-- Prometheus metrics: `http://localhost:5000/metrics`
-- Grafana dashboards: `http://localhost:3000`
+- Prometheus metrics: `http://192.168.181.154:5050/metrics`
+- Grafana dashboards: `http://192.168.181.154:3000`
 
 ## License
 

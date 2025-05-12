@@ -6,88 +6,90 @@ set -e
 # Load environment variables
 source /opt/Archivist/.env
 
-# Function to check if a process is running
-check_process() {
-    pgrep -f "$1" > /dev/null
-}
+# Create necessary directories
+mkdir -p logs
+mkdir -p output
+mkdir -p core/templates
+mkdir -p core/static
 
-# Function to start a process if not running
+# Set Flask environment variables
+export FLASK_APP=core.app
+export FLASK_ENV=production
+export FLASK_DEBUG=0
+
+# Set Redis configuration
+export REDIS_HOST=${REDIS_HOST:-"localhost"}
+export REDIS_PORT=${REDIS_PORT:-"6379"}
+export REDIS_DB=${REDIS_DB:-"0"}
+export REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
+
+# Set PostgreSQL configuration
+export DATABASE_URL=${DATABASE_URL:-"postgresql://postgres:postgres@localhost:5432/archivist"}
+
+# Set API configuration
+export API_HOST=${API_HOST:-"0.0.0.0"}
+export API_PORT=${API_PORT:-"5050"}
+export API_WORKERS=${API_WORKERS:-"2"}
+
+# Set server name for URL generation
+export SERVER_NAME=${SERVER_NAME:-"${API_HOST}:${API_PORT}"}
+export PREFERRED_URL_SCHEME=${PREFERRED_URL_SCHEME:-"http"}
+
+# Set CORS configuration
+export CORS_ORIGINS=${CORS_ORIGINS:-"*"}
+
+# Function to start a process
 start_process() {
-    if ! check_process "$1"; then
-        echo "Starting $2..."
-        cd /opt/Archivist
-        source venv/bin/activate
-        
-        # Set Flask environment variables
-        export FLASK_APP=core
-        export FLASK_ENV=production
-        export PYTHONPATH="${PYTHONPATH}:/opt/Archivist"
-        
-        # Set Redis configuration
-        export REDIS_HOST=${REDIS_HOST:-"localhost"}
-        export REDIS_PORT=${REDIS_PORT:-"6379"}
-        export REDIS_DB=${REDIS_DB:-"0"}
-        export REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
-        
-        # Set database configuration if not already set
-        if [ -z "$DATABASE_URL" ]; then
-            export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/archivist"
-        fi
-        
-        # Set NAS and output paths if not already set
-        if [ -z "$NAS_PATH" ]; then
-            export NAS_PATH="/mnt"
-        fi
-        if [ -z "$OUTPUT_DIR" ]; then
-            export OUTPUT_DIR="/mnt/transcriptions"
-        fi
-        
-        # Create necessary directories
-        mkdir -p "$OUTPUT_DIR"
-        mkdir -p core/templates
-        mkdir -p core/static
-        mkdir -p logs
-        
-        # Start the process
-        $3 &
+    local pattern=$1
+    local name=$2
+    local command=$3
+    
+    if ! pgrep -f "$pattern" > /dev/null; then
+        echo "Starting $name..."
+        eval "$command" &
         sleep 2
-        if check_process "$1"; then
-            echo "$2 started successfully"
+        if pgrep -f "$pattern" > /dev/null; then
+            echo "$name started successfully"
         else
-            echo "Failed to start $2"
+            echo "Failed to start $name"
             exit 1
         fi
     else
-        echo "$2 is already running"
+        echo "$name is already running"
     fi
 }
 
-echo "Starting Archivist system..."
-
-# Check Redis
-if ! systemctl is-active --quiet redis; then
+# Start Redis if not running
+if ! pgrep redis-server > /dev/null; then
     echo "Starting Redis..."
-    sudo systemctl start redis
+    redis-server --daemonize yes
     sleep 2
+    if ! redis-cli ping > /dev/null; then
+        echo "Failed to start Redis"
+        exit 1
+    fi
+    echo "Redis started successfully"
+else
+    echo "Redis is already running"
 fi
 
-# Verify Redis connection
-if ! redis-cli ping > /dev/null 2>&1; then
-    echo "Error: Cannot connect to Redis. Please check Redis configuration."
-    exit 1
-fi
-
-# Check PostgreSQL
-if ! systemctl is-active --quiet postgresql; then
+# Start PostgreSQL if not running
+if ! pgrep postgres > /dev/null; then
     echo "Starting PostgreSQL..."
-    sudo systemctl start postgresql
+    pg_ctl -D /var/lib/postgresql/data start
     sleep 2
+    if ! pg_isready; then
+        echo "Failed to start PostgreSQL"
+        exit 1
+    fi
+    echo "PostgreSQL started successfully"
+else
+    echo "PostgreSQL is already running"
 fi
 
-# Start the worker
-start_process "python -m core.task_queue" "Worker" "python -m core.task_queue"
+# Start the web app
+start_process "gunicorn.*core:app" "Web App" "gunicorn --bind ${API_HOST}:${API_PORT} --workers ${API_WORKERS} --timeout 120 --access-logfile logs/gunicorn-access.log --error-logfile logs/gunicorn-error.log --capture-output --log-level info core:app"
 
-# Start the web app with gunicorn
-start_process "gunicorn.*core:app" "Web App" "gunicorn --bind 0.0.0.0:5050 --workers 2 --timeout 120 --access-logfile logs/gunicorn-access.log --error-logfile logs/gunicorn-error.log --capture-output --log-level info core:app"
-
-echo "Archivist system started successfully" 
+echo "Archivist system started successfully"
+echo "Web UI available at: http://${API_HOST}:${API_PORT}"
+echo "API documentation available at: http://${API_HOST}:${API_PORT}/api/docs" 

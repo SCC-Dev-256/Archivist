@@ -11,7 +11,7 @@ NAS_PATH = os.getenv("NAS_PATH", "/mnt")  # Updated to allow browsing all flex m
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(NAS_PATH, "transcriptions"))
 
 # Redis configuration
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_HOST = os.getenv("REDIS_HOST", "192.168.181.154")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 

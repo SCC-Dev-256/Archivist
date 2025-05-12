@@ -193,7 +193,7 @@ global:
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['192.168.181.154:9090']
 
   - job_name: 'node-exporter'
     static_configs:
@@ -229,19 +229,19 @@ server {
     server_name _;
 
     location / {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://192.168.181.154:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
     }
 
     location /grafana/ {
-        proxy_pass http://localhost:3000/;
+        proxy_pass http://192.168.181.154:3000/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
     }
 
     location /prometheus/ {
-        proxy_pass http://localhost:9090/;
+        proxy_pass http://192.168.181.154:9090/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
     }
@@ -306,8 +306,8 @@ docker ps
 
 # Check service health
 echo -e "\nService Health:"
-curl -s http://localhost:9090/-/healthy
-curl -s http://localhost:3000/api/health
+curl -s http://192.168.181.154:9090/-/healthy
+curl -s http://192.168.181.154:3000/api/health
 EOL
 
 chmod +x /opt/archivist/scripts/monitor.sh

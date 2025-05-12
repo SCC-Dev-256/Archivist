@@ -25,7 +25,7 @@ curl -s -X POST -H "Content-Type: application/json" \
         "access": "proxy",
         "basicAuth": false
     }' \
-    http://localhost:3000/api/datasources
+    http://192.168.181.154:3000/api/datasources
 
 # Create Video Processing Dashboard
 curl -s -X POST -H "Content-Type: application/json" \
@@ -179,7 +179,7 @@ curl -s -X POST -H "Content-Type: application/json" \
         },
         "overwrite": true
     }' \
-    http://localhost:3000/api/dashboards/db
+    http://192.168.181.154:3000/api/dashboards/db
 
 # Create Video Processing Alerts
 curl -s -X POST -H "Content-Type: application/json" \
@@ -256,6 +256,6 @@ curl -s -X POST -H "Content-Type: application/json" \
             }
         ]
     }' \
-    http://localhost:3000/api/v1/provisioning/alert-rules
+    http://192.168.181.154:3000/api/v1/provisioning/alert-rules
 
 echo "Grafana dashboards and alerts have been set up successfully!" 
