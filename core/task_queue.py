@@ -1,6 +1,6 @@
 from loguru import logger
 from typing import List, Dict, Optional
-from core.config import REDIS_HOST, REDIS_PORT, REDIS_DB
+from core.config import REDIS_URL
 import time
 
 class QueueManager:
@@ -19,7 +19,7 @@ class QueueManager:
     def _init_queue(self):
         import redis
         from rq import Queue
-        redis_conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+        redis_conn = redis.from_url(REDIS_URL)
         return Queue('transcription', connection=redis_conn)
     
     @property
@@ -54,7 +54,9 @@ class QueueManager:
                     'time_remaining': job.meta.get('time_remaining', None),
                     'transcribed_duration': job.meta.get('transcribed_duration', None),
                     'total_duration': job.meta.get('total_duration', None),
-                    'position': job.meta.get('position', 0)
+                    'position': job.meta.get('position', 0),
+                    'created_at': job.created_at,
+                    'updated_at': job.ended_at if job.ended_at else job.started_at if job.started_at else job.created_at
                 })
         
         return sorted(all_jobs, key=lambda x: x.get('position', 0))

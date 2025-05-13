@@ -10,7 +10,7 @@ from core.task_queue import queue_manager
 from core.models import (
     BrowseRequest, TranscribeRequest, QueueReorderRequest,
     JobStatus, FileItem, ErrorResponse, SuccessResponse,
-    TranscriptionJob, TranscriptionResult
+    TranscriptionJobORM, TranscriptionResultORM
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -45,7 +45,6 @@ def register_routes(app, limiter):
     @limiter.limit("30/minute")
     def get_transcriptions():
         try:
-            from core.models import TranscriptionResultORM
             transcriptions = TranscriptionResultORM.query.order_by(
                 TranscriptionResultORM.completed_at.desc()
             ).all()
@@ -63,7 +62,6 @@ def register_routes(app, limiter):
     @limiter.limit("30/minute")
     def view_transcription(transcription_id):
         try:
-            from core.models import TranscriptionResultORM
             transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
             if not os.path.exists(transcription.output_path):
                 return jsonify({'error': 'Transcription file not found'}), 404
@@ -79,7 +77,6 @@ def register_routes(app, limiter):
     @limiter.limit("30/minute")
     def download_transcription(transcription_id):
         try:
-            from core.models import TranscriptionResultORM
             transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
             if not os.path.exists(transcription.output_path):
                 return jsonify({'error': 'Transcription file not found'}), 404
@@ -153,7 +150,17 @@ def register_routes(app, limiter):
                 
                 # Start from NAS_PATH if no path provided
                 current_path = browse_req.path
-                full_path = os.path.join(NAS_PATH, current_path) if current_path else NAS_PATH
+                
+                # Handle both absolute and relative paths
+                if current_path.startswith('/'):
+                    # If absolute path, check if it's within NAS_PATH
+                    if not current_path.startswith(NAS_PATH):
+                        logger.error(f"Path outside NAS_PATH: {current_path}")
+                        return ErrorResponse(error='Path must be within NAS_PATH').dict(), 400
+                    full_path = current_path
+                else:
+                    # For relative paths, join with NAS_PATH
+                    full_path = os.path.join(NAS_PATH, current_path)
                 
                 if not current_path:
                     # At root: list only flex* directories
@@ -161,7 +168,7 @@ def register_routes(app, limiter):
                     for item in os.listdir(NAS_PATH):
                         item_path = os.path.join(NAS_PATH, item)
                         if os.path.isdir(item_path) and (item.startswith('flex') or item.startswith('flex-')):
-                            rel_path = os.path.relpath(item_path, '/mnt')
+                            rel_path = os.path.relpath(item_path, NAS_PATH)
                             items.append(FileItem(
                                 name=item,
                                 type='directory',
@@ -171,7 +178,6 @@ def register_routes(app, limiter):
                             ).dict())
                     return jsonify(sorted(items, key=lambda x: x['name'].lower()))
 
-                # Start from NAS_PATH if no path provided (existing logic for subdirectories)
                 if not os.path.exists(full_path):
                     logger.error(f"Path not found: {full_path}")
                     return ErrorResponse(error='Path not found').dict(), 404
@@ -179,7 +185,7 @@ def register_routes(app, limiter):
                 items = []
                 for item in os.listdir(full_path):
                     item_path = os.path.join(full_path, item)
-                    rel_path = os.path.relpath(item_path, '/mnt')
+                    rel_path = os.path.relpath(item_path, NAS_PATH)
                     
                     logger.info(f"Processing item: {item_path}")
                     logger.info(f"Relative path: {rel_path}")
@@ -232,6 +238,33 @@ def register_routes(app, limiter):
                 logger.error(f"Transcription error: {e}")
                 return ErrorResponse(error=str(e)).dict(), 500
 
+    @ns.route('/transcribe/batch')
+    class TranscribeBatch(Resource):
+        @limiter.limit("10 per minute")
+        def post(self):
+            """Batch API endpoint for starting transcription on multiple files"""
+            try:
+                data = request.get_json()
+                paths = data.get('paths', [])
+                if not isinstance(paths, list) or not paths:
+                    return ErrorResponse(error='No files provided').dict(), 400
+                queued = []
+                errors = []
+                for rel_path in paths:
+                    video_path = os.path.join('/mnt', rel_path)
+                    if not os.path.exists(video_path):
+                        errors.append(rel_path)
+                        continue
+                    try:
+                        job_id = queue_manager.enqueue_transcription(video_path, None)
+                        queued.append(rel_path)
+                    except Exception as e:
+                        errors.append(f"{rel_path}: {str(e)}")
+                return jsonify({"queued": queued, "errors": errors})
+            except Exception as e:
+                logger.error(f"Batch transcription error: {e}")
+                return ErrorResponse(error=str(e)).dict(), 500
+
     @ns.route('/queue')
     class Queue(Resource):
         @limiter.limit("60 per minute")
@@ -239,7 +272,14 @@ def register_routes(app, limiter):
             """Get all jobs in the queue"""
             try:
                 jobs = queue_manager.get_all_jobs()
-                return jsonify([JobStatus(**job).dict() for job in jobs])
+                job_statuses = []
+                for job in jobs:
+                    try:
+                        job_statuses.append(JobStatus(**job).dict())
+                    except Exception as e:
+                        logger.warning(f"Skipping job due to validation error: {e} | job: {job}")
+                        continue
+                return jsonify(job_statuses)
             except Exception as e:
                 logger.error(f"Error getting queue: {e}")
                 return ErrorResponse(error=str(e)).dict(), 500

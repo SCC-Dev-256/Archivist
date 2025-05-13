@@ -11,9 +11,15 @@ NAS_PATH = os.getenv("NAS_PATH", "/mnt")  # Updated to allow browsing all flex m
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(NAS_PATH, "transcriptions"))
 
 # Redis configuration
-REDIS_HOST = os.getenv("REDIS_HOST", "192.168.181.154")
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
+
+# Construct Redis URL
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+if REDIS_PASSWORD:
+    REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 
 # WhisperX configuration
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v2")

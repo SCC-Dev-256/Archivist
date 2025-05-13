@@ -4,6 +4,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
 import os
 from core.logging_config import setup_logging
 
@@ -12,19 +13,10 @@ db = SQLAlchemy()
 migrate = Migrate()
 cache = Cache()
 
-# Get Redis configuration
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-REDIS_OPTIONS = {
-    "socket_connect_timeout": 30,
-    "socket_timeout": 30,
-    "retry_on_timeout": True
-}
-
-# Initialize limiter with Redis storage
+# Initialize limiter with in-memory storage
 limiter = Limiter(
     key_func=get_remote_address,
-    storage_uri=REDIS_URL,
-    storage_options=REDIS_OPTIONS,
+    storage_uri="memory://",
     strategy="fixed-window",
     default_limits=["200 per day", "50 per hour"]
 )
@@ -41,11 +33,10 @@ def create_app():
         SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL', 'sqlite:///archivist.db'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SECRET_KEY=os.getenv('SECRET_KEY', 'dev-key'),
-        CACHE_TYPE='simple',
-        RATELIMIT_STORAGE_URL=REDIS_URL,
+        CACHE_TYPE='simple',  # Use simple in-memory cache
+        RATELIMIT_STORAGE_URL='memory://',  # Use in-memory storage for rate limiting
         RATELIMIT_STRATEGY='fixed-window',
         RATELIMIT_DEFAULT=os.getenv('API_RATE_LIMIT', '100/minute'),
-        RATELIMIT_STORAGE_OPTIONS=REDIS_OPTIONS,
         # Add server name configuration
         SERVER_NAME=os.getenv('SERVER_NAME', None),  # Set to None for development
         PREFERRED_URL_SCHEME=os.getenv('PREFERRED_URL_SCHEME', 'http'),
@@ -60,9 +51,12 @@ def create_app():
     migrate.init_app(app, db)
     cache.init_app(app)
     limiter.init_app(app)
+    CORS(app)  # Enable CORS for all routes
     
-    # Import routes after app creation to avoid circular imports
+    # Create database tables
     with app.app_context():
+        db.create_all()
+        # Import routes after app creation to avoid circular imports
         from .web_app import register_routes
         register_routes(app, limiter)
     

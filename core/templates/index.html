@@ -7,6 +7,7 @@
     <!-- Use local Tailwind CSS -->
     <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
     <div class="container mx-auto px-4 py-8">
@@ -52,13 +53,18 @@
                 <div id="file-list" class="space-y-2 max-h-96 overflow-y-auto">
                     <!-- Files will be listed here -->
                 </div>
+                <div class="mt-4">
+                    <button id="queue-selected-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="queueSelectedFiles()">
+                        Queue Selected for Transcription
+                    </button>
+                </div>
             </div>
 
             <!-- Queue Status -->
             <div class="bg-gray-800 rounded-lg p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold">Transcription Queue</h2>
-                    <button onclick="refreshQueue()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                    <button onclick="updateQueue()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
                         Refresh
                     </button>
                 </div>
@@ -120,28 +126,66 @@
             }
         });
 
-        // Load files from current path
+        // Load files for current directory
         function loadFiles() {
-            fetch(`/api/browse?path=${encodeURIComponent(currentPath)}`)
-                .then(response => response.json())
+            const path = currentPath || '';
+            fetch(`/api/browse?path=${encodeURIComponent(path)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(items => {
                     if (!Array.isArray(items)) {
                         showNotification('Error loading files. Please try again.', 'error');
                         return;
                     }
                     const fileList = document.getElementById('file-list');
-                    document.getElementById('current-path').value = currentPath || '/';
+                    document.getElementById('current-path').value = path;
                     
-                    fileList.innerHTML = items.map(item => `
-                        <div class="flex items-center justify-between p-2 hover:bg-gray-700 rounded cursor-pointer"
-                             onclick="${item.type === 'directory' ? `navigate('${item.path}')` : `selectFile('${item.path}')`}">
-                            <div class="flex items-center gap-2">
-                                <span class="text-gray-400">${item.type === 'directory' ? '📁' : '📄'}</span>
-                                <span>${item.name}</span>
-                            </div>
-                            <span class="text-sm text-gray-400">${item.type === 'file' ? formatSize(item.size) : ''}</span>
-                        </div>
-                    `).join('');
+                    if (items.length === 0) {
+                        fileList.innerHTML = '<div class="text-gray-400 p-4 text-center">No files found</div>';
+                        return;
+                    }
+                    
+                    fileList.innerHTML = items.map(item => {
+                        if (item.type === 'directory') {
+                            // Directory: row is clickable for navigation
+                            return `
+                                <div class="flex items-center justify-between p-2 hover:bg-gray-700 rounded cursor-pointer" onclick="navigate('${item.path}')">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-gray-400">📁</span>
+                                        <span>${item.name}</span>
+                                    </div>
+                                    <span class="text-sm text-gray-400"></span>
+                                </div>
+                            `;
+                        } else {
+                            // File: checkbox for selection
+                            return `
+                                <div class="flex items-center justify-between p-2 hover:bg-gray-700 rounded">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" class="file-checkbox" value="${item.path}">
+                                        <span class="text-gray-400">📄</span>
+                                        <span>${item.name}</span>
+                                    </div>
+                                    <span class="text-sm text-gray-400">${formatSize(item.size)}</span>
+                                </div>
+                            `;
+                        }
+                    }).join('');
+
+                    // Add the batch queue button below the file list:
+                    const batchButtonId = 'queue-selected-btn';
+                    if (!document.getElementById(batchButtonId)) {
+                        const batchBtn = document.createElement('button');
+                        batchBtn.id = batchButtonId;
+                        batchBtn.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded';
+                        batchBtn.textContent = 'Queue Selected for Transcription';
+                        batchBtn.onclick = queueSelectedFiles;
+                        fileList.parentNode.appendChild(batchBtn);
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading files:', error);
@@ -153,9 +197,17 @@
         function loadCompletedTranscriptions() {
             fetch('/api/transcriptions')
                 .then(response => response.json())
-                .then(transcriptions => {
+                .then(data => {
+                    if (data.error) {
+                        showNotification(data.error, 'error');
+                        return;
+                    }
+                    if (!Array.isArray(data)) {
+                        showNotification('Invalid response format', 'error');
+                        return;
+                    }
                     const completedList = document.getElementById('completed-list');
-                    completedList.innerHTML = transcriptions.map(trans => `
+                    completedList.innerHTML = data.map(trans => `
                         <div class="bg-gray-700 rounded p-4">
                             <div class="flex justify-between items-start">
                                 <div>
@@ -285,16 +337,24 @@
 
         // Navigate to directory
         function navigate(path) {
+            if (!path || typeof path !== 'string') {
+                showNotification('Invalid path', 'error');
+                return;
+            }
             currentPath = path;
             loadFiles();
         }
 
         // Navigate up one directory
         function navigateUp() {
-            if (currentPath) {
-                currentPath = currentPath.split('/').slice(0, -1).join('/');
-                loadFiles();
+            if (!currentPath) {
+                currentPath = '';
+            } else {
+                const parts = currentPath.split('/').filter(Boolean);
+                parts.pop();
+                currentPath = parts.length ? parts.join('/') : '';
             }
+            loadFiles();
         }
 
         // Start transcription
@@ -368,6 +428,35 @@
             } else {
                 return `${seconds.toFixed(0)} seconds`;
             }
+        }
+
+        // Add JS function to handle batch queueing:
+        function queueSelectedFiles() {
+            const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+            const paths = Array.from(checkboxes).map(cb => cb.value);
+            if (paths.length === 0) {
+                showNotification('Please select at least one video file.', 'warning');
+                return;
+            }
+            fetch('/api/transcribe/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paths })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.queued && data.queued.length > 0) {
+                    showNotification(`Queued ${data.queued.length} file(s) for transcription.`, 'info');
+                    updateQueue();
+                }
+                if (data.errors && data.errors.length > 0) {
+                    showNotification(`Some files could not be queued: ${data.errors.join(', ')}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error queueing files:', error);
+                showNotification('Error queueing files. Please try again.', 'error');
+            });
         }
     </script>
 </body>
