@@ -393,12 +393,20 @@
                                     <h3 class="font-semibold">${job.video_path.split('/').pop()}</h3>
                                     <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
                                 </div>
-                                <span class="px-2 py-1 rounded text-sm ${
-                                    job.status === 'completed' ? 'bg-green-600' :
-                                    job.status === 'failed' ? 'bg-red-600' :
-                                    job.status === 'processing' ? 'bg-blue-600' :
-                                    'bg-gray-600'
-                                }">${job.status}</span>
+                                <div class="flex gap-2">
+                                    <span class="px-2 py-1 rounded text-sm ${
+                                        job.status === 'completed' ? 'bg-green-600' :
+                                        job.status === 'failed' ? 'bg-red-600' :
+                                        job.status === 'processing' ? 'bg-blue-600' :
+                                        'bg-yellow-600'
+                                    }">${job.status}</span>
+                                    ${job.status !== 'completed' && job.status !== 'failed' ? `
+                                        <button onclick="cancelJob('${job.id}')" 
+                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                                            Cancel
+                                        </button>
+                                    ` : ''}
+                                </div>
                             </div>
                             ${job.progress !== null ? `
                                 <div class="w-full bg-gray-600 rounded-full h-2 mb-2">
@@ -456,6 +464,30 @@
             .catch(error => {
                 console.error('Error queueing files:', error);
                 showNotification('Error queueing files. Please try again.', 'error');
+            });
+        }
+
+        // Cancel job
+        function cancelJob(jobId) {
+            if (!confirm('Are you sure you want to cancel this job?')) {
+                return;
+            }
+            
+            fetch(`/api/queue/stop/${jobId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showNotification('Job cancelled successfully', 'success');
+                    updateQueue();
+                } else {
+                    showNotification(data.error || 'Failed to cancel job', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error cancelling job:', error);
+                showNotification('Error cancelling job', 'error');
             });
         }
     </script>
