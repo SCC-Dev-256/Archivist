@@ -19,8 +19,19 @@ class QueueManager:
     def _init_queue(self):
         import redis
         from rq import Queue
-        redis_conn = redis.from_url(REDIS_URL)
-        return Queue('transcription', connection=redis_conn)
+        try:
+            logger.info(f"Initializing Redis connection to {REDIS_URL}")
+            redis_conn = redis.from_url(REDIS_URL, socket_timeout=5)
+            # Test the connection
+            redis_conn.ping()
+            logger.info("Successfully connected to Redis")
+            return Queue('transcription', connection=redis_conn)
+        except redis.ConnectionError as e:
+            logger.error(f"Failed to connect to Redis: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error initializing queue: {e}")
+            raise
     
     @property
     def queue(self):
