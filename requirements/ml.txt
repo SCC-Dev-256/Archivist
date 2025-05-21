@@ -1,6 +1,6 @@
 # Core ML Dependencies
-torch==2.0.1
-torchaudio==2.0.2
+torch>=2.0.0,<2.1.0  # Compatible with whisperx and pyannote.audio
+torchaudio>=2.0.0,<2.1.0  # Matching torch version
 numpy>=1.24.3,<2.0.0  # Required for PyTorch compatibility
 scipy>=1.10.1,<2.0.0
 scikit-learn>=1.3.0,<2.0.0
@@ -12,8 +12,8 @@ tokenizers>=0.13.0,<0.15.0
 
 # Speech Processing
 faster-whisper>=0.10.0  # Required by whisperx
-whisperx==3.1.1
-pyannote.audio==3.1.1  # Using stable version for better performance
+whisperx>=3.0.0  # Latest stable version with CPU optimizations
+pyannote.audio>=3.1.1  # Latest stable version
 soundfile>=0.12.1,<1.0.0
 librosa>=0.10.1,<1.0.0
 

@@ -9,13 +9,9 @@ from core.config import (
     WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
     BATCH_SIZE, NUM_WORKERS, LANGUAGE, NAS_PATH
 )
-from torch.serialization import add_safe_globals
 from omegaconf.listconfig import ListConfig
 from huggingface_hub import hf_hub_download
-from pyannote.audio import Model
-
-# Add omegaconf.ListConfig to safe globals for PyTorch 2.6+
-add_safe_globals([ListConfig])
+from pyannote.audio import Pipeline
 
 def get_current_job():
     try:
@@ -69,51 +65,62 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
             current_job.save_meta()
 
         # Load model with updated configuration
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        compute_type = "float16" if device == "cuda" else "float32"
+        device = "cpu"  # Force CPU usage
+        compute_type = "float32"  # Always use float32 for CPU
         
         # Set the target directory
         target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/whisperx/assets"
         os.makedirs(target_dir, exist_ok=True)
 
-        # Download the model file directly
-        model_path = hf_hub_download(
-            repo_id="pyannote/segmentation",
-            filename="pytorch_model.bin",
-            token="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",
-            cache_dir=target_dir
+        # Load diarization pipeline
+        pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1",
+            use_auth_token="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"
         )
-
-        # Verify the downloaded file
-        if os.path.exists(model_path):
-            file_size = os.path.getsize(model_path)
-            if file_size == 0:
-                raise ValueError('Downloaded model file is empty. Please check the download process.')
-            elif file_size < 1000:  # Arbitrary size check, adjust as needed
-                raise ValueError('Downloaded model file is too small. Please check the download process.')
-            else:
-                print(f'Model file downloaded successfully with size: {file_size} bytes.')
-        else:
-            raise FileNotFoundError('Model file was not downloaded. Please check the download process.')
-
-        # Now load the model to verify it works
-        model = Model.from_pretrained(
-            "pyannote/segmentation",
-            use_auth_token="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",
-            cache_dir=target_dir
-        )
-        print("Model loaded successfully!")
+        pipeline.to(torch.device(device))
+        print("Pipeline loaded successfully!")
 
         if current_job:
             current_job.meta['status_message'] = 'Transcribing audio...'
             current_job.save_meta()
 
-        # Transcribe audio
-        result = model.transcribe(video_path)
+        # Process audio with pipeline
+        diarization = pipeline(
+            video_path,
+            num_speakers=None,  # Auto-detect number of speakers
+            min_speakers=1,
+            max_speakers=10
+        )
         
+        # Convert diarization to segments format
+        segments = []
+        for turn, _, speaker in diarization.itertracks(yield_label=True):
+            segments.append({
+                "start": turn.start,
+                "end": turn.end,
+                "speaker": speaker,
+                "text": ""  # Will be filled by whisperx
+            })
+
         if current_job:
-            current_job.meta['status_message'] = 'Aligning timestamps...'
+            current_job.meta['status_message'] = 'Running WhisperX transcription...'
             current_job.save_meta()
+
+        # Load whisperx model for transcription with CPU optimizations
+        model = whisperx.load_model(
+            WHISPER_MODEL,
+            device=device,
+            compute_type=compute_type,
+            cpu_threads=4,  # Adjust based on your CPU
+            num_workers=1,  # Reduce for CPU
+            download_root=target_dir,
+            local_files_only=False
+        )
+        result = model.transcribe(
+            video_path,
+            batch_size=8,  # Smaller batch size for CPU
+            language=LANGUAGE
+        )
 
         # Align whisper output
         model_a, metadata = whisperx.load_align_model(
@@ -125,8 +132,12 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
             model_a,
             metadata,
             video_path,
-            device
+            device,
+            return_char_alignments=False  # Reduce memory usage
         )
+
+        # Merge diarization with transcription
+        result = whisperx.assign_word_speakers(diarization, result)
 
         # Save results
         output_file = os.path.join(output_path, f"{os.path.basename(video_path)}.srt")
@@ -135,7 +146,8 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
                 start = format_timestamp(segment["start"])
                 end = format_timestamp(segment["end"])
                 text = segment["text"].strip()
-                f.write(f"{segment['id']}\n{start} --> {end}\n{text}\n\n")
+                speaker = segment.get("speaker", "UNKNOWN")
+                f.write(f"{segment['id']}\n{start} --> {end}\n[{speaker}] {text}\n\n")
 
         if current_job:
             current_job.meta.update({
