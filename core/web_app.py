@@ -89,6 +89,21 @@ def register_routes(app, limiter):
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+    @bp_api.route('/transcriptions/<transcription_id>/remove', methods=['DELETE'])
+    @limiter.limit("30/minute")
+    def remove_transcription(transcription_id):
+        try:
+            transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
+            # Remove the output file if it exists
+            if os.path.exists(transcription.output_path):
+                os.remove(transcription.output_path)
+            # Delete the record from the database
+            db.session.delete(transcription)
+            db.session.commit()
+            return jsonify({'message': 'Transcription removed successfully'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
     # Now register the blueprint
     api = Api(bp_api, doc='/docs')
     ns = api.namespace('', description='Archivist API')

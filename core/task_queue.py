@@ -2,6 +2,9 @@ from loguru import logger
 from typing import List, Dict, Optional
 from core.config import REDIS_URL
 import time
+import redis
+from rq import Queue, Worker
+import sys
 
 class QueueManager:
     _instance = None
@@ -17,15 +20,35 @@ class QueueManager:
             self._queue = self._init_queue()
     
     def _init_queue(self):
-        import redis
-        from rq import Queue
         try:
             logger.info(f"Initializing Redis connection to {REDIS_URL}")
-            redis_conn = redis.from_url(REDIS_URL, socket_timeout=5)
-            # Test the connection
-            redis_conn.ping()
-            logger.info("Successfully connected to Redis")
-            return Queue('transcription', connection=redis_conn)
+            # Configure Redis connection with retry and timeout settings
+            redis_conn = redis.from_url(
+                REDIS_URL,
+                socket_timeout=30,  # Increase timeout
+                socket_connect_timeout=30,
+                retry_on_timeout=True,
+                health_check_interval=30
+            )
+            
+            # Test the connection with retry
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    redis_conn.ping()
+                    logger.info("Successfully connected to Redis")
+                    break
+                except redis.ConnectionError as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    logger.warning(f"Redis connection attempt {attempt + 1} failed: {e}")
+                    time.sleep(1)
+            
+            # Initialize queue with default timeout and result_ttl
+            return Queue('transcription', 
+                        connection=redis_conn,
+                        default_timeout=3600,  # 1 hour timeout
+                        result_ttl=86400)      # Keep results for 24 hours
         except redis.ConnectionError as e:
             logger.error(f"Failed to connect to Redis: {e}")
             raise
@@ -38,39 +61,34 @@ class QueueManager:
         return self._queue
 
     def get_all_jobs(self) -> List[Dict]:
-        """Get all jobs in the queue and their status."""
-        jobs = []
-        # Get started jobs
-        started_job_ids = self.queue.started_job_registry.get_job_ids()
-        # Get queued jobs
-        queued_job_ids = self.queue.get_job_ids()
-        # Get finished jobs
-        finished_job_ids = self.queue.finished_job_registry.get_job_ids()
-        # Get failed jobs
-        failed_job_ids = self.queue.failed_job_registry.get_job_ids()
-        
-        all_jobs = []
-        for job_id in started_job_ids + queued_job_ids + finished_job_ids + failed_job_ids:
-            job = self.queue.fetch_job(job_id)
-            if job:
-                status = self._get_job_status(job)
-                all_jobs.append({
+        """Get all jobs in the queue with their metadata"""
+        try:
+            jobs = []
+            for job in self.queue.jobs:
+                if job.is_finished:
+                    status = 'finished'
+                elif job.is_failed:
+                    status = 'failed'
+                elif job.is_started:
+                    status = 'started'
+                else:
+                    status = 'queued'
+                
+                jobs.append({
                     'id': job.id,
-                    'video_path': job.args[0] if job.args else None,
                     'status': status,
+                    'position': job.meta.get('position', 0),
                     'progress': job.meta.get('progress', 0),
                     'status_message': job.meta.get('status_message', ''),
-                    'error_details': {'error': str(job.exc_info)} if job.is_failed else None,
-                    'start_time': job.started_at.timestamp() if job.started_at else None,
-                    'time_remaining': job.meta.get('time_remaining', None),
-                    'transcribed_duration': job.meta.get('transcribed_duration', None),
-                    'total_duration': job.meta.get('total_duration', None),
-                    'position': job.meta.get('position', 0),
+                    'error_details': job.meta.get('error_details'),
                     'created_at': job.created_at,
-                    'updated_at': job.ended_at if job.ended_at else job.started_at if job.started_at else job.created_at
+                    'started_at': job.started_at,
+                    'ended_at': job.ended_at
                 })
-        
-        return sorted(all_jobs, key=lambda x: x.get('position', 0))
+            return sorted(jobs, key=lambda x: x['position'])
+        except Exception as e:
+            logger.error(f"Error getting jobs: {e}")
+            return []
 
     def enqueue_transcription(self, video_path: str, position: Optional[int] = None) -> str:
         """Enqueue a transcription job with optional position."""
@@ -80,13 +98,23 @@ class QueueManager:
                 current_jobs = self.get_all_jobs()
                 position = max([job['position'] for job in current_jobs], default=0) + 1
             
+            # Calculate priority (lower number = higher priority)
+            # Use position as priority, but invert it so lower position = higher priority
+            priority = 100 - position  # This ensures position 0 has highest priority
+            
             job = self.queue.enqueue(
                 'core.transcription.run_whisperx',
                 video_path,
                 job_timeout='1h',
-                meta={'position': position}
+                meta={
+                    'position': position,
+                    'status': 'queued',
+                    'progress': 0,
+                    'status_message': 'Waiting to start...'
+                }
             )
             
+            logger.info(f"Enqueued job {job.id} with priority {priority} (position {position})")
             return job.id
         except Exception as e:
             logger.error(f"Error enqueueing transcription job: {e}")
@@ -123,22 +151,35 @@ class QueueManager:
         try:
             job = self.queue.fetch_job(job_id)
             if not job:
+                logger.error(f"Job {job_id} not found")
                 return False
             
-            # Cancel the job if it's still in queue
-            if job.get_status() == 'queued':
+            current_status = job.get_status()
+            logger.info(f"Stopping job {job_id} with status {current_status}")
+            
+            if current_status == 'queued':
+                # For queued jobs, remove from queue
                 self.queue.remove(job)
+                job.meta['status'] = 'cancelled'
+                job.meta['status_message'] = 'Job cancelled by user'
+                job.save_meta()
+                logger.info(f"Removed queued job {job_id}")
                 return True
                 
-            # Stop the job if it's running
-            if job.get_status() == 'started':
+            elif current_status == 'started':
+                # For running jobs, cancel and delete
                 job.cancel()
+                job.meta['status'] = 'cancelled'
+                job.meta['status_message'] = 'Job cancelled by user'
+                job.save_meta()
                 job.delete()
+                logger.info(f"Cancelled running job {job_id}")
                 return True
-                
+            
+            logger.warning(f"Job {job_id} cannot be cancelled in status {current_status}")
             return False
         except Exception as e:
-            logger.error(f"Error stopping job: {e}")
+            logger.error(f"Error stopping job {job_id}: {e}")
             return False
 
     def pause_job(self, job_id: str) -> bool:
@@ -185,6 +226,8 @@ class QueueManager:
             return 'completed'
         if job.is_started:
             return 'paused' if job.meta.get('paused', False) else 'processing'
+        if job.meta.get('status') == 'cancelled':
+            return 'cancelled'
         return 'queued'
 
     def get_job_status(self, job_id: str) -> dict:
@@ -238,22 +281,30 @@ class QueueManager:
             return False
 
     def cleanup_failed_jobs(self):
-        """Remove failed jobs older than 1 minute and log the action."""
-        failed_job_ids = self.queue.failed_job_registry.get_job_ids()
-        now = time.time()
-        for job_id in failed_job_ids:
-            job = self.queue.fetch_job(job_id)
-            if job and job.ended_at:
-                age = now - job.ended_at.timestamp()
-                if age > 60:
-                    logger.info(f"Automatically removing failed job {job.id} (failed for {age:.1f} seconds)")
-                    job.delete()
+        """Clean up failed jobs older than 24 hours"""
+        try:
+            registry = self.queue.failed_job_registry
+            for job_id in registry.get_job_ids():
+                job = self.queue.fetch_job(job_id)
+                if job and job.ended_at:
+                    if time.time() - job.ended_at.timestamp() > 86400:  # 24 hours
+                        registry.remove(job_id)
+                        logger.info(f"Cleaned up failed job {job_id}")
+        except Exception as e:
+            logger.error(f"Error cleaning up failed jobs: {e}")
 
 # Create global queue manager instance
 queue_manager = QueueManager()
 
 if __name__ == '__main__':
-    # Start RQ worker
-    from rq import Worker
-    worker = Worker([queue_manager.queue], connection=queue_manager.queue.connection)
-    worker.work() 
+    try:
+        # Start RQ worker with error handling
+        worker = Worker([queue_manager.queue], connection=queue_manager.queue.connection)
+        logger.info("Starting worker...")
+        worker.work()
+    except KeyboardInterrupt:
+        logger.info("Worker stopped by user")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Worker failed: {e}")
+        sys.exit(1) 

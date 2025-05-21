@@ -90,6 +90,9 @@ fi
 # Start the web app
 start_process "gunicorn.*core:app" "Web App" "gunicorn --bind ${API_HOST}:${API_PORT} --workers ${API_WORKERS} --timeout 120 --access-logfile logs/gunicorn-access.log --error-logfile logs/gunicorn-error.log --capture-output --log-level info core:app"
 
+# Start the RQ worker for transcription
+start_process "core.task_queue" "Transcription Worker" ". .venv/bin/activate && python -m core.task_queue"
+
 echo "Archivist system started successfully"
 echo "Web UI available at: http://${API_HOST}:${API_PORT}"
 echo "API documentation available at: http://${API_HOST}:${API_PORT}/api/docs" 

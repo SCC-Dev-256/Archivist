@@ -1,14 +1,21 @@
-import subprocess
 import os
 from loguru import logger
-from typing import Tuple
 import time
-import re
 import traceback
+from typing import Dict, Any
+import whisperx
+import torch
 from core.config import (
     WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
     BATCH_SIZE, NUM_WORKERS, LANGUAGE, NAS_PATH
 )
+from torch.serialization import add_safe_globals
+from omegaconf.listconfig import ListConfig
+from huggingface_hub import hf_hub_download
+from pyannote.audio import Model
+
+# Add omegaconf.ListConfig to safe globals for PyTorch 2.6+
+add_safe_globals([ListConfig])
 
 def get_current_job():
     try:
@@ -17,8 +24,8 @@ def get_current_job():
     except:
         return None
 
-def run_whisperx(video_path: str):
-    """Run WhisperX transcription on a video file"""
+def run_whisperx(video_path: str) -> Dict[str, Any]:
+    """Run WhisperX transcription on a video file using the Python API"""
     try:
         logger.info(f"Starting transcription of {video_path}")
         
@@ -56,112 +63,94 @@ def run_whisperx(video_path: str):
         output_path = os.path.join(OUTPUT_DIR, output_subdir)
         os.makedirs(output_path, exist_ok=True)
 
-        # Build WhisperX command with compatibility flags
-        cmd = f"whisperx {video_path} --model {WHISPER_MODEL} --output_dir {output_path} " \
-              f"--output_format srt --compute_type {COMPUTE_TYPE} --batch_size {BATCH_SIZE} " \
-              f"--language {LANGUAGE} --device cpu --threads {NUM_WORKERS} " \
-              f"--model_dir {OUTPUT_DIR}/models --no_speaker_diarization"
+        # Update status
+        if current_job:
+            current_job.meta['status_message'] = 'Loading WhisperX model...'
+            current_job.save_meta()
+
+        # Load model with updated configuration
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        compute_type = "float16" if device == "cuda" else "float32"
         
-        logger.info(f"Using command: {cmd}")
+        # Set the target directory
+        target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/whisperx/assets"
+        os.makedirs(target_dir, exist_ok=True)
+
+        # Download the model file directly
+        model_path = hf_hub_download(
+            repo_id="pyannote/segmentation",
+            filename="pytorch_model.bin",
+            token="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",
+            cache_dir=target_dir
+        )
+
+        # Verify the downloaded file
+        if os.path.exists(model_path):
+            file_size = os.path.getsize(model_path)
+            if file_size == 0:
+                raise ValueError('Downloaded model file is empty. Please check the download process.')
+            elif file_size < 1000:  # Arbitrary size check, adjust as needed
+                raise ValueError('Downloaded model file is too small. Please check the download process.')
+            else:
+                print(f'Model file downloaded successfully with size: {file_size} bytes.')
+        else:
+            raise FileNotFoundError('Model file was not downloaded. Please check the download process.')
+
+        # Now load the model to verify it works
+        model = Model.from_pretrained(
+            "pyannote/segmentation",
+            use_auth_token="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",
+            cache_dir=target_dir
+        )
+        print("Model loaded successfully!")
+
+        if current_job:
+            current_job.meta['status_message'] = 'Transcribing audio...'
+            current_job.save_meta()
+
+        # Transcribe audio
+        result = model.transcribe(video_path)
         
-        # Start the process
-        try:
-            process = subprocess.Popen(
-                cmd.split(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                universal_newlines=True
-            )
-        except subprocess.SubprocessError as e:
-            raise RuntimeError(f"Failed to start WhisperX process: {str(e)}")
-        
-        # Track progress
-        transcript_lines = 0
-        total_duration = 0
-        current_time = 0
-        last_activity = time.time()
-        
-        while True:
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-                
-            if line:
-                last_activity = time.time()
-                
-            # Check for process timeout (no activity for 5 minutes)
-            if time.time() - last_activity > 300:
-                process.terminate()
-                raise TimeoutError("No transcription progress for 5 minutes")
-                
-            if current_job and not current_job.meta.get('paused', False):
-                if "Detecting speakers" in line:
-                    current_job.meta['status_message'] = 'Detecting speakers in audio...'
-                    current_job.save_meta()
-                elif "Error:" in line or "ERROR:" in line:
-                    error_msg = line.strip()
-                    current_job.meta.update({
-                        'error_details': error_msg,
-                        'status_message': f'Error encountered: {error_msg}'
-                    })
-                    current_job.save_meta()
-                elif "Transcript:" in line:
-                    # Extract timestamp from transcript line
-                    match = re.search(r'\[(\d+\.\d+)\s*-->\s*(\d+\.\d+)\]', line)
-                    if match:
-                        start_time, end_time = float(match.group(1)), float(match.group(2))
-                        if end_time > total_duration:
-                            total_duration = end_time
-                        current_time = end_time
-                        
-                        # Update progress
-                        if total_duration > 0:
-                            progress = min(95, (current_time / total_duration) * 100)
-                            transcript_lines += 1
-                            
-                            # Calculate time remaining
-                            elapsed_time = time.time() - current_job.meta.get('start_time', time.time())
-                            if progress > 0:
-                                total_estimated_time = (elapsed_time / progress) * 100
-                                time_remaining = max(0, total_estimated_time - elapsed_time)
-                                
-                                # Format time remaining
-                                if time_remaining > 3600:
-                                    time_str = f"{time_remaining/3600:.1f} hours"
-                                elif time_remaining > 60:
-                                    time_str = f"{time_remaining/60:.0f} minutes"
-                                else:
-                                    time_str = f"{time_remaining:.0f} seconds"
-                                
-                                current_job.meta.update({
-                                    'progress': progress,
-                                    'status_message': f'Transcribed {transcript_lines} segments ({current_time:.1f} sec / {total_duration:.1f} sec) - {time_str} remaining',
-                                    'time_remaining': time_remaining,
-                                    'transcribed_duration': current_time,
-                                    'total_duration': total_duration
-                                })
-                                current_job.save_meta()
-                elif ">>Performing transcription" in line:
-                    current_job.meta['status_message'] = 'Processing audio...'
-                    current_job.save_meta()
-            
-            logger.info(line.strip())
-            
-        # Process complete
+        if current_job:
+            current_job.meta['status_message'] = 'Aligning timestamps...'
+            current_job.save_meta()
+
+        # Align whisper output
+        model_a, metadata = whisperx.load_align_model(
+            language_code=LANGUAGE,
+            device=device
+        )
+        result = whisperx.align(
+            result["segments"],
+            model_a,
+            metadata,
+            video_path,
+            device
+        )
+
+        # Save results
+        output_file = os.path.join(output_path, f"{os.path.basename(video_path)}.srt")
+        with open(output_file, "w", encoding="utf-8") as f:
+            for segment in result["segments"]:
+                start = format_timestamp(segment["start"])
+                end = format_timestamp(segment["end"])
+                text = segment["text"].strip()
+                f.write(f"{segment['id']}\n{start} --> {end}\n{text}\n\n")
+
         if current_job:
             current_job.meta.update({
                 'progress': 100,
-                'status_message': f'Completed! Generated transcript with {transcript_lines} segments',
+                'status_message': f'Completed! Generated transcript with {len(result["segments"])} segments',
                 'time_remaining': 0
             })
             current_job.save_meta()
-            
+
         return {
-            'srt_path': f"{video_path}.srt",
-            'segments': transcript_lines,
-            'duration': total_duration
+            'srt_path': output_file,
+            'segments': len(result["segments"]),
+            'duration': result["segments"][-1]["end"] if result["segments"] else 0
         }
-        
+
     except Exception as e:
         error_type = type(e).__name__
         error_msg = str(e)
@@ -179,4 +168,11 @@ def run_whisperx(video_path: str):
                 'failed_at': time.time()
             })
             current_job.save_meta()
-        raise 
+        raise
+
+def format_timestamp(seconds: float) -> str:
+    """Format seconds into SRT timestamp format"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    seconds = seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}".replace(".", ",") 

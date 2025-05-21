@@ -223,6 +223,12 @@
                                             class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
                                         Download
                                     </button>
+                                    ${trans.status === 'failed' ? `
+                                        <button onclick="removeTranscription('${trans.id}')"
+                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                                            Remove
+                                        </button>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
@@ -394,12 +400,12 @@
                                     <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
                                 </div>
                                 <div class="flex gap-2">
-                                    <span class="px-2 py-1 rounded text-sm ${
-                                        job.status === 'completed' ? 'bg-green-600' :
-                                        job.status === 'failed' ? 'bg-red-600' :
-                                        job.status === 'processing' ? 'bg-blue-600' :
+                                <span class="px-2 py-1 rounded text-sm ${
+                                    job.status === 'completed' ? 'bg-green-600' :
+                                    job.status === 'failed' ? 'bg-red-600' :
+                                    job.status === 'processing' ? 'bg-blue-600' :
                                         'bg-yellow-600'
-                                    }">${job.status}</span>
+                                }">${job.status}</span>
                                     ${job.status !== 'completed' && job.status !== 'failed' ? `
                                         <button onclick="cancelJob('${job.id}')" 
                                                 class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
@@ -488,6 +494,26 @@
             .catch(error => {
                 console.error('Error cancelling job:', error);
                 showNotification('Error cancelling job', 'error');
+            });
+        }
+
+        // Remove failed transcription
+        function removeTranscription(transcriptionId) {
+            fetch(`/api/transcriptions/${transcriptionId}/remove`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    showNotification(data.message, 'success');
+                    loadCompletedTranscriptions();
+                } else {
+                    showNotification(data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error removing transcription:', error);
+                showNotification('Error removing transcription. Please try again.', 'error');
             });
         }
     </script>

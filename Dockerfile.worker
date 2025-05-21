@@ -27,4 +27,4 @@ ENV BATCH_SIZE=4
 ENV NUM_WORKERS=2
 
 # Run the worker
-CMD ["python", "-m", "rq.worker", "transcription", "--url", "redis://redis:6379/0", "--burst", "--logging-level", "INFO", "--name", "transcription_worker"] 
+CMD ["python", "-m", "rq.worker", "transcription", "--url", "redis://redis:6379/0", "--logging-level", "INFO", "--name", "transcription_worker", "--disable-job-desc-logging"] 
