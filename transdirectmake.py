@@ -27,14 +27,14 @@ def main():
 
     # Update fstab entries for flex mounts
     print("\nUpdating fstab entries...")
-    for i in range(1, 9):
+    for i in range(1, 10):
         mount_point = f'/mnt/flex-{i}'
         if os.path.ismount(mount_point):
             print(f"\nUnmounting {mount_point}...")
             run_command(f'umount {mount_point}')
 
     # Create directories and set permissions
-    for i in range(1, 9):
+    for i in range(1, 10):
         dir_path = f'/mnt/flex-{i}/transcriptions'
         print(f"\nProcessing {dir_path}")
 
