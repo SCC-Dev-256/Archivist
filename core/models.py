@@ -58,7 +58,7 @@ class TranscribeRequest(BaseModel):
 
 class QueueReorderRequest(BaseModel):
     job_id: str
-    new_position: int
+    position: int
 
 class JobStatus(BaseModel):
     id: str

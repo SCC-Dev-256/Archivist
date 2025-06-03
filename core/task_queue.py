@@ -120,7 +120,7 @@ class QueueManager:
             logger.error(f"Error enqueueing transcription job: {e}")
             raise
 
-    def reorder_job(self, job_id: str, new_position: int) -> bool:
+    def reorder_job(self, job_id: str, position: int) -> bool:
         """Change the position of a job in the queue."""
         try:
             job = self.queue.fetch_job(job_id)
@@ -128,7 +128,7 @@ class QueueManager:
                 return False
                 
             # Update position in job metadata
-            job.meta['position'] = new_position
+            job.meta['position'] = position
             job.save_meta()
             
             # Reorder other jobs if needed
@@ -137,7 +137,7 @@ class QueueManager:
                 if other_job['id'] != job_id:
                     other_job_obj = self.queue.fetch_job(other_job['id'])
                     if other_job_obj:
-                        if other_job['position'] >= new_position:
+                        if other_job['position'] >= position:
                             other_job_obj.meta['position'] = other_job['position'] + 1
                             other_job_obj.save_meta()
             

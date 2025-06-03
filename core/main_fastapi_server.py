@@ -5,12 +5,12 @@ from pydantic import BaseModel
 from typing import List
 import os
 from loguru import logger
-from config import NAS_PATH, OUTPUT_DIR
+from core.config import NAS_PATH, OUTPUT_DIR
 import sys
 
 from core.transcription import run_whisperx
 from core.scc_summarizer import summarize_srt
-from core.queue import enqueue_transcription, get_job_status
+from core.task_queue import enqueue_transcription, get_job_status
 from core.check_mounts import verify_critical_mounts
 
 app = FastAPI(

@@ -31,10 +31,13 @@ def verify_critical_mounts():
         ]
     }
     
-    for mount, purpose in critical_mounts.items():
-        if not os.path.ismount(mount):
-            logger.critical(f"Critical mount point {mount} for {purpose} is not mounted!")
-            return False
+    for category, paths in critical_mounts.items():
+        for path in paths:
+            if not os.path.ismount(path):
+                logger.critical(
+                    f"Critical mount point {path} for {category} is not mounted!"
+                )
+                return False
     return True
 
 def main():

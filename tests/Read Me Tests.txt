@@ -19,7 +19,7 @@ pytest tests/
 - WhisperX is mocked in unit tests to avoid long runtimes
 - You can test the real WhisperX pipeline by creating a 5-second `.mp4` and running it manually:
 ```bash
-python -c 'from transcription import run_whisperx; print(run_whisperx("/mnt/nas/sample.mp4"))'
+python -c 'from core.transcription import run_whisperx; print(run_whisperx("/mnt/nas/sample.mp4"))'
 ```
 
 ## Test Directory Structure
