@@ -1,3 +1,25 @@
+"""Task queue management module for the Archivist application.
+
+This module provides a robust task queue system for handling asynchronous
+operations like transcription and video processing. It supports job prioritization,
+status tracking, and automatic cleanup of failed jobs.
+
+Key Features:
+- Asynchronous job processing
+- Job prioritization and reordering
+- Status tracking and monitoring
+- Failed job cleanup
+- Job pause/resume functionality
+- Progress tracking
+
+Example:
+    >>> from core.task_queue import QueueManager
+    >>> queue = QueueManager()
+    >>> job_id = queue.enqueue_transcription('video.mp4')
+    >>> status = queue.get_job_status(job_id)
+    >>> print(status['progress'])
+"""
+
 from loguru import logger
 from typing import List, Dict, Optional
 from core.config import REDIS_URL

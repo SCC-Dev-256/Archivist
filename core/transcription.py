@@ -1,3 +1,24 @@
+"""Transcription module for the Archivist application.
+
+This module handles video and audio transcription using WhisperX,
+providing high-quality speech-to-text conversion with speaker
+diarization and timestamp alignment.
+
+Key Features:
+- Video and audio transcription
+- Speaker diarization
+- Timestamp alignment
+- Progress tracking
+- Error handling and recovery
+- Support for multiple languages
+- GPU acceleration support
+
+Example:
+    >>> from core.transcription import run_whisperx
+    >>> result = run_whisperx('video.mp4')
+    >>> print(result['segments'])
+"""
+
 import os
 from loguru import logger
 import time

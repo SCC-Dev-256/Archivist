@@ -1,3 +1,23 @@
+"""Logging configuration module for the Archivist application.
+
+This module provides centralized logging configuration using Loguru,
+with support for different log levels, file rotation, and structured
+logging output.
+
+Key Features:
+- Structured logging with Loguru
+- Log file rotation
+- Different log levels (DEBUG, INFO, WARNING, ERROR)
+- Console and file output
+- Custom log formatting
+- Environment-based configuration
+
+Example:
+    >>> from core.logging_config import setup_logging
+    >>> setup_logging()
+    >>> logger.info("Application started")
+"""
+
 from loguru import logger
 import sys
 import os

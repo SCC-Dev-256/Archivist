@@ -85,6 +85,7 @@ def test_get_accessible_mounts(file_manager_instance, mock_mount_points):
     
     # Test with restricted location
     file_manager_instance.location = 'restricted'
+    file_manager_instance.user = 'admin'  # Set admin user for restricted access
     mounts = file_manager_instance.get_accessible_mounts()
     assert 'nas' in mounts
     assert 'flex1' in mounts

@@ -53,7 +53,8 @@ def test_init_auth(app):
 
 def test_login_required_decorator(app):
     """Test login_required decorator"""
-    with patch('flask_limiter.Limiter') as mock_limiter:
+    with patch('flask_limiter.Limiter') as mock_limiter, \
+         patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
         init_auth(app)
@@ -79,7 +80,8 @@ def test_login_required_decorator(app):
 
 def test_admin_required_decorator(app):
     """Test admin_required decorator"""
-    with patch('flask_limiter.Limiter') as mock_limiter:
+    with patch('flask_limiter.Limiter') as mock_limiter, \
+         patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
         init_auth(app)
@@ -114,7 +116,8 @@ def test_admin_required_decorator(app):
 
 def test_create_token(app):
     """Test token creation"""
-    with patch('flask_limiter.Limiter') as mock_limiter:
+    with patch('flask_limiter.Limiter') as mock_limiter, \
+         patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
         init_auth(app)
@@ -126,7 +129,8 @@ def test_create_token(app):
 
 def test_get_current_user(app):
     """Test getting current user"""
-    with patch('flask_limiter.Limiter') as mock_limiter:
+    with patch('flask_limiter.Limiter') as mock_limiter, \
+         patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
         init_auth(app)
@@ -145,7 +149,8 @@ def test_get_current_user(app):
 
 def test_rate_limiting(app):
     """Test rate limiting"""
-    with patch('flask_limiter.Limiter') as mock_limiter:
+    with patch('flask_limiter.Limiter') as mock_limiter, \
+         patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
         init_auth(app)
@@ -167,7 +172,8 @@ def test_rate_limiting(app):
 def test_token_expiration(app):
     """Test token expiration"""
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(seconds=1)
-    with patch('flask_limiter.Limiter') as mock_limiter:
+    with patch('flask_limiter.Limiter') as mock_limiter, \
+         patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
         init_auth(app)

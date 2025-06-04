@@ -1,3 +1,23 @@
+"""Mount point checking module for the Archivist application.
+
+This module provides functionality to verify and monitor the status of
+mounted storage locations (NAS and Flex servers). It includes health
+checks, availability monitoring, and automatic recovery attempts.
+
+Key Features:
+- Mount point validation
+- Health status monitoring
+- Automatic recovery attempts
+- Mount point statistics
+- Error reporting
+- Configuration validation
+
+Example:
+    >>> from core.check_mounts import check_mounts
+    >>> status = check_mounts()
+    >>> print(status['nas']['available'])
+"""
+
 import os
 from loguru import logger
 from typing import Dict, List

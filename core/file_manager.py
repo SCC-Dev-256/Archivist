@@ -1,3 +1,25 @@
+"""File management module for the Archivist application.
+
+This module handles file system operations with support for multiple mount points
+and location-based access control. It provides functionality for managing files
+across different storage locations (NAS and Flex servers) with proper access
+validation and metadata extraction.
+
+Key Features:
+- Multi-location file management (NAS and Flex servers)
+- Location-based access control
+- File metadata extraction
+- Video file metadata support
+- Mount point management
+- File type detection
+
+Example:
+    >>> from core.file_manager import FileManager
+    >>> manager = FileManager(user='admin', location='default')
+    >>> file_details = manager.get_file_details('/path/to/file.mp4')
+    >>> print(file_details['metadata'])
+"""
+
 import os
 from datetime import datetime
 import magic
@@ -40,7 +62,7 @@ class FileManager:
             return self.mount_points
             
         location_config = LOCATIONS.get(self.location, {})
-        allowed_servers = location_config.get('flex_servers', list(self.flex_paths.keys()))
+        allowed_servers = location_config.get('flex_servers', [])
         
         accessible_mounts = {'nas': self.mount_points['nas']}
         for server in allowed_servers:

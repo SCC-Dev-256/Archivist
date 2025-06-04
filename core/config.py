@@ -1,3 +1,23 @@
+"""Configuration management module for the Archivist application.
+
+This module centralizes all configuration settings for the application,
+including environment variables, default values, and configuration validation.
+It provides a single source of truth for all application settings.
+
+Key Features:
+- Environment variable management
+- Configuration validation
+- Default value handling
+- Mount point configuration
+- Location-based access settings
+- Redis and database connection settings
+
+Example:
+    >>> from core.config import MOUNT_POINTS, LOCATIONS
+    >>> print(MOUNT_POINTS['nas'])
+    >>> print(LOCATIONS['default']['allowed_users'])
+"""
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv

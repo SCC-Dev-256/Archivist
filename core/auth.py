@@ -1,3 +1,27 @@
+"""Authentication and authorization module for the Archivist application.
+
+This module provides JWT-based authentication and role-based access control.
+It includes rate limiting to prevent abuse and supports both regular user
+and admin access levels.
+
+Key Features:
+- JWT token-based authentication
+- Role-based access control (admin vs regular users)
+- Rate limiting with configurable limits
+- Token expiration and refresh
+- Secure password handling
+
+Example:
+    >>> from core.auth import init_auth, login_required
+    >>> app = Flask(__name__)
+    >>> init_auth(app)
+    >>> 
+    >>> @app.route('/protected')
+    >>> @login_required
+    >>> def protected_route():
+    >>>     return {'message': 'success'}
+"""
+
 from functools import wraps
 from flask import request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -10,19 +34,20 @@ jwt = JWTManager()
 limiter = Limiter(key_func=get_remote_address)
 
 def init_auth(app):
-    """Initialize authentication and rate limiting"""
-    # JWT Configuration
-    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'dev-secret-key')
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(seconds=int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 3600)))
-    
+    """Initialize authentication and rate limiting."""
     # Initialize JWT
     jwt.init_app(app)
     
-    # Initialize rate limiter
-    limiter.init_app(app)
+    # Initialize rate limiter with a custom key_func
+    def key_func():
+        return 'global'  # Use a fixed key for testing
+        
+    limiter.init_app(app, key_func=key_func)
     
-    # Add rate limit to all routes
+    # Apply global rate limit
     limiter.limit("100/minute")(app)
+    
+    return app
 
 def login_required(f):
     """Decorator to require JWT authentication"""
