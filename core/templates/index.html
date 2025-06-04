@@ -126,6 +126,33 @@
             }
         });
 
+        // Search functions
+        function searchFiles(query) {
+            const fileList = document.getElementById('file-list');
+            const items = fileList.getElementsByClassName('hover:bg-gray-700');
+            Array.from(items).forEach(item => {
+                const name = item.querySelector('span:nth-child(2)').textContent.toLowerCase();
+                if (name.includes(query.toLowerCase())) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        function searchTranscriptions(query) {
+            const completedList = document.getElementById('completed-list');
+            const items = completedList.getElementsByClassName('bg-gray-700');
+            Array.from(items).forEach(item => {
+                const name = item.querySelector('h3').textContent.toLowerCase();
+                if (name.includes(query.toLowerCase())) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
         // Load files for current directory
         function loadFiles() {
             const path = currentPath || '';

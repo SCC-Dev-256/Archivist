@@ -83,10 +83,10 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
-    from config import API_HOST, API_PORT, API_WORKERS
+    from core.config import API_HOST, API_PORT, API_WORKERS
     
     uvicorn.run(
-        "main_fastapi_server:app",
+        "core.main_fastapi_server:app",
         host=API_HOST,
         port=API_PORT,
         workers=API_WORKERS,

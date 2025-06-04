@@ -20,6 +20,7 @@ from core.file_manager import file_manager
 from datetime import datetime
 import json
 import time
+from core.app import db  # Add db import from core.app where it's initialized
 
 # Set up logging
 setup_logging()
@@ -29,7 +30,7 @@ def register_routes(app, limiter):
     bp_api = Blueprint('api', __name__, url_prefix='/api')
 
     # Move all function-based endpoints here BEFORE registering the blueprint
-    @bp_api.route('/api/file-details')
+    @bp_api.route('/file-details')
     @limiter.limit("30/minute")
     def get_file_details():
         path = request.args.get('path')
