@@ -81,7 +81,7 @@
                 <div class="flex gap-2">
                     <input type="text" id="transcription-search" placeholder="Search transcriptions..." 
                            class="bg-gray-700 text-white px-4 py-2 rounded">
-                    <button onclick="refreshTranscriptions()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                    <button onclick="loadCompletedTranscriptions()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
                         Refresh
                     </button>
                 </div>
@@ -375,6 +375,7 @@
                 return;
             }
             currentPath = path;
+            selectedFile = null;  // Reset selected file
             loadFiles();
         }
 
@@ -387,6 +388,7 @@
                 parts.pop();
                 currentPath = parts.length ? parts.join('/') : '';
             }
+            selectedFile = null;  // Reset selected file
             loadFiles();
         }
 

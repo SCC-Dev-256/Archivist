@@ -7,7 +7,7 @@ groupadd transcription_users
 usermod -a -G transcription_users schum
 
 # Create directories and set permissions
-for i in {1..8}; do
+for i in {1..9}; do
     mkdir -p /mnt/flex-$i/transcriptions
     chown -R :transcription_users /mnt/flex-$i/transcriptions
     chmod -R g+rwx /mnt/flex-$i/transcriptions
