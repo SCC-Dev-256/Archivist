@@ -7,7 +7,46 @@ load_dotenv()
 
 # Base paths
 BASE_DIR = Path(__file__).parent
-NAS_PATH = os.getenv("NAS_PATH", "/mnt")  # Updated to allow browsing all flex mounts
+
+# Storage configuration
+DEFAULT_MOUNT_POINTS = {
+    'nas': '/mnt/nas',  # Default NAS mount
+}
+
+# Add default Flex server mounts (1-9)
+for i in range(1, 10):
+    DEFAULT_MOUNT_POINTS[f'flex{i}'] = f'/mnt/flex{i}'
+
+# Get mount points from environment or use defaults
+MOUNT_POINTS = {}
+for mount_name, default_path in DEFAULT_MOUNT_POINTS.items():
+    env_var = f"{mount_name.upper()}_PATH"
+    MOUNT_POINTS[mount_name] = os.getenv(env_var, default_path)
+
+# For backward compatibility
+NAS_PATH = MOUNT_POINTS['nas']
+
+# Get all Flex server paths
+FLEX_PATHS = {k: v for k, v in MOUNT_POINTS.items() if k.startswith('flex')}
+
+# Location and User Configuration
+LOCATIONS = {
+    'default': {
+        'name': 'Default Location',
+        'flex_servers': list(FLEX_PATHS.keys()),  # All Flex servers by default
+        'allowed_users': ['*']  # All users by default
+    }
+}
+
+# Load custom locations from environment
+LOCATIONS_CONFIG = os.getenv('LOCATIONS_CONFIG')
+if LOCATIONS_CONFIG and os.path.exists(LOCATIONS_CONFIG):
+    import json
+    with open(LOCATIONS_CONFIG, 'r') as f:
+        custom_locations = json.load(f)
+        LOCATIONS.update(custom_locations)
+
+# Output configuration
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", os.path.join(NAS_PATH, "transcriptions"))
 
 # Redis configuration

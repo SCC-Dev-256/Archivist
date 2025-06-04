@@ -1,32 +1,71 @@
 # Testing the Transcription Pipeline
 
-## What’s Covered
-- `test_transcription.py`: Verifies WhisperX integration using mocks
-- `test_main.py`: Integration test for FastAPI endpoints
-
 ## Setup
-Ensure you have:
-- `pytest` installed
-- The backend service structured correctly
-- A mounted path `/mnt/nas/` with at least one `.mp4` file
+1. Install the package in development mode:
+```bash
+pip install -e .
+```
+
+2. Install test dependencies:
+```bash
+pip install -r tests/requirements-test.txt
+```
+
+## What's Covered
+- `test_transcription.py`: Unit tests for WhisperX integration with proper mocking
+- `test_main.py`: Integration tests for FastAPI endpoints
+- `test_check_mounts.py`: Tests for mount point validation
+- `test_whisperx.py`: Tests for WhisperX configuration and setup
+
+## Test Structure
+```
+tests/
+├── fixtures/              # Test data and sample files
+│   └── test_audio.wav    # Sample audio file for tests
+├── conftest.py           # Test configuration and fixtures
+├── test_main.py          # REST API endpoint tests
+├── test_transcription.py # Transcription pipeline tests
+├── test_check_mounts.py  # Mount point validation tests
+└── test_whisperx.py      # WhisperX configuration tests
+```
 
 ## Running Tests
 ```bash
-pytest tests/
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=core
+
+# Run specific test file
+pytest tests/test_transcription.py
 ```
 
-## Notes
-- WhisperX is mocked in unit tests to avoid long runtimes
-- You can test the real WhisperX pipeline by creating a 5-second `.mp4` and running it manually:
+## Test Features
+- Proper mocking of WhisperX to avoid long runtimes
+- Automatic test environment setup and cleanup
+- Comprehensive error handling tests
+- Mount point validation
+- API endpoint testing
+- Temporary test directories for file operations
+
+## Test Environment
+- Tests use temporary directories in `/tmp`
+- Environment variables are set in `conftest.py`
+- Package is installed in development mode
+- Coverage reports show missing lines
+
+## Manual Testing
+To test the real WhisperX pipeline with a sample file:
 ```bash
 python -c 'from core.transcription import run_whisperx; print(run_whisperx("/mnt/nas/sample.mp4"))'
 ```
 
-## Test Directory Structure
-```
-tests/
-├── test_main.py           # REST API endpoint tests
-└── test_transcription.py  # Subprocess + GPU fallback checks
-```
+## Notes
+- Tests use pytest fixtures for setup and teardown
+- Mock objects prevent actual file system operations
+- Coverage reports help identify untested code
+- All tests should pass before deployment
+- Test environment is isolated from production
 
 Happy testing!

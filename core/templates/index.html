@@ -368,6 +368,22 @@
             return `${s.toFixed(1)} ${units[unitIndex]}`;
         }
 
+        // Refresh files (alias for loadFiles)
+        function refreshFiles() {
+            // Clear any selected file state
+            selectedFile = null;
+            
+            // Show loading feedback
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '<div class="text-gray-400 p-4 text-center">Refreshing...</div>';
+            
+            // Load fresh data
+            loadFiles();
+            
+            // Show success notification
+            showNotification('File list refreshed', 'info');
+        }
+
         // Navigate to directory
         function navigate(path) {
             if (!path || typeof path !== 'string') {
