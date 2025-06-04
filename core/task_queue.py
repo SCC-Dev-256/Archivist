@@ -293,8 +293,49 @@ class QueueManager:
         except Exception as e:
             logger.error(f"Error cleaning up failed jobs: {e}")
 
-# Create global queue manager instance
+# Create singleton instance
 queue_manager = QueueManager()
+
+# Module-level functions that use the singleton instance
+def enqueue_transcription(video_path: str, position: Optional[int] = None) -> str:
+    """Enqueue a transcription job with optional position."""
+    return queue_manager.enqueue_transcription(video_path, position)
+
+def get_job_status(job_id: str) -> dict:
+    """Get the status of a job."""
+    return queue_manager.get_job_status(job_id)
+
+def get_all_jobs() -> List[Dict]:
+    """Get all jobs in the queue with their metadata."""
+    return queue_manager.get_all_jobs()
+
+def reorder_job(job_id: str, position: int) -> bool:
+    """Change the position of a job in the queue."""
+    return queue_manager.reorder_job(job_id, position)
+
+def stop_job(job_id: str) -> bool:
+    """Stop a running job."""
+    return queue_manager.stop_job(job_id)
+
+def pause_job(job_id: str) -> bool:
+    """Pause a running job."""
+    return queue_manager.pause_job(job_id)
+
+def resume_job(job_id: str) -> bool:
+    """Resume a paused job."""
+    return queue_manager.resume_job(job_id)
+
+def remove_job(job_id: str) -> bool:
+    """Remove a job from the queue."""
+    return queue_manager.remove_job(job_id)
+
+def cleanup_failed_jobs():
+    """Clean up failed jobs."""
+    return queue_manager.cleanup_failed_jobs()
+
+def get_current_job():
+    """Get the currently running job."""
+    return queue_manager.get_current_job()
 
 if __name__ == '__main__':
     try:

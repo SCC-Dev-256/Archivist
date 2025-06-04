@@ -1,23 +1,28 @@
 from loguru import logger
 import sys
 import os
+from typing import Optional
 
-def setup_logging(testing=False):
+def setup_logging(testing: bool = False, log_level: Optional[str] = None) -> None:
     """Configure logging for the application
     
     Args:
         testing (bool): If True, configure minimal logging for tests
+        log_level (str, optional): Override the default log level
     """
-    # Remove default logger if not in testing mode
-    if not testing:
-        logger.remove()
+    # Remove default logger
+    logger.remove()
     
-    # Add console handler with appropriate level
-    level = "DEBUG" if testing else "INFO"
+    # Set appropriate level
+    level = log_level or ("DEBUG" if testing else "INFO")
+    
+    # Add console handler
     logger.add(
         sys.stderr,
         level=level,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        backtrace=not testing,  # Disable backtrace in tests
+        diagnose=not testing    # Disable diagnose in tests
     )
     
     # Only add file handler if not in testing mode
@@ -37,7 +42,6 @@ def setup_logging(testing=False):
             compression="zip"
         )
         
-        # Log the setup completion
         logger.info(f"Logging configured. Log file: {log_file}")
     else:
         logger.debug("Test logging configured") 
