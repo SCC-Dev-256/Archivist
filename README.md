@@ -38,8 +38,8 @@ pip install -r requirements/prod.txt
 
 3. Set up environment variables:
 ```bash
-cp .env.example .env
-# Edit .env with your configuration
+cp .env.example /opt/Archivist/.env
+# Edit /opt/Archivist/.env with your configuration
 ```
 
 4. Initialize the database:

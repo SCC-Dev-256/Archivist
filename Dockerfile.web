@@ -19,9 +19,9 @@ RUN pip install -r requirements/base.txt -r requirements/prod.txt -r requirement
 COPY . .
 
 # Set environment variables
-ENV FLASK_APP=core.web_app
-ENV FLASK_ENV=production
-ENV PYTHONPATH=/app
+#ENV FLASK_APP=core.web_app
+#ENV FLASK_ENV=production
+#ENV PYTHONPATH=/app
 
 # Run the application
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "core.web_app:app"] 

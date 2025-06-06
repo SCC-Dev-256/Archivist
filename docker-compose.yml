@@ -29,15 +29,15 @@ services:
       dockerfile: Dockerfile.web
     expose:
       - "5000"
-    #env_file:
-    #  - .env
-    #environment:
-    #  - DATABASE_URL=postgresql://archivist:archivist_password@db:5432/archivist
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://archivist:archivist_password@db:5432/archivist
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
-      - ./.env:/app/.env
+      #- ./.env:/app/.env
     depends_on:
       redis:
         condition: service_healthy

@@ -9,7 +9,7 @@ if [ -d ".venv" ]; then
 fi
 
 # Load environment variables
-source .env
+source /opt/Archivist/.env
 
 # Set Redis configuration
 export REDIS_HOST=${REDIS_HOST:-"localhost"}
