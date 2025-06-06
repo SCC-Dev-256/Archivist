@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-from core.app import db
+from core.database import db
 
 # Create the declarative base
 Base = db.Model

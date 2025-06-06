@@ -7,9 +7,9 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 import os
 from core.logging_config import setup_logging
+from core.database import db
 
 # Initialize extensions
-db = SQLAlchemy()
 migrate = Migrate()
 cache = Cache()
 
@@ -39,7 +39,6 @@ def create_app(testing=False):
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
     
     # Initialize extensions with app
-    db.init_app(app)
     migrate.init_app(app, db)
     cache.init_app(app)
     limiter.init_app(app)
