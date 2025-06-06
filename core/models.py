@@ -6,6 +6,9 @@ from datetime import datetime
 
 from core.app import db
 
+# Create the declarative base
+Base = db.Model
+
 class TranscriptionJobORM(db.Model):
     __tablename__ = 'transcription_jobs'
     

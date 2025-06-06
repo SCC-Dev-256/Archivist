@@ -7,7 +7,6 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 import os
 from core.logging_config import setup_logging
-from fastapi import FastAPI
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -23,7 +22,7 @@ limiter = Limiter(
 )
 
 def create_app(testing=False):
-    """Create and configure the FastAPI application
+    """Create and configure the Flask application
     
     Args:
         testing (bool): If True, configure the app for testing
@@ -31,14 +30,22 @@ def create_app(testing=False):
     # Setup logging with appropriate mode
     setup_logging(testing=testing)
     
-    # Create the FastAPI app
-    app = FastAPI(
-        title="Archivist API",
-        description="Video transcription and management API",
-        version="0.1.0"
-    )
+    # Create the Flask app
+    app = Flask(__name__)
     
-    # Add routes and middleware here
+    # Configure the app
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@db:5432/archivist')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
+    
+    # Initialize extensions with app
+    db.init_app(app)
+    migrate.init_app(app, db)
+    cache.init_app(app)
+    limiter.init_app(app)
+    CORS(app)
+    
+    # Register blueprints here
     
     return app
 

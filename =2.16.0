@@ -1,0 +1,7 @@
+Collecting pipdeptree
+  Downloading pipdeptree-2.26.1-py3-none-any.whl.metadata (14 kB)
+Requirement already satisfied: packaging>=24.1 in ./.venv/lib/python3.11/site-packages (from pipdeptree) (24.2)
+Requirement already satisfied: pip>=24.2 in ./.venv/lib/python3.11/site-packages (from pipdeptree) (25.1.1)
+Downloading pipdeptree-2.26.1-py3-none-any.whl (32 kB)
+Installing collected packages: pipdeptree
+Successfully installed pipdeptree-2.26.1
