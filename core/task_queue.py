@@ -364,7 +364,7 @@ if __name__ == '__main__':
         # Start RQ worker with error handling
         worker = Worker([queue_manager.queue], connection=queue_manager.queue.connection)
         logger.info("Starting worker...")
-        worker.work()
+        worker.work(idle_timeout=3600)
     except KeyboardInterrupt:
         logger.info("Worker stopped by user")
         sys.exit(0)

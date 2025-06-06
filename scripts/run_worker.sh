@@ -12,7 +12,7 @@ fi
 source /opt/Archivist/.env
 
 # Set Redis configuration
-export REDIS_HOST=${REDIS_HOST:-"localhost"}
+export REDIS_HOST=${REDIS_HOST:-"redis"}
 export REDIS_PORT=${REDIS_PORT:-"6379"}
 export REDIS_DB=${REDIS_DB:-"0"}
 export REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
