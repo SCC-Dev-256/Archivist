@@ -199,4 +199,9 @@ def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
                 'failed_at': time.time()
             })
             current_job.save_meta()
-        raise
+        
+        return {
+            'success': False,
+            'error': error_msg,
+            'error_details': error_details
+        }
