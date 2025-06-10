@@ -16,6 +16,7 @@ Example:
 """
 
 import os
+import shutil
 from loguru import logger
 import time
 import traceback
@@ -59,6 +60,29 @@ def format_timestamp(seconds: float) -> str:
     minutes = int((seconds % 3600) // 60)
     seconds = seconds % 60
     return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}".replace(".", ",")
+
+def save_srt_file(segments: list, output_path: str) -> None:
+    """Save transcription segments to an SRT file."""
+    with open(output_path, "w", encoding="utf-8") as f:
+        for idx, segment in enumerate(segments, 1):
+            start = format_timestamp(segment["start"])
+            end = format_timestamp(segment["end"])
+            text = segment["text"]
+            f.write(f"{idx}\n{start} --> {end}\n{text}\n\n")
+
+def ensure_directory_exists(path: str) -> None:
+    """Ensure directory exists and has correct permissions."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    # Set group permissions if the directory is in /mnt/flex-*
+    if '/mnt/flex-' in path:
+        try:
+            os.chmod(os.path.dirname(path), 0o775)
+            # Try to set group ownership to transcription_users
+            import grp
+            transcription_gid = grp.getgrnam('transcription_users').gr_gid
+            os.chown(os.path.dirname(path), -1, transcription_gid)
+        except Exception as e:
+            logger.warning(f"Could not set permissions on {path}: {e}")
 
 def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
     """
@@ -112,15 +136,18 @@ def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
         if not os.access(video_path, os.R_OK):
             raise PermissionError(f"No read permission for file: {video_path}")
 
-        # Use OUTPUT_DIR for output files
-        if not os.access(OUTPUT_DIR, os.W_OK):
-            raise PermissionError(f"No write permission for output directory: {OUTPUT_DIR}")
+        # Get video directory and filename
+        video_dir = os.path.dirname(video_path)
+        video_name = os.path.basename(video_path)
+        srt_name = f"{os.path.splitext(video_name)[0]}.srt"
 
-        # Get relative path structure
-        rel_path = os.path.relpath(video_path, NAS_PATH)
-        output_subdir = os.path.dirname(rel_path)
-        output_path = os.path.join(OUTPUT_DIR, output_subdir)
-        os.makedirs(output_path, exist_ok=True)
+        # Set up output paths
+        local_srt_path = os.path.join(video_dir, srt_name)
+        central_srt_path = os.path.join(OUTPUT_DIR, srt_name)
+
+        # Ensure directories exist with correct permissions
+        ensure_directory_exists(local_srt_path)
+        ensure_directory_exists(central_srt_path)
 
         # Update status
         if current_job:
@@ -159,25 +186,35 @@ def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
                 "text": segment.text.strip()
             })
 
-        # Save results
-        output_file = os.path.join(output_path, f"{os.path.basename(video_path)}.srt")
-        with open(output_file, "w", encoding="utf-8") as f:
-            for idx, segment in enumerate(formatted_segments, 1):
-                start = format_timestamp(segment["start"])
-                end = format_timestamp(segment["end"])
-                text = segment["text"]
-                f.write(f"{idx}\n{start} --> {end}\n{text}\n\n")
+        # Save SRT file next to the video
+        save_srt_file(formatted_segments, local_srt_path)
+        
+        # Copy to central location
+        shutil.copy2(local_srt_path, central_srt_path)
+
+        # Set correct permissions on both files
+        try:
+            if '/mnt/flex-' in local_srt_path:
+                import grp
+                transcription_gid = grp.getgrnam('transcription_users').gr_gid
+                os.chmod(local_srt_path, 0o664)
+                os.chown(local_srt_path, -1, transcription_gid)
+        except Exception as e:
+            logger.warning(f"Could not set permissions on {local_srt_path}: {e}")
 
         if current_job:
             current_job.meta.update({
                 'progress': 100,
                 'status_message': f'Completed! Generated transcript with {len(formatted_segments)} segments',
-                'time_remaining': 0
+                'time_remaining': 0,
+                'srt_path': local_srt_path,  # Store the local path in job metadata
+                'central_srt_path': central_srt_path  # Store the central path in job metadata
             })
             current_job.save_meta()
 
         return {
-            'srt_path': output_file,
+            'srt_path': local_srt_path,
+            'central_srt_path': central_srt_path,
             'segments': len(formatted_segments),
             'duration': formatted_segments[-1]["end"] if formatted_segments else 0
         }
