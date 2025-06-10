@@ -11,7 +11,7 @@ Key Features:
 - Progress tracking
 - Error handling and recovery
 - Support for multiple languages
-- GPU acceleration support
+- CPU-optimized processing
 
 Example:
     >>> from core.transcription import run_whisperx
@@ -26,6 +26,11 @@ import traceback
 from typing import Dict, Any
 import whisperx
 import torch
+
+# Force CPU-only mode
+torch.cuda.is_available = lambda: False
+device = "cpu"
+compute_type = "float32"
 
 # Patch torch.load globally to set weights_only=False
 _original_load = torch.load
@@ -61,15 +66,6 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
     """Run WhisperX transcription on a video file using the Python API"""
     try:
         logger.info(f"Starting transcription of {video_path}")
-        
-        # Patch torch.load inside the worker function
-        import torch
-        _original_load = torch.load
-        def patched_load(*args, **kwargs):
-            kwargs.setdefault('weights_only', False)
-            return _original_load(*args, **kwargs)
-        torch.load = patched_load
-        logger.debug("Patched torch.load inside run_whisperx")
         
         # Get current job for progress updates
         current_job = get_current_job()
@@ -110,21 +106,17 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
             current_job.meta['status_message'] = 'Loading WhisperX model...'
             current_job.save_meta()
 
-        # Load model with updated configuration
-        device = "cpu"  # Force CPU usage
-        compute_type = "float32"  # Always use float32 for CPU
-        
         # Set the target directory
         target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/whisperx/assets"
         os.makedirs(target_dir, exist_ok=True)
 
-        # Load diarization pipeline
+        # Load diarization pipeline with CPU optimizations
         pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
             use_auth_token="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"
         )
         pipeline.to(torch.device(device))
-        print("Pipeline loaded successfully!")
+        logger.info("Pipeline loaded successfully!")
 
         if current_job:
             current_job.meta['status_message'] = 'Transcribing audio...'
@@ -164,7 +156,7 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
         )
         result = model.transcribe(
             video_path,
-            batch_size=8,  # Smaller batch size for CPU
+            batch_size=4,  # Smaller batch size for CPU
             language=LANGUAGE
         )
 
