@@ -144,7 +144,6 @@ def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
         # Transcribe with progress updates
         segments, info = model.transcribe(
             video_path,
-            batch_size=4,  # Smaller batch size for CPU
             language=LANGUAGE,
             beam_size=5,
             vad_filter=True,  # Enable VAD filtering
@@ -200,4 +199,4 @@ def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
                 'failed_at': time.time()
             })
             current_job.save_meta()
-        raise 
+        raise
