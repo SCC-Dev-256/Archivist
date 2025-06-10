@@ -1,12 +1,10 @@
 """Transcription module for the Archivist application.
 
 This module handles video and audio transcription using WhisperX,
-providing high-quality speech-to-text conversion with speaker
-diarization and timestamp alignment.
+providing high-quality speech-to-text conversion with timestamp alignment.
 
 Key Features:
 - Video and audio transcription
-- Speaker diarization
 - Timestamp alignment
 - Progress tracking
 - Error handling and recovery
@@ -47,13 +45,8 @@ from core.config import (
 )
 from omegaconf.listconfig import ListConfig
 from huggingface_hub import hf_hub_download
-from pyannote.audio import Pipeline
-import torch.serialization
-import pyannote.audio.core.task
 
-# Allowlist the entire pyannote.audio.core.task module
-torch.serialization.add_safe_globals([pyannote.audio.core.task])
-logger.debug("Patched torch.serialization safe globals for pyannote.audio.core.task module")
+# Diarization functionality removed: pyannote.audio is not used
 
 def get_current_job():
     try:
@@ -63,7 +56,7 @@ def get_current_job():
         return None
 
 def run_whisperx(video_path: str) -> Dict[str, Any]:
-    """Run WhisperX transcription on a video file using the Python API"""
+    """Run WhisperX transcription on a video file using the Python API (no diarization)"""
     try:
         logger.info(f"Starting transcription of {video_path}")
         
@@ -110,40 +103,6 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
         target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/whisperx/assets"
         os.makedirs(target_dir, exist_ok=True)
 
-        # Load diarization pipeline with CPU optimizations
-        pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization-3.1",
-            use_auth_token="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"
-        )
-        pipeline.to(torch.device(device))
-        logger.info("Pipeline loaded successfully!")
-
-        if current_job:
-            current_job.meta['status_message'] = 'Transcribing audio...'
-            current_job.save_meta()
-
-        # Process audio with pipeline
-        diarization = pipeline(
-            video_path,
-            num_speakers=None,  # Auto-detect number of speakers
-            min_speakers=1,
-            max_speakers=10
-        )
-        
-        # Convert diarization to segments format
-        segments = []
-        for turn, _, speaker in diarization.itertracks(yield_label=True):
-            segments.append({
-                "start": turn.start,
-                "end": turn.end,
-                "speaker": speaker,
-                "text": ""  # Will be filled by whisperx
-            })
-
-        if current_job:
-            current_job.meta['status_message'] = 'Running WhisperX transcription...'
-            current_job.save_meta()
-
         # Load whisperx model for transcription with CPU optimizations
         model = whisperx.load_model(
             WHISPER_MODEL,
@@ -174,18 +133,14 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
             return_char_alignments=False  # Reduce memory usage
         )
 
-        # Merge diarization with transcription
-        result = whisperx.assign_word_speakers(diarization, result)
-
         # Save results
         output_file = os.path.join(output_path, f"{os.path.basename(video_path)}.srt")
         with open(output_file, "w", encoding="utf-8") as f:
-            for segment in result["segments"]:
+            for idx, segment in enumerate(result["segments"], 1):
                 start = format_timestamp(segment["start"])
                 end = format_timestamp(segment["end"])
                 text = segment["text"].strip()
-                speaker = segment.get("speaker", "UNKNOWN")
-                f.write(f"{segment['id']}\n{start} --> {end}\n[{speaker}] {text}\n\n")
+                f.write(f"{idx}\n{start} --> {end}\n{text}\n\n")
 
         if current_job:
             current_job.meta.update({
