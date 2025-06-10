@@ -15,6 +15,7 @@ mkdir -p logs
 export FLASK_APP=core.app
 export FLASK_ENV=production
 export PYTHONPATH=/opt/Archivist
+export DATABASE_URL="postgresql://archivist:archivist_password@localhost:5432/archivist"
 
 # Check if Redis is running
 if ! command -v redis-cli &> /dev/null; then
