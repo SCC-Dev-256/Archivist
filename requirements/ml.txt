@@ -13,7 +13,7 @@ tokenizers>=0.21.1,<0.22.0  # Updated to match installed version
 # Speech Processing
 faster-whisper>=0.10.0  # Required by whisperx
 whisperx>=3.0.0  # Latest stable version with CPU optimizations
-pyannote.audio>=3.1.1  # Latest stable version
+pyannote.audio==2.1.1  # Version compatible with PyTorch 2.0.0+cpu
 soundfile>=0.13.1,<1.0.0  # Updated to match installed version
 librosa>=0.10.1,<1.0.0
 

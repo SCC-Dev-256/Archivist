@@ -72,4 +72,7 @@ def create_app_with_config(config_object=None):
     return app
 
 # Create the default app instance
-app = create_app(testing=os.getenv("TESTING", "false").lower() == "true") 
+app = create_app(testing=os.getenv("TESTING", "false").lower() == "true")
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5050, debug=True) 

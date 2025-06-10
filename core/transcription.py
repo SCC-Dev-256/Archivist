@@ -42,15 +42,11 @@ def patched_load(*args, **kwargs):
 
 torch.load = patched_load
 
-import whisperx
+from faster_whisper import WhisperModel
 from core.config import (
     WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
     BATCH_SIZE, NUM_WORKERS, LANGUAGE, NAS_PATH
 )
-from omegaconf.listconfig import ListConfig
-from huggingface_hub import hf_hub_download
-
-# Diarization functionality removed: pyannote.audio is not used
 
 def get_current_job():
     try:
@@ -59,8 +55,15 @@ def get_current_job():
     except:
         return None
 
+def format_timestamp(seconds: float) -> str:
+    """Format seconds into SRT timestamp format."""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    seconds = seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}".replace(".", ",")
+
 def run_whisperx(video_path: str) -> Dict[str, Any]:
-    """Run WhisperX transcription on a video file using the Python API (no diarization)"""
+    """Run WhisperX transcription on a video file using faster-whisper directly"""
     try:
         logger.info(f"Starting transcription of {video_path}")
         
@@ -100,64 +103,63 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
 
         # Update status
         if current_job:
-            current_job.meta['status_message'] = 'Loading WhisperX model...'
+            current_job.meta['status_message'] = 'Loading Whisper model...'
             current_job.save_meta()
 
         # Set the target directory
         target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/whisperx/assets"
         os.makedirs(target_dir, exist_ok=True)
 
-        # Load whisperx model for transcription with CPU optimizations
-        model = whisperx.load_model(
+        # Load whisper model for transcription with CPU optimizations
+        model = WhisperModel(
             WHISPER_MODEL,
             device=device,
             compute_type=compute_type,
             cpu_threads=4,  # Adjust based on your CPU
             num_workers=1,  # Reduce for CPU
-            download_root=target_dir,
-            local_files_only=False
-        )
-        result = model.transcribe(
-            video_path,
-            batch_size=4,  # Smaller batch size for CPU
-            language=LANGUAGE
+            download_root=target_dir
         )
 
-        # Align whisper output
-        model_a, metadata = whisperx.load_align_model(
-            language_code=LANGUAGE,
-            device=device
-        )
-        result = whisperx.align(
-            result["segments"],
-            model_a,
-            metadata,
+        # Transcribe with progress updates
+        segments, info = model.transcribe(
             video_path,
-            device,
-            return_char_alignments=False  # Reduce memory usage
+            batch_size=4,  # Smaller batch size for CPU
+            language=LANGUAGE,
+            beam_size=5,
+            vad_filter=True,  # Enable VAD filtering
+            vad_parameters=dict(min_silence_duration_ms=500)  # Adjust VAD parameters
         )
+
+        # Convert segments to list and format timestamps
+        formatted_segments = []
+        for segment in segments:
+            formatted_segments.append({
+                "start": segment.start,
+                "end": segment.end,
+                "text": segment.text.strip()
+            })
 
         # Save results
         output_file = os.path.join(output_path, f"{os.path.basename(video_path)}.srt")
         with open(output_file, "w", encoding="utf-8") as f:
-            for idx, segment in enumerate(result["segments"], 1):
+            for idx, segment in enumerate(formatted_segments, 1):
                 start = format_timestamp(segment["start"])
                 end = format_timestamp(segment["end"])
-                text = segment["text"].strip()
+                text = segment["text"]
                 f.write(f"{idx}\n{start} --> {end}\n{text}\n\n")
 
         if current_job:
             current_job.meta.update({
                 'progress': 100,
-                'status_message': f'Completed! Generated transcript with {len(result["segments"])} segments',
+                'status_message': f'Completed! Generated transcript with {len(formatted_segments)} segments',
                 'time_remaining': 0
             })
             current_job.save_meta()
 
         return {
             'srt_path': output_file,
-            'segments': len(result["segments"]),
-            'duration': result["segments"][-1]["end"] if result["segments"] else 0
+            'segments': len(formatted_segments),
+            'duration': formatted_segments[-1]["end"] if formatted_segments else 0
         }
 
     except Exception as e:
@@ -177,11 +179,4 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
                 'failed_at': time.time()
             })
             current_job.save_meta()
-        raise
-
-def format_timestamp(seconds: float) -> str:
-    """Format seconds into SRT timestamp format"""
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    seconds = seconds % 60
-    return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}".replace(".", ",") 
+        raise 
