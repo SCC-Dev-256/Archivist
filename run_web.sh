@@ -11,6 +11,11 @@ fi
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
+# Set Flask environment variables
+export FLASK_APP=core.app
+export FLASK_ENV=production
+export PYTHONPATH=/opt/Archivist
+
 # Check if Redis is running
 if ! command -v redis-cli &> /dev/null; then
     echo "Redis CLI not found. Please install Redis."

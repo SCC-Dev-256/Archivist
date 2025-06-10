@@ -105,7 +105,8 @@ class QueueManager:
                     'error_details': job.meta.get('error_details'),
                     'created_at': job.created_at,
                     'started_at': job.started_at,
-                    'ended_at': job.ended_at
+                    'ended_at': job.ended_at,
+                    'video_path': job.meta.get('video_path', '')  # Add video_path to returned data
                 })
             return sorted(jobs, key=lambda x: x['position'])
         except Exception as e:
@@ -132,7 +133,8 @@ class QueueManager:
                     'position': position,
                     'status': 'queued',
                     'progress': 0,
-                    'status_message': 'Waiting to start...'
+                    'status_message': 'Waiting to start...',
+                    'video_path': video_path  # Add video_path to metadata
                 }
             )
             
@@ -364,7 +366,7 @@ if __name__ == '__main__':
         # Start RQ worker with error handling
         worker = Worker([queue_manager.queue], connection=queue_manager.queue.connection)
         logger.info("Starting worker...")
-        worker.work(idle_timeout=3600)
+        worker.work()
     except KeyboardInterrupt:
         logger.info("Worker stopped by user")
         sys.exit(0)

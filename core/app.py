@@ -8,6 +8,7 @@ from flask_cors import CORS
 import os
 from core.logging_config import setup_logging
 from core.database import db
+from core.web_app import register_routes
 
 # Initialize extensions
 migrate = Migrate()
@@ -33,6 +34,9 @@ def create_app(testing=False):
     # Create the Flask app
     app = Flask(__name__)
     
+    # Initialize the database
+    db.init_app(app)
+    
     # Configure the app
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@db:5432/archivist')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -44,7 +48,8 @@ def create_app(testing=False):
     limiter.init_app(app)
     CORS(app)
     
-    # Register blueprints here
+    # Register routes from web_app
+    register_routes(app, limiter)
     
     return app
 
