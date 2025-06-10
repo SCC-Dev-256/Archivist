@@ -24,7 +24,7 @@ export REDIS_DB=${REDIS_DB:-"0"}
 export REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
 
 # Set PostgreSQL configuration
-export DATABASE_URL=${DATABASE_URL:-"postgresql://postgres:postgres@localhost:5432/archivist"}
+export DATABASE_URL=postgresql://archivist:archivist_password@localhost:5432/archivist
 
 # Set API configuration
 export API_HOST=${API_HOST:-"0.0.0.0"}

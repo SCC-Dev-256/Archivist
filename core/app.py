@@ -9,6 +9,7 @@ import os
 from core.logging_config import setup_logging
 from core.database import db
 from core.web_app import register_routes
+from dotenv import load_dotenv
 
 # Initialize extensions
 migrate = Migrate()
@@ -60,4 +61,7 @@ def create_app_with_config(config_object=None):
     return app
 
 # Create the default app instance
-app = create_app(testing=os.getenv("TESTING", "false").lower() == "true") 
+app = create_app(testing=os.getenv("TESTING", "false").lower() == "true")
+
+# Load environment variables from .env file
+load_dotenv() 

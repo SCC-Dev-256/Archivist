@@ -34,6 +34,7 @@ from omegaconf.listconfig import ListConfig
 from huggingface_hub import hf_hub_download
 from pyannote.audio import Pipeline
 import torch.serialization
+import pyannote.audio.core.task
 
 def get_current_job():
     try:
@@ -96,6 +97,7 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
 
         # Load diarization pipeline
         torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
+        torch.serialization.add_safe_globals([pyannote.audio.core.task.Specifications])
         pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
             use_auth_token="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"
