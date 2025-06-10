@@ -22,26 +22,19 @@ Example:
 
 from loguru import logger
 from typing import List, Dict, Optional
-from core.config import REDIS_URL
 import time
 import redis
 from rq import Queue, Worker
 import sys
 
-class QueueManager:
-    _instance = None
-    _queue = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(QueueManager, cls).__new__(cls)
-        return cls._instance
-    
-    def __init__(self):
-        if self._queue is None:
-            self._queue = self._init_queue()
-    
-    def _init_queue(self):
+# Initialize queue instance
+_queue_instance = None
+
+def get_queue():
+    """Get or create the queue instance."""
+    global _queue_instance
+    if _queue_instance is None:
+        from core.config import REDIS_URL
         try:
             logger.info(f"Initializing Redis connection to {REDIS_URL}")
             # Configure Redis connection with retry and timeout settings
@@ -67,7 +60,7 @@ class QueueManager:
                     time.sleep(1)
             
             # Initialize queue with default timeout and result_ttl
-            return Queue('transcription', 
+            _queue_instance = Queue('transcription', 
                         connection=redis_conn,
                         default_timeout=3600,  # 1 hour timeout
                         result_ttl=86400)      # Keep results for 24 hours
@@ -77,6 +70,18 @@ class QueueManager:
         except Exception as e:
             logger.error(f"Unexpected error initializing queue: {e}")
             raise
+    return _queue_instance
+
+class QueueManager:
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(QueueManager, cls).__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        self._queue = get_queue()
     
     @property
     def queue(self):

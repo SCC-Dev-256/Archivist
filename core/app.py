@@ -1,3 +1,11 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+# Debug prints
+import os
+print("DATABASE_URL from environment:", os.getenv('DATABASE_URL'))
+print("SQLALCHEMY_DATABASE_URI from environment:", os.getenv('SQLALCHEMY_DATABASE_URI'))
+
 from flask import Flask, render_template
 from flask_caching import Cache
 from flask_limiter import Limiter
@@ -5,11 +13,9 @@ from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
-import os
 from core.logging_config import setup_logging
 from core.database import db
 from core.web_app import register_routes
-from dotenv import load_dotenv
 
 # Initialize extensions
 migrate = Migrate()
@@ -35,13 +41,18 @@ def create_app(testing=False):
     # Create the Flask app
     app = Flask(__name__)
     
-    # Initialize the database
-    db.init_app(app)
-    
-    # Configure the app
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@db:5432/archivist')
+    # Configure the app BEFORE initializing the database
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@localhost:5432/archivist')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
+    
+    # Configure cache
+    app.config['CACHE_TYPE'] = 'redis'
+    app.config['CACHE_REDIS_URL'] = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    app.config['CACHE_DEFAULT_TIMEOUT'] = 300  # 5 minutes default timeout
+    
+    # Initialize the database AFTER setting the configuration
+    db.init_app(app)
     
     # Initialize extensions with app
     migrate.init_app(app, db)
@@ -61,7 +72,4 @@ def create_app_with_config(config_object=None):
     return app
 
 # Create the default app instance
-app = create_app(testing=os.getenv("TESTING", "false").lower() == "true")
-
-# Load environment variables from .env file
-load_dotenv() 
+app = create_app(testing=os.getenv("TESTING", "false").lower() == "true") 
