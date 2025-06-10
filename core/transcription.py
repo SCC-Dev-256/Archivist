@@ -22,10 +22,13 @@ from loguru import logger
 import time
 import traceback
 from typing import Dict, Any
-import whisperx
-import torch
 
-# Force CPU-only mode
+# Force CPU-only mode before importing torch
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable CUDA
+os.environ['TORCH_USE_CUDA_DSA'] = '0'     # Disable CUDA DSA
+
+import torch
 torch.cuda.is_available = lambda: False
 device = "cpu"
 compute_type = "float32"
@@ -39,6 +42,7 @@ def patched_load(*args, **kwargs):
 
 torch.load = patched_load
 
+import whisperx
 from core.config import (
     WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
     BATCH_SIZE, NUM_WORKERS, LANGUAGE, NAS_PATH
