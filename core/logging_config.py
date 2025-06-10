@@ -39,7 +39,7 @@ def setup_logging(testing: bool = False, log_level: Optional[str] = None) -> Non
     # Add console handler
     logger.add(
         sys.stderr,
-        level=level,
+        level="DEBUG",  # Set to DEBUG by default
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
         backtrace=not testing,  # Disable backtrace in tests
         diagnose=not testing    # Disable diagnose in tests

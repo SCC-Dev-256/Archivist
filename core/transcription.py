@@ -26,6 +26,16 @@ import traceback
 from typing import Dict, Any
 import whisperx
 import torch
+
+# Patch torch.load globally to set weights_only=False
+_original_load = torch.load
+
+def patched_load(*args, **kwargs):
+    kwargs.setdefault('weights_only', False)
+    return _original_load(*args, **kwargs)
+
+torch.load = patched_load
+
 from core.config import (
     WHISPER_MODEL, COMPUTE_TYPE, OUTPUT_DIR,
     BATCH_SIZE, NUM_WORKERS, LANGUAGE, NAS_PATH
@@ -35,6 +45,10 @@ from huggingface_hub import hf_hub_download
 from pyannote.audio import Pipeline
 import torch.serialization
 import pyannote.audio.core.task
+
+# Allowlist the entire pyannote.audio.core.task module
+torch.serialization.add_safe_globals([pyannote.audio.core.task])
+logger.debug("Patched torch.serialization safe globals for pyannote.audio.core.task module")
 
 def get_current_job():
     try:
@@ -47,6 +61,15 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
     """Run WhisperX transcription on a video file using the Python API"""
     try:
         logger.info(f"Starting transcription of {video_path}")
+        
+        # Patch torch.load inside the worker function
+        import torch
+        _original_load = torch.load
+        def patched_load(*args, **kwargs):
+            kwargs.setdefault('weights_only', False)
+            return _original_load(*args, **kwargs)
+        torch.load = patched_load
+        logger.debug("Patched torch.load inside run_whisperx")
         
         # Get current job for progress updates
         current_job = get_current_job()
@@ -96,8 +119,6 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
         os.makedirs(target_dir, exist_ok=True)
 
         # Load diarization pipeline
-        torch.serialization.add_safe_globals([torch.torch_version.TorchVersion])
-        torch.serialization.add_safe_globals([pyannote.audio.core.task.Specifications])
         pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
             use_auth_token="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"

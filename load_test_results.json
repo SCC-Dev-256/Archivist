@@ -1,1402 +1,1402 @@
 [
   {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.01772165298461914,
-    "timestamp": "2025-05-12T15:22:11.224373"
-  },
-  {
-    "endpoint": "/api/queue",
+    "endpoint": "/health",
     "method": "GET",
     "status": 200,
-    "duration": 0.01802372932434082,
-    "timestamp": "2025-05-12T15:22:11.224947"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 200,
-    "duration": 0.018063783645629883,
-    "timestamp": "2025-05-12T15:22:11.225118"
+    "duration": 0.09607458114624023,
+    "timestamp": "2025-06-10T13:48:33.395629"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.018390893936157227,
-    "timestamp": "2025-05-12T15:22:11.225575"
+    "status": 200,
+    "duration": 0.10570621490478516,
+    "timestamp": "2025-06-10T13:48:33.439685"
   },
   {
-    "endpoint": "/api/queue",
+    "endpoint": "/health",
     "method": "GET",
     "status": 200,
-    "duration": 0.019064664840698242,
-    "timestamp": "2025-05-12T15:22:11.226378"
+    "duration": 0.06213116645812988,
+    "timestamp": "2025-06-10T13:48:33.396269"
   },
   {
     "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01857161521911621,
-    "timestamp": "2025-05-12T15:22:11.225997"
-  },
-  {
-    "endpoint": "/api/queue",
     "method": "GET",
     "status": 200,
-    "duration": 0.020711183547973633,
-    "timestamp": "2025-05-12T15:22:11.228279"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.0199737548828125,
-    "timestamp": "2025-05-12T15:22:11.227664"
+    "duration": 0.06172800064086914,
+    "timestamp": "2025-06-10T13:48:33.395988"
   },
   {
     "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.021593570709228516,
-    "timestamp": "2025-05-12T15:22:11.229451"
-  },
-  {
-    "endpoint": "/api/queue",
     "method": "GET",
     "status": 200,
-    "duration": 0.02317643165588379,
-    "timestamp": "2025-05-12T15:22:11.231149"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.022734642028808594,
-    "timestamp": "2025-05-12T15:22:11.230804"
+    "duration": 0.10475468635559082,
+    "timestamp": "2025-06-10T13:48:33.439136"
   },
   {
     "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.024553298950195312,
-    "timestamp": "2025-05-12T15:22:11.232815"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.02431035041809082,
-    "timestamp": "2025-05-12T15:22:11.232674"
-  },
-  {
-    "endpoint": "/api/queue",
     "method": "GET",
     "status": 200,
-    "duration": 0.026683330535888672,
-    "timestamp": "2025-05-12T15:22:11.235142"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.025728702545166016,
-    "timestamp": "2025-05-12T15:22:11.234292"
+    "duration": 0.10477900505065918,
+    "timestamp": "2025-06-10T13:48:33.439273"
   },
   {
     "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.02702164649963379,
-    "timestamp": "2025-05-12T15:22:11.235724"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.02806234359741211,
-    "timestamp": "2025-05-12T15:22:11.236854"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.028728723526000977,
-    "timestamp": "2025-05-12T15:22:11.237637"
-  },
-  {
-    "endpoint": "/api/queue",
     "method": "GET",
     "status": 200,
-    "duration": 0.030509471893310547,
-    "timestamp": "2025-05-12T15:22:11.239548"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.030103445053100586,
-    "timestamp": "2025-05-12T15:22:11.239244"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010644197463989258,
-    "timestamp": "2025-05-12T15:22:11.250490"
+    "duration": 0.062451839447021484,
+    "timestamp": "2025-06-10T13:48:33.397054"
   },
   {
     "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010679483413696289,
-    "timestamp": "2025-05-12T15:22:11.250678"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010999679565429688,
-    "timestamp": "2025-05-12T15:22:11.251093"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.011239767074584961,
-    "timestamp": "2025-05-12T15:22:11.251425"
-  },
-  {
-    "endpoint": "/api/queue",
     "method": "GET",
     "status": 200,
-    "duration": 0.012166976928710938,
-    "timestamp": "2025-05-12T15:22:11.252496"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012431621551513672,
-    "timestamp": "2025-05-12T15:22:11.252855"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.013548612594604492,
-    "timestamp": "2025-05-12T15:22:11.254064"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.013770103454589844,
-    "timestamp": "2025-05-12T15:22:11.254418"
+    "duration": 0.06343865394592285,
+    "timestamp": "2025-06-10T13:48:33.398164"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.014862537384033203,
-    "timestamp": "2025-05-12T15:22:11.255604"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.015211820602416992,
-    "timestamp": "2025-05-12T15:22:11.256044"
+    "status": 200,
+    "duration": 0.10412478446960449,
+    "timestamp": "2025-06-10T13:48:33.439014"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.016245603561401367,
-    "timestamp": "2025-05-12T15:22:11.257170"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016626358032226562,
-    "timestamp": "2025-05-12T15:22:11.257641"
+    "status": 200,
+    "duration": 0.10523009300231934,
+    "timestamp": "2025-06-10T13:48:33.440278"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
-    "status": 429,
-    "duration": 0.017719030380249023,
-    "timestamp": "2025-05-12T15:22:11.258824"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01815938949584961,
-    "timestamp": "2025-05-12T15:22:11.259387"
+    "status": 404,
+    "duration": 0.10673165321350098,
+    "timestamp": "2025-06-10T13:48:33.441887"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.018791913986206055,
-    "timestamp": "2025-05-12T15:22:11.260116"
+    "status": 200,
+    "duration": 0.10545611381530762,
+    "timestamp": "2025-06-10T13:48:33.440911"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.10593652725219727,
+    "timestamp": "2025-06-10T13:48:33.441511"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
-    "status": 429,
-    "duration": 0.019772052764892578,
-    "timestamp": "2025-05-12T15:22:11.261189"
+    "status": 404,
+    "duration": 0.10647821426391602,
+    "timestamp": "2025-06-10T13:48:33.442144"
   },
   {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.020047426223754883,
-    "timestamp": "2025-05-12T15:22:11.261598"
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.10776543617248535,
+    "timestamp": "2025-06-10T13:48:33.443573"
   },
   {
-    "endpoint": "/api/queue",
+    "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.021240711212158203,
-    "timestamp": "2025-05-12T15:22:11.262923"
+    "status": 200,
+    "duration": 0.10692214965820312,
+    "timestamp": "2025-06-10T13:48:33.442848"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.02132868766784668,
-    "timestamp": "2025-05-12T15:22:11.263267"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.02237248420715332,
-    "timestamp": "2025-05-12T15:22:11.264404"
+    "status": 200,
+    "duration": 0.10907268524169922,
+    "timestamp": "2025-06-10T13:48:33.445152"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
-    "status": 429,
+    "status": 404,
+    "duration": 0.10764122009277344,
+    "timestamp": "2025-06-10T13:48:33.443823"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.10841488838195801,
+    "timestamp": "2025-06-10T13:48:33.444725"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.10892963409423828,
+    "timestamp": "2025-06-10T13:48:33.445379"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010412454605102539,
+    "timestamp": "2025-06-10T13:48:33.456104"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.010742664337158203,
+    "timestamp": "2025-06-10T13:48:33.456602"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010182857513427734,
+    "timestamp": "2025-06-10T13:48:33.456207"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.010577678680419922,
+    "timestamp": "2025-06-10T13:48:33.456699"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010785579681396484,
+    "timestamp": "2025-06-10T13:48:33.457031"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010948896408081055,
+    "timestamp": "2025-06-10T13:48:33.457290"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011631250381469727,
+    "timestamp": "2025-06-10T13:48:33.458066"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012938976287841797,
+    "timestamp": "2025-06-10T13:48:33.459468"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
     "duration": 0.011985063552856445,
-    "timestamp": "2025-05-12T15:22:11.276739"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011933088302612305,
-    "timestamp": "2025-05-12T15:22:11.276881"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012207269668579102,
-    "timestamp": "2025-05-12T15:22:11.277250"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012531280517578125,
-    "timestamp": "2025-05-12T15:22:11.277668"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012766838073730469,
-    "timestamp": "2025-05-12T15:22:11.277997"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01418757438659668,
-    "timestamp": "2025-05-12T15:22:11.279511"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.013750076293945312,
-    "timestamp": "2025-05-12T15:22:11.279165"
+    "timestamp": "2025-06-10T13:48:33.458606"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.01488184928894043,
-    "timestamp": "2025-05-12T15:22:11.280390"
+    "status": 200,
+    "duration": 0.011553764343261719,
+    "timestamp": "2025-06-10T13:48:33.458315"
   },
   {
-    "endpoint": "/api/queue",
+    "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.015485525131225586,
-    "timestamp": "2025-05-12T15:22:11.281099"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016216278076171875,
-    "timestamp": "2025-05-12T15:22:11.281925"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016945600509643555,
-    "timestamp": "2025-05-12T15:22:11.282748"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.017650842666625977,
-    "timestamp": "2025-05-12T15:22:11.283545"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.019724130630493164,
-    "timestamp": "2025-05-12T15:22:11.285709"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.018825054168701172,
-    "timestamp": "2025-05-12T15:22:11.284904"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.020177841186523438,
-    "timestamp": "2025-05-12T15:22:11.286349"
+    "status": 200,
+    "duration": 0.013124227523803711,
+    "timestamp": "2025-06-10T13:48:33.459982"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
-    "status": 429,
-    "duration": 0.021162986755371094,
-    "timestamp": "2025-05-12T15:22:11.287426"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.02141284942626953,
-    "timestamp": "2025-05-12T15:22:11.287794"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.022685766220092773,
-    "timestamp": "2025-05-12T15:22:11.289184"
+    "status": 404,
+    "duration": 0.01331019401550293,
+    "timestamp": "2025-06-10T13:48:33.460263"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.0215914249420166,
-    "timestamp": "2025-05-12T15:22:11.289464"
+    "status": 200,
+    "duration": 0.013738155364990234,
+    "timestamp": "2025-06-10T13:48:33.460826"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.0223391056060791,
-    "timestamp": "2025-05-12T15:22:11.290316"
+    "status": 200,
+    "duration": 0.013916730880737305,
+    "timestamp": "2025-06-10T13:48:33.461100"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.01417851448059082,
+    "timestamp": "2025-06-10T13:48:33.461460"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015413761138916016,
+    "timestamp": "2025-06-10T13:48:33.462816"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.014803886413574219,
+    "timestamp": "2025-06-10T13:48:33.462330"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.016239166259765625,
+    "timestamp": "2025-06-10T13:48:33.463885"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.01513528823852539,
+    "timestamp": "2025-06-10T13:48:33.463063"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.015717744827270508,
+    "timestamp": "2025-06-10T13:48:33.463786"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011013507843017578,
+    "timestamp": "2025-06-10T13:48:33.475279"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011675357818603516,
+    "timestamp": "2025-06-10T13:48:33.476109"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011088848114013672,
+    "timestamp": "2025-06-10T13:48:33.475618"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.011227607727050781,
+    "timestamp": "2025-06-10T13:48:33.475852"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.011901617050170898,
+    "timestamp": "2025-06-10T13:48:33.476665"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01330423355102539,
+    "timestamp": "2025-06-10T13:48:33.478186"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
+    "status": 200,
+    "duration": 0.012426376342773438,
+    "timestamp": "2025-06-10T13:48:33.477403"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013004302978515625,
+    "timestamp": "2025-06-10T13:48:33.478088"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012562274932861328,
+    "timestamp": "2025-06-10T13:48:33.477740"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015142440795898438,
+    "timestamp": "2025-06-10T13:48:33.480413"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014253616333007812,
+    "timestamp": "2025-06-10T13:48:33.479621"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014430522918701172,
+    "timestamp": "2025-06-10T13:48:33.479892"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014605998992919922,
+    "timestamp": "2025-06-10T13:48:33.480160"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015768051147460938,
+    "timestamp": "2025-06-10T13:48:33.481417"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015145301818847656,
+    "timestamp": "2025-06-10T13:48:33.480888"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01583409309387207,
+    "timestamp": "2025-06-10T13:48:33.481670"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015997886657714844,
+    "timestamp": "2025-06-10T13:48:33.481927"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.016157150268554688,
+    "timestamp": "2025-06-10T13:48:33.482190"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015693187713623047,
+    "timestamp": "2025-06-10T13:48:33.483055"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015318155288696289,
+    "timestamp": "2025-06-10T13:48:33.482789"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01032710075378418,
+    "timestamp": "2025-06-10T13:48:33.493692"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010257959365844727,
+    "timestamp": "2025-06-10T13:48:33.493793"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.01110219955444336,
+    "timestamp": "2025-06-10T13:48:33.494732"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010116338729858398,
+    "timestamp": "2025-06-10T13:48:33.493887"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01038980484008789,
+    "timestamp": "2025-06-10T13:48:33.494256"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010669946670532227,
+    "timestamp": "2025-06-10T13:48:33.494634"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
     "duration": 0.010756969451904297,
-    "timestamp": "2025-05-12T15:22:11.301385"
+    "timestamp": "2025-06-10T13:48:33.494827"
   },
   {
     "endpoint": "/api/queue",
     "method": "GET",
-    "status": 429,
-    "duration": 0.010736465454101562,
-    "timestamp": "2025-05-12T15:22:11.301519"
+    "status": 200,
+    "duration": 0.011015176773071289,
+    "timestamp": "2025-06-10T13:48:33.495187"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.011057138442993164,
-    "timestamp": "2025-05-12T15:22:11.301934"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011652946472167969,
-    "timestamp": "2025-05-12T15:22:11.302625"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011217117309570312,
-    "timestamp": "2025-05-12T15:22:11.302282"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012383222579956055,
-    "timestamp": "2025-05-12T15:22:11.303545"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012932538986206055,
-    "timestamp": "2025-05-12T15:22:11.304187"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.013657808303833008,
-    "timestamp": "2025-05-12T15:22:11.305005"
+    "status": 200,
+    "duration": 0.01158285140991211,
+    "timestamp": "2025-06-10T13:48:33.495854"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
-    "status": 429,
-    "duration": 0.014433622360229492,
-    "timestamp": "2025-05-12T15:22:11.305874"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.014815092086791992,
-    "timestamp": "2025-05-12T15:22:11.306395"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01594400405883789,
-    "timestamp": "2025-05-12T15:22:11.307656"
+    "status": 404,
+    "duration": 0.011755228042602539,
+    "timestamp": "2025-06-10T13:48:33.496120"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.016193628311157227,
-    "timestamp": "2025-05-12T15:22:11.307998"
+    "status": 200,
+    "duration": 0.010995864868164062,
+    "timestamp": "2025-06-10T13:48:33.495480"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012253522872924805,
+    "timestamp": "2025-06-10T13:48:33.496831"
   },
   {
     "endpoint": "/api/queue",
     "method": "GET",
-    "status": 429,
-    "duration": 0.017527341842651367,
-    "timestamp": "2025-05-12T15:22:11.309423"
+    "status": 200,
+    "duration": 0.012924671173095703,
+    "timestamp": "2025-06-10T13:48:33.497596"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.012566804885864258,
+    "timestamp": "2025-06-10T13:48:33.497330"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.01322793960571289,
+    "timestamp": "2025-06-10T13:48:33.498110"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01322031021118164,
+    "timestamp": "2025-06-10T13:48:33.498357"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.013480186462402344,
+    "timestamp": "2025-06-10T13:48:33.498713"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.014749765396118164,
+    "timestamp": "2025-06-10T13:48:33.500100"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.017105579376220703,
-    "timestamp": "2025-05-12T15:22:11.309094"
+    "status": 200,
+    "duration": 0.014200925827026367,
+    "timestamp": "2025-06-10T13:48:33.499845"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013849735260009766,
+    "timestamp": "2025-06-10T13:48:33.499592"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.018455982208251953,
-    "timestamp": "2025-05-12T15:22:11.310538"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.018738746643066406,
-    "timestamp": "2025-05-12T15:22:11.310912"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.019771575927734375,
-    "timestamp": "2025-05-12T15:22:11.312036"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.020223617553710938,
-    "timestamp": "2025-05-12T15:22:11.312580"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.02077937126159668,
-    "timestamp": "2025-05-12T15:22:11.313446"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.021454572677612305,
-    "timestamp": "2025-05-12T15:22:11.314221"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011004924774169922,
-    "timestamp": "2025-05-12T15:22:11.325561"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010506629943847656,
-    "timestamp": "2025-05-12T15:22:11.325226"
+    "status": 200,
+    "duration": 0.010475635528564453,
+    "timestamp": "2025-06-10T13:48:33.510876"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.01113271713256836,
-    "timestamp": "2025-05-12T15:22:11.325943"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.01137399673461914,
-    "timestamp": "2025-05-12T15:22:11.326275"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012370109558105469,
-    "timestamp": "2025-05-12T15:22:11.327400"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.012618541717529297,
-    "timestamp": "2025-05-12T15:22:11.327738"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.013735055923461914,
-    "timestamp": "2025-05-12T15:22:11.328967"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.014007806777954102,
-    "timestamp": "2025-05-12T15:22:11.329330"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.015014171600341797,
-    "timestamp": "2025-05-12T15:22:11.330449"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.015380144119262695,
-    "timestamp": "2025-05-12T15:22:11.330906"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.0162045955657959,
-    "timestamp": "2025-05-12T15:22:11.331841"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.016857624053955078,
-    "timestamp": "2025-05-12T15:22:11.332585"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.017452716827392578,
-    "timestamp": "2025-05-12T15:22:11.333296"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.018327951431274414,
-    "timestamp": "2025-05-12T15:22:11.334284"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.018631458282470703,
-    "timestamp": "2025-05-12T15:22:11.334699"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.019807100296020508,
-    "timestamp": "2025-05-12T15:22:11.335963"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.02003765106201172,
-    "timestamp": "2025-05-12T15:22:11.336306"
+    "status": 200,
+    "duration": 0.00983881950378418,
+    "timestamp": "2025-06-10T13:48:33.510401"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.02112269401550293,
-    "timestamp": "2025-05-12T15:22:11.337482"
+    "status": 200,
+    "duration": 0.009844779968261719,
+    "timestamp": "2025-06-10T13:48:33.510501"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010225057601928711,
+    "timestamp": "2025-06-10T13:48:33.510974"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010440349578857422,
+    "timestamp": "2025-06-10T13:48:33.511283"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.010611295700073242,
+    "timestamp": "2025-06-10T13:48:33.511548"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010961771011352539,
+    "timestamp": "2025-06-10T13:48:33.512055"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010596752166748047,
+    "timestamp": "2025-06-10T13:48:33.511784"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.011021614074707031,
+    "timestamp": "2025-06-10T13:48:33.512303"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011851310729980469,
+    "timestamp": "2025-06-10T13:48:33.513251"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.012326240539550781,
+    "timestamp": "2025-06-10T13:48:33.513820"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011391401290893555,
+    "timestamp": "2025-06-10T13:48:33.513003"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011789083480834961,
+    "timestamp": "2025-06-10T13:48:33.513494"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013046979904174805,
+    "timestamp": "2025-06-10T13:48:33.514845"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012622594833374023,
+    "timestamp": "2025-06-10T13:48:33.514512"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014142990112304688,
+    "timestamp": "2025-06-10T13:48:33.516126"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01331329345703125,
+    "timestamp": "2025-06-10T13:48:33.515403"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.01369333267211914,
+    "timestamp": "2025-06-10T13:48:33.515876"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013908863067626953,
+    "timestamp": "2025-06-10T13:48:33.516388"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.014524698257446289,
+    "timestamp": "2025-06-10T13:48:33.517101"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010266304016113281,
+    "timestamp": "2025-06-10T13:48:33.527666"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.010581016540527344,
+    "timestamp": "2025-06-10T13:48:33.528138"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.010802030563354492,
+    "timestamp": "2025-06-10T13:48:33.528496"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010223865509033203,
+    "timestamp": "2025-06-10T13:48:33.528036"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.010684728622436523,
+    "timestamp": "2025-06-10T13:48:33.528591"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.011122703552246094,
+    "timestamp": "2025-06-10T13:48:33.529164"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010738134384155273,
+    "timestamp": "2025-06-10T13:48:33.528897"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011334896087646484,
+    "timestamp": "2025-06-10T13:48:33.529589"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011149406433105469,
+    "timestamp": "2025-06-10T13:48:33.529497"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011455297470092773,
+    "timestamp": "2025-06-10T13:48:33.529896"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.012753725051879883,
+    "timestamp": "2025-06-10T13:48:33.531287"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01187586784362793,
+    "timestamp": "2025-06-10T13:48:33.530528"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012172937393188477,
+    "timestamp": "2025-06-10T13:48:33.530918"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013476848602294922,
+    "timestamp": "2025-06-10T13:48:33.532318"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013532876968383789,
+    "timestamp": "2025-06-10T13:48:33.532467"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013844728469848633,
+    "timestamp": "2025-06-10T13:48:33.532882"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014846324920654297,
+    "timestamp": "2025-06-10T13:48:33.533978"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.014351367950439453,
+    "timestamp": "2025-06-10T13:48:33.533575"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015160560607910156,
+    "timestamp": "2025-06-10T13:48:33.534718"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015382051467895508,
+    "timestamp": "2025-06-10T13:48:33.535037"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011379003524780273,
+    "timestamp": "2025-06-10T13:48:33.546735"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011364221572875977,
+    "timestamp": "2025-06-10T13:48:33.546881"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012037038803100586,
+    "timestamp": "2025-06-10T13:48:33.547649"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011330366134643555,
+    "timestamp": "2025-06-10T13:48:33.547035"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.011994123458862305,
+    "timestamp": "2025-06-10T13:48:33.547793"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.012480497360229492,
+    "timestamp": "2025-06-10T13:48:33.548415"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01263117790222168,
+    "timestamp": "2025-06-10T13:48:33.548710"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.013024568557739258,
+    "timestamp": "2025-06-10T13:48:33.549199"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01222681999206543,
+    "timestamp": "2025-06-10T13:48:33.548560"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013081789016723633,
+    "timestamp": "2025-06-10T13:48:33.549541"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.02120828628540039,
-    "timestamp": "2025-05-12T15:22:11.337835"
+    "duration": 0.01342153549194336,
+    "timestamp": "2025-06-10T13:48:33.549976"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013453960418701172,
+    "timestamp": "2025-06-10T13:48:33.550129"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014019250869750977,
+    "timestamp": "2025-06-10T13:48:33.550788"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.01378321647644043,
+    "timestamp": "2025-06-10T13:48:33.550646"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01424551010131836,
+    "timestamp": "2025-06-10T13:48:33.551226"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014479637145996094,
+    "timestamp": "2025-06-10T13:48:33.551571"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014717817306518555,
+    "timestamp": "2025-06-10T13:48:33.551903"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01496744155883789,
+    "timestamp": "2025-06-10T13:48:33.552248"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015038251876831055,
+    "timestamp": "2025-06-10T13:48:33.552590"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015481233596801758,
+    "timestamp": "2025-06-10T13:48:33.553131"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.02242875099182129,
-    "timestamp": "2025-05-12T15:22:11.339173"
+    "status": 200,
+    "duration": 0.011290311813354492,
+    "timestamp": "2025-06-10T13:48:33.564765"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.010984420776367188,
+    "timestamp": "2025-06-10T13:48:33.564621"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.011791229248046875,
+    "timestamp": "2025-06-10T13:48:33.565522"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011038064956665039,
+    "timestamp": "2025-06-10T13:48:33.564906"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012123584747314453,
+    "timestamp": "2025-06-10T13:48:33.566086"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011585712432861328,
+    "timestamp": "2025-06-10T13:48:33.565669"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.01303243637084961,
+    "timestamp": "2025-06-10T13:48:33.567210"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.010636329650878906,
-    "timestamp": "2025-05-12T15:22:11.350132"
+    "duration": 0.012157917022705078,
+    "timestamp": "2025-06-10T13:48:33.566428"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012964487075805664,
+    "timestamp": "2025-06-10T13:48:33.567353"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.010596990585327148,
-    "timestamp": "2025-05-12T15:22:11.350280"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010877609252929688,
-    "timestamp": "2025-05-12T15:22:11.350655"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011113882064819336,
-    "timestamp": "2025-05-12T15:22:11.350983"
+    "status": 200,
+    "duration": 0.012284278869628906,
+    "timestamp": "2025-06-10T13:48:33.566767"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.011337041854858398,
-    "timestamp": "2025-05-12T15:22:11.351297"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01218104362487793,
-    "timestamp": "2025-05-12T15:22:11.352234"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012419462203979492,
-    "timestamp": "2025-05-12T15:22:11.352561"
+    "status": 200,
+    "duration": 0.0133514404296875,
+    "timestamp": "2025-06-10T13:48:33.567928"
   },
   {
     "endpoint": "/api/queue",
     "method": "GET",
-    "status": 429,
-    "duration": 0.01374363899230957,
-    "timestamp": "2025-05-12T15:22:11.353975"
+    "status": 200,
+    "duration": 0.013717174530029297,
+    "timestamp": "2025-06-10T13:48:33.568387"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.014325380325317383,
+    "timestamp": "2025-06-10T13:48:33.569088"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013855695724487305,
+    "timestamp": "2025-06-10T13:48:33.568738"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.013262271881103516,
-    "timestamp": "2025-05-12T15:22:11.353584"
+    "status": 200,
+    "duration": 0.014441728591918945,
+    "timestamp": "2025-06-10T13:48:33.569419"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.014355182647705078,
-    "timestamp": "2025-05-12T15:22:11.354766"
+    "status": 200,
+    "duration": 0.014744997024536133,
+    "timestamp": "2025-06-10T13:48:33.569830"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.016147375106811523,
+    "timestamp": "2025-06-10T13:48:33.571326"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015006542205810547,
+    "timestamp": "2025-06-10T13:48:33.570279"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014983654022216797,
+    "timestamp": "2025-06-10T13:48:33.570526"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.015225410461425781,
-    "timestamp": "2025-05-12T15:22:11.355727"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.015594005584716797,
-    "timestamp": "2025-05-12T15:22:11.356223"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016503572463989258,
-    "timestamp": "2025-05-12T15:22:11.357225"
+    "duration": 0.0162661075592041,
+    "timestamp": "2025-06-10T13:48:33.571905"
   },
   {
     "endpoint": "/api/queue",
     "method": "GET",
-    "status": 429,
-    "duration": 0.016808032989501953,
-    "timestamp": "2025-05-12T15:22:11.357622"
+    "status": 200,
+    "duration": 0.010254621505737305,
+    "timestamp": "2025-06-10T13:48:33.582485"
+  },
+  {
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.01105046272277832,
+    "timestamp": "2025-06-10T13:48:33.583441"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.017981290817260742,
-    "timestamp": "2025-05-12T15:22:11.358886"
+    "status": 200,
+    "duration": 0.010321855545043945,
+    "timestamp": "2025-06-10T13:48:33.582850"
   },
   {
-    "endpoint": "/api/browse",
+    "endpoint": "/api/transcribe",
+    "method": "POST",
+    "status": 404,
+    "duration": 0.010673999786376953,
+    "timestamp": "2025-06-10T13:48:33.583298"
+  },
+  {
+    "endpoint": "/api/queue",
     "method": "GET",
-    "status": 429,
-    "duration": 0.01822495460510254,
-    "timestamp": "2025-05-12T15:22:11.359219"
+    "status": 200,
+    "duration": 0.011391878128051758,
+    "timestamp": "2025-06-10T13:48:33.584134"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011116266250610352,
+    "timestamp": "2025-06-10T13:48:33.583952"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.01917576789855957,
-    "timestamp": "2025-05-12T15:22:11.360260"
+    "status": 200,
+    "duration": 0.011720657348632812,
+    "timestamp": "2025-06-10T13:48:33.584649"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011635065078735352,
+    "timestamp": "2025-06-10T13:48:33.584792"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.01941394805908203,
-    "timestamp": "2025-05-12T15:22:11.360589"
+    "status": 200,
+    "duration": 0.012286901473999023,
+    "timestamp": "2025-06-10T13:48:33.585573"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.011858463287353516,
+    "timestamp": "2025-06-10T13:48:33.585241"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012442827224731445,
+    "timestamp": "2025-06-10T13:48:33.585919"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.020710468292236328,
-    "timestamp": "2025-05-12T15:22:11.362141"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.0202939510345459,
-    "timestamp": "2025-05-12T15:22:11.361846"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010638713836669922,
-    "timestamp": "2025-05-12T15:22:11.373048"
+    "duration": 0.013133525848388672,
+    "timestamp": "2025-06-10T13:48:33.586704"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.01066732406616211,
-    "timestamp": "2025-05-12T15:22:11.373198"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.010961532592773438,
-    "timestamp": "2025-05-12T15:22:11.373596"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.011141061782836914,
-    "timestamp": "2025-05-12T15:22:11.373901"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.011316537857055664,
-    "timestamp": "2025-05-12T15:22:11.374188"
+    "status": 200,
+    "duration": 0.013161420822143555,
+    "timestamp": "2025-06-10T13:48:33.586851"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.012234926223754883,
-    "timestamp": "2025-05-12T15:22:11.375219"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.012471675872802734,
-    "timestamp": "2025-05-12T15:22:11.375544"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.013541221618652344,
-    "timestamp": "2025-05-12T15:22:11.376725"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.013802051544189453,
-    "timestamp": "2025-05-12T15:22:11.377079"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.014784097671508789,
-    "timestamp": "2025-05-12T15:22:11.378151"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.015313863754272461,
-    "timestamp": "2025-05-12T15:22:11.378770"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016037940979003906,
-    "timestamp": "2025-05-12T15:22:11.379581"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016795873641967773,
-    "timestamp": "2025-05-12T15:22:11.380437"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.017469406127929688,
-    "timestamp": "2025-05-12T15:22:11.381199"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.01833796501159668,
-    "timestamp": "2025-05-12T15:22:11.382162"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.018742084503173828,
-    "timestamp": "2025-05-12T15:22:11.382685"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.02019643783569336,
-    "timestamp": "2025-05-12T15:22:11.384229"
+    "status": 200,
+    "duration": 0.013506174087524414,
+    "timestamp": "2025-06-10T13:48:33.587290"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.019756555557250977,
-    "timestamp": "2025-05-12T15:22:11.383903"
+    "status": 200,
+    "duration": 0.013750076293945312,
+    "timestamp": "2025-06-10T13:48:33.587627"
   },
   {
-    "endpoint": "/api/queue",
+    "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.020951032638549805,
-    "timestamp": "2025-05-12T15:22:11.385347"
+    "status": 200,
+    "duration": 0.015321016311645508,
+    "timestamp": "2025-06-10T13:48:33.589290"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014296293258666992,
+    "timestamp": "2025-06-10T13:48:33.588426"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.013903141021728516,
+    "timestamp": "2025-06-10T13:48:33.588128"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014183998107910156,
+    "timestamp": "2025-06-10T13:48:33.588679"
+  },
+  {
+    "endpoint": "/health",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014436960220336914,
+    "timestamp": "2025-06-10T13:48:33.589029"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.021490812301635742,
-    "timestamp": "2025-05-12T15:22:11.385978"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010432958602905273,
-    "timestamp": "2025-05-12T15:22:11.396737"
+    "duration": 0.011445045471191406,
+    "timestamp": "2025-06-10T13:48:33.601028"
   },
   {
     "endpoint": "/api/queue",
     "method": "GET",
-    "status": 429,
-    "duration": 0.010453462600708008,
-    "timestamp": "2025-05-12T15:22:11.396884"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010759353637695312,
-    "timestamp": "2025-05-12T15:22:11.397281"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011367321014404297,
-    "timestamp": "2025-05-12T15:22:11.397991"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010950565338134766,
-    "timestamp": "2025-05-12T15:22:11.397666"
+    "status": 200,
+    "duration": 0.011400699615478516,
+    "timestamp": "2025-06-10T13:48:33.601176"
   },
   {
     "endpoint": "/api/queue",
     "method": "GET",
-    "status": 429,
-    "duration": 0.012619972229003906,
-    "timestamp": "2025-05-12T15:22:11.399425"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012204647064208984,
-    "timestamp": "2025-05-12T15:22:11.399097"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01336526870727539,
-    "timestamp": "2025-05-12T15:22:11.400345"
+    "status": 200,
+    "duration": 0.011444330215454102,
+    "timestamp": "2025-06-10T13:48:33.601315"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.013880729675292969,
-    "timestamp": "2025-05-12T15:22:11.400948"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.014406681060791016,
-    "timestamp": "2025-05-12T15:22:11.401598"
+    "duration": 0.01200246810913086,
+    "timestamp": "2025-06-10T13:48:33.601966"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.015444755554199219,
-    "timestamp": "2025-05-12T15:22:11.402724"
+    "duration": 0.012029409408569336,
+    "timestamp": "2025-06-10T13:48:33.602126"
+  },
+  {
+    "endpoint": "/api/browse",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.012905597686767578,
+    "timestamp": "2025-06-10T13:48:33.603123"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.015680789947509766,
-    "timestamp": "2025-05-12T15:22:11.403073"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01696181297302246,
-    "timestamp": "2025-05-12T15:22:11.404443"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016544818878173828,
-    "timestamp": "2025-05-12T15:22:11.404114"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.018475055694580078,
-    "timestamp": "2025-05-12T15:22:11.406152"
+    "status": 200,
+    "duration": 0.011958837509155273,
+    "timestamp": "2025-06-10T13:48:33.602268"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.018052339553833008,
-    "timestamp": "2025-05-12T15:22:11.405823"
+    "duration": 0.012864112854003906,
+    "timestamp": "2025-06-10T13:48:33.603265"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.01970815658569336,
-    "timestamp": "2025-05-12T15:22:11.407591"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.019270658493041992,
-    "timestamp": "2025-05-12T15:22:11.407265"
+    "duration": 0.012160301208496094,
+    "timestamp": "2025-06-10T13:48:33.602678"
   },
   {
     "endpoint": "/api/queue",
     "method": "GET",
-    "status": 429,
-    "duration": 0.020870685577392578,
-    "timestamp": "2025-05-12T15:22:11.409114"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.020480871200561523,
-    "timestamp": "2025-05-12T15:22:11.408818"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01044011116027832,
-    "timestamp": "2025-05-12T15:22:11.419821"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010455608367919922,
-    "timestamp": "2025-05-12T15:22:11.419960"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010765790939331055,
-    "timestamp": "2025-05-12T15:22:11.420360"
+    "status": 200,
+    "duration": 0.01312565803527832,
+    "timestamp": "2025-06-10T13:48:33.603760"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.01109170913696289,
-    "timestamp": "2025-05-12T15:22:11.420789"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011260509490966797,
-    "timestamp": "2025-05-12T15:22:11.421077"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012432098388671875,
-    "timestamp": "2025-05-12T15:22:11.422338"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012698173522949219,
-    "timestamp": "2025-05-12T15:22:11.422692"
+    "duration": 0.013181447982788086,
+    "timestamp": "2025-06-10T13:48:33.603908"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.013756513595581055,
-    "timestamp": "2025-05-12T15:22:11.423838"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.014006614685058594,
-    "timestamp": "2025-05-12T15:22:11.424200"
+    "duration": 0.014188289642333984,
+    "timestamp": "2025-06-10T13:48:33.605032"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.01484823226928711,
-    "timestamp": "2025-05-12T15:22:11.425131"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.015551090240478516,
-    "timestamp": "2025-05-12T15:22:11.425921"
+    "status": 200,
+    "duration": 0.013508319854736328,
+    "timestamp": "2025-06-10T13:48:33.604470"
   },
   {
     "endpoint": "/api/transcribe",
     "method": "POST",
     "status": 429,
-    "duration": 0.016198158264160156,
-    "timestamp": "2025-05-12T15:22:11.426655"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01711106300354004,
-    "timestamp": "2025-05-12T15:22:11.427680"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.018621206283569336,
-    "timestamp": "2025-05-12T15:22:11.429299"
+    "duration": 0.014280319213867188,
+    "timestamp": "2025-06-10T13:48:33.605346"
   },
   {
     "endpoint": "/health",
     "method": "GET",
-    "status": 429,
-    "duration": 0.02611231803894043,
-    "timestamp": "2025-05-12T15:22:11.436879"
+    "status": 200,
+    "duration": 0.013429641723632812,
+    "timestamp": "2025-06-10T13:48:33.604613"
   },
   {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.020129680633544922,
-    "timestamp": "2025-05-12T15:22:11.430985"
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.014678478240966797,
+    "timestamp": "2025-06-10T13:48:33.605961"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.021689176559448242,
-    "timestamp": "2025-05-12T15:22:11.432657"
+    "status": 200,
+    "duration": 0.014939069747924805,
+    "timestamp": "2025-06-10T13:48:33.606314"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015193700790405273,
+    "timestamp": "2025-06-10T13:48:33.606661"
+  },
+  {
+    "endpoint": "/api/queue",
+    "method": "GET",
+    "status": 200,
+    "duration": 0.015285968780517578,
+    "timestamp": "2025-06-10T13:48:33.607022"
   },
   {
     "endpoint": "/api/browse",
     "method": "GET",
-    "status": 429,
-    "duration": 0.02325439453125,
-    "timestamp": "2025-05-12T15:22:11.434311"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.02457284927368164,
-    "timestamp": "2025-05-12T15:22:11.435879"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.026250600814819336,
-    "timestamp": "2025-05-12T15:22:11.437649"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010584115982055664,
-    "timestamp": "2025-05-12T15:22:11.448585"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.010562419891357422,
-    "timestamp": "2025-05-12T15:22:11.448747"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01085662841796875,
-    "timestamp": "2025-05-12T15:22:11.449139"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011365413665771484,
-    "timestamp": "2025-05-12T15:22:11.449744"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.011772632598876953,
-    "timestamp": "2025-05-12T15:22:11.450242"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.012948989868164062,
-    "timestamp": "2025-05-12T15:22:11.451510"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.013193607330322266,
-    "timestamp": "2025-05-12T15:22:11.451861"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.014581918716430664,
-    "timestamp": "2025-05-12T15:22:11.453342"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.014580249786376953,
-    "timestamp": "2025-05-12T15:22:11.453483"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016028404235839844,
-    "timestamp": "2025-05-12T15:22:11.455024"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.015609264373779297,
-    "timestamp": "2025-05-12T15:22:11.454695"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.017268657684326172,
-    "timestamp": "2025-05-12T15:22:11.456447"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.016744613647460938,
-    "timestamp": "2025-05-12T15:22:11.456014"
-  },
-  {
-    "endpoint": "/api/browse",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01811075210571289,
-    "timestamp": "2025-05-12T15:22:11.457471"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01851177215576172,
-    "timestamp": "2025-05-12T15:22:11.457963"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.019936561584472656,
-    "timestamp": "2025-05-12T15:22:11.459479"
-  },
-  {
-    "endpoint": "/health",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.01969456672668457,
-    "timestamp": "2025-05-12T15:22:11.459337"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.021013498306274414,
-    "timestamp": "2025-05-12T15:22:11.460750"
-  },
-  {
-    "endpoint": "/api/queue",
-    "method": "GET",
-    "status": 429,
-    "duration": 0.0211029052734375,
-    "timestamp": "2025-05-12T15:22:11.461106"
-  },
-  {
-    "endpoint": "/api/transcribe",
-    "method": "POST",
-    "status": 429,
-    "duration": 0.022081613540649414,
-    "timestamp": "2025-05-12T15:22:11.462184"
+    "status": 200,
+    "duration": 0.016582727432250977,
+    "timestamp": "2025-06-10T13:48:33.608414"
   }
 ]
