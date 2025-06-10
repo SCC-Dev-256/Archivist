@@ -1,6 +1,4 @@
-"""Transcription module for the Archivist application.
-
-This module handles video and audio transcription using WhisperX,
+"""This module handles video and audio transcription using faster-whisper directly,
 providing high-quality speech-to-text conversion with timestamp alignment.
 
 Key Features:
@@ -12,8 +10,8 @@ Key Features:
 - CPU-optimized processing
 
 Example:
-    >>> from core.transcription import run_whisperx
-    >>> result = run_whisperx('video.mp4')
+    >>> from core.transcription import run_whisper_transcription
+    >>> result = run_whisper_transcription('video.mp4')
     >>> print(result['segments'])
 """
 
@@ -62,8 +60,31 @@ def format_timestamp(seconds: float) -> str:
     seconds = seconds % 60
     return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}".replace(".", ",")
 
-def run_whisperx(video_path: str) -> Dict[str, Any]:
-    """Run WhisperX transcription on a video file using faster-whisper directly"""
+def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
+    """
+    Transcribe video using faster-whisper with optimizations.
+    
+    This function provides a complete audio transcription pipeline including:
+    - Audio extraction from video files
+    - Speech-to-text transcription with timestamps
+    - SRT subtitle generation with proper formatting
+    
+    Args:
+        video_path (str): Absolute path to the video file to transcribe
+        
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - success (bool): Whether transcription succeeded
+            - srt_path (str): Path to generated SRT file (if successful)
+            - segments (int): Number of transcription segments
+            - duration (float): Total audio duration in seconds
+            - error (str): Error message (if failed)
+            
+    Raises:
+        FileNotFoundError: If video file doesn't exist
+        ValueError: If video file is invalid or corrupted
+        RuntimeError: If transcription process fails
+    """
     try:
         logger.info(f"Starting transcription of {video_path}")
         
@@ -106,8 +127,8 @@ def run_whisperx(video_path: str) -> Dict[str, Any]:
             current_job.meta['status_message'] = 'Loading Whisper model...'
             current_job.save_meta()
 
-        # Set the target directory
-        target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/whisperx/assets"
+        # Set the target directory for model downloads
+        target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/faster_whisper/assets"
         os.makedirs(target_dir, exist_ok=True)
 
         # Load whisper model for transcription with CPU optimizations

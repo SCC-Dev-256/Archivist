@@ -131,7 +131,7 @@ class QueueManager:
             priority = 100 - position  # This ensures position 0 has highest priority
             
             job = self.queue.enqueue(
-                'core.transcription.run_whisperx',
+                'core.transcription.run_whisper_transcription',
                 video_path,
                 job_timeout='1h',
                 meta={

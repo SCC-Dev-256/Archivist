@@ -1,4 +1,4 @@
-from core.transcription import run_whisperx
+from core.transcription import run_whisper_transcription
 from loguru import logger
 import sys
 import os
@@ -72,7 +72,7 @@ def main():
         import time
         start_time = time.time()
         
-        success, result = run_whisperx(video_path)
+        success, result = run_whisper_transcription(video_path)
         
         end_time = time.time()
         duration = end_time - start_time

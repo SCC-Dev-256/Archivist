@@ -15,7 +15,7 @@ torch.serialization.add_safe_globals([
 ])
 
 # Set the target directory
-target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/whisperx/assets"
+target_dir = "/opt/Archivist/.venv/lib/python3.11/site-packages/faster_whisper/assets"
 os.makedirs(target_dir, exist_ok=True)
 
 def patched_load(*args, **kwargs):
