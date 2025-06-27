@@ -396,6 +396,26 @@ def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
 
         logger.info("Transcription process completed successfully")
         
+        # Save transcription result to database
+        try:
+            from core.models import TranscriptionResultORM
+            from core.app import db
+            import uuid
+            
+            result = TranscriptionResultORM(
+                id=str(uuid.uuid4()),
+                video_path=video_path,
+                output_path=central_srt_path,
+                status='completed',
+                completed_at=datetime.utcnow()
+            )
+            db.session.add(result)
+            db.session.commit()
+            logger.info(f"Saved transcription result to database with ID: {result.id}")
+        except Exception as e:
+            logger.error(f"Failed to save transcription result to database: {e}")
+            # Don't raise the error since the transcription itself was successful
+        
         # Log debug information at end
         if DEBUG_MODE:
             log_debug_info('end', {

@@ -16,17 +16,20 @@ from flask_cors import CORS
 from core.logging_config import setup_logging
 from core.database import db
 from core.web_app import register_routes
+from core.security import security_manager
 
 # Initialize extensions
 migrate = Migrate()
 cache = Cache()
 
-# Initialize limiter with in-memory storage
+# Initialize limiter with Redis storage for better security
 limiter = Limiter(
     key_func=get_remote_address,
-    storage_uri="memory://",
+    storage_uri="redis://localhost:6379/0",
     strategy="fixed-window",
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=["200 per day", "50 per hour"],
+    headers_enabled=True,
+    retry_after="x-ratelimit-reset"
 )
 
 def create_app(testing=False):
@@ -44,7 +47,16 @@ def create_app(testing=False):
     # Configure the app BEFORE initializing the database
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@localhost:5432/archivist')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
+    
+    # Security Configuration
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(32).hex())
+    app.config['WTF_CSRF_ENABLED'] = True
+    app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour
+    app.config['WTF_CSRF_SSL_STRICT'] = True
+    app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
     
     # Configure cache
     app.config['CACHE_TYPE'] = 'redis'
@@ -58,7 +70,17 @@ def create_app(testing=False):
     migrate.init_app(app, db)
     cache.init_app(app)
     limiter.init_app(app)
-    CORS(app)
+    
+    # Configure CORS with security restrictions
+    CORS(app, 
+         origins=os.getenv('CORS_ORIGINS', '*').split(','),
+         methods=os.getenv('CORS_METHODS', 'GET,POST,PUT,DELETE,OPTIONS').split(','),
+         allow_headers=os.getenv('CORS_ALLOW_HEADERS', 'Content-Type,Authorization').split(','),
+         supports_credentials=True
+    )
+    
+    # Initialize security manager
+    security_manager.init_app(app)
     
     # Register routes from web_app
     register_routes(app, limiter)

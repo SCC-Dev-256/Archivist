@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Literal
+from pydantic import BaseModel, Field, validator, root_validator
+from typing import Optional, List, Literal, Union
 import os
 from pathlib import Path
 from datetime import datetime
+import re
 
 from core.database import db
 
@@ -34,7 +35,43 @@ class TranscriptionResultORM(db.Model):
 
 # Pydantic models for request/response validation
 class BrowseRequest(BaseModel):
-    path: str = Field(default="", description="Path to browse, relative to NAS_PATH")
+    path: str = Field(default="", description="Path to browse, relative to NAS_PATH", max_length=500)
+    
+    @validator('path')
+    def validate_path(cls, v):
+        # Check for directory traversal attempts
+        if '..' in v:
+            raise ValueError('Invalid path: cannot contain ".."')
+        
+        # Check for suspicious characters
+        suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$', '(', ')']
+        if any(char in v for char in suspicious_chars):
+            raise ValueError('Invalid path: contains suspicious characters')
+        
+        # Check for absolute paths (should be relative)
+        if v.startswith('/'):
+            raise ValueError('Invalid path: must be relative')
+        
+        # Limit path length
+        if len(v) > 500:
+            raise ValueError('Invalid path: too long')
+        
+        return v
+
+class FileItem(BaseModel):
+    name: str = Field(..., max_length=255)
+    type: Literal['file', 'directory']
+    path: str = Field(..., max_length=500)
+    size: Optional[int] = None
+    mount: bool = False
+    
+    @validator('name')
+    def validate_name(cls, v):
+        if not v or len(v.strip()) == 0:
+            raise ValueError('Name cannot be empty')
+        if len(v) > 255:
+            raise ValueError('Name too long')
+        return v.strip()
     
     @validator('path')
     def validate_path(cls, v):
@@ -42,40 +79,143 @@ class BrowseRequest(BaseModel):
             raise ValueError('Invalid path: cannot contain ".."')
         return v
 
-class FileItem(BaseModel):
-    name: str
-    type: Literal['file', 'directory']
-    path: str
-    size: Optional[int] = None
-    mount: bool = False
-
 class ErrorResponse(BaseModel):
-    error: str
+    error: str = Field(..., max_length=1000)
+    details: Optional[dict] = None
 
 class SuccessResponse(BaseModel):
     status: Literal['success']
-    job_id: Optional[str] = None
+    job_id: Optional[str] = Field(None, max_length=36)
 
 class TranscribeRequest(BaseModel):
-    path: str
+    path: str = Field(..., description="Path to video file, relative to /mnt", max_length=500)
+    position: Optional[int] = Field(None, ge=0, le=1000, description="Optional position in queue")
+    
+    @validator('path')
+    def validate_path(cls, v):
+        # Check for directory traversal attempts
+        if '..' in v:
+            raise ValueError('Invalid path: cannot contain ".."')
+        
+        # Check for suspicious characters
+        suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$', '(', ')']
+        if any(char in v for char in suspicious_chars):
+            raise ValueError('Invalid path: contains suspicious characters')
+        
+        # Check for absolute paths (should be relative)
+        if v.startswith('/'):
+            raise ValueError('Invalid path: must be relative')
+        
+        # Validate file extension
+        allowed_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.mpeg', '.mpg'}
+        file_ext = Path(v).suffix.lower()
+        if file_ext not in allowed_extensions:
+            raise ValueError(f'Invalid file type: {file_ext}. Allowed: {", ".join(allowed_extensions)}')
+        
+        return v
 
 class QueueReorderRequest(BaseModel):
-    job_id: str
-    position: int
+    job_id: str = Field(..., description="ID of the job to reorder", max_length=36, min_length=1)
+    position: int = Field(..., description="New position in queue (0-based)", ge=0, le=1000)
+    
+    @validator('job_id')
+    def validate_job_id(cls, v):
+        # Validate UUID format or custom job ID format
+        if not re.match(r'^[a-zA-Z0-9\-_]{1,36}$', v):
+            raise ValueError('Invalid job ID format')
+        return v
 
 class JobStatus(BaseModel):
-    id: str
-    status: str
-    video_path: str
+    id: str = Field(..., max_length=36)
+    status: str = Field(..., regex='^(queued|processing|paused|completed|failed)$')
+    video_path: str = Field(..., max_length=500)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    progress: Optional[float] = 0
-    status_message: Optional[str] = None
+    progress: Optional[float] = Field(None, ge=0, le=100)
+    status_message: Optional[str] = Field(None, max_length=1000)
     error_details: Optional[dict] = None
-    start_time: Optional[float] = None
-    time_remaining: Optional[float] = None
-    transcribed_duration: Optional[float] = None
-    total_duration: Optional[float] = None
-    position: Optional[int] = 0
-    error: Optional[str] = None
-    result: Optional[dict] = None 
+    start_time: Optional[float] = Field(None, ge=0)
+    time_remaining: Optional[float] = Field(None, ge=0)
+    transcribed_duration: Optional[float] = Field(None, ge=0)
+    total_duration: Optional[float] = Field(None, ge=0)
+    position: Optional[int] = Field(0, ge=0, le=1000)
+    error: Optional[str] = Field(None, max_length=1000)
+    result: Optional[dict] = None
+    
+    @validator('video_path')
+    def validate_video_path(cls, v):
+        if '..' in v:
+            raise ValueError('Invalid video path: cannot contain ".."')
+        return v
+    
+    @validator('status_message', 'error')
+    def validate_text_fields(cls, v):
+        if v is not None:
+            # Remove any potential HTML/script tags
+            v = re.sub(r'<[^>]*>', '', v)
+            # Limit length
+            if len(v) > 1000:
+                v = v[:997] + '...'
+        return v
+
+class BatchTranscribeRequest(BaseModel):
+    paths: List[str] = Field(..., description="List of video file paths", min_items=1, max_items=100)
+    
+    @validator('paths')
+    def validate_paths(cls, v):
+        if len(v) > 100:
+            raise ValueError('Too many files in batch request (max 100)')
+        
+        for path in v:
+            # Validate each path
+            if '..' in path:
+                raise ValueError(f'Invalid path: cannot contain ".." - {path}')
+            
+            suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$', '(', ')']
+            if any(char in path for char in suspicious_chars):
+                raise ValueError(f'Invalid path: contains suspicious characters - {path}')
+            
+            if path.startswith('/'):
+                raise ValueError(f'Invalid path: must be relative - {path}')
+            
+            # Validate file extension
+            allowed_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.mpeg', '.mpg'}
+            file_ext = Path(path).suffix.lower()
+            if file_ext not in allowed_extensions:
+                raise ValueError(f'Invalid file type: {file_ext} - {path}')
+        
+        return v
+
+class SecurityConfig(BaseModel):
+    """Security configuration model"""
+    max_file_size: int = Field(10 * 1024 * 1024 * 1024, description="Maximum file size in bytes")
+    allowed_extensions: List[str] = Field(['.mp4', '.avi', '.mov', '.mkv', '.mpeg', '.mpg'])
+    max_batch_size: int = Field(100, description="Maximum files per batch request")
+    rate_limit_requests: int = Field(200, description="Rate limit requests per day")
+    rate_limit_window: int = Field(3600, description="Rate limit window in seconds")
+    
+    @validator('allowed_extensions')
+    def validate_extensions(cls, v):
+        for ext in v:
+            if not ext.startswith('.') or len(ext) < 2:
+                raise ValueError(f'Invalid extension format: {ext}')
+        return v
+
+class AuditLogEntry(BaseModel):
+    """Audit log entry model for security events"""
+    timestamp: datetime
+    event_type: str = Field(..., regex='^(login|logout|file_access|file_upload|file_delete|admin_action)$')
+    user_id: Optional[str] = Field(None, max_length=36)
+    ip_address: str = Field(..., max_length=45)  # IPv6 compatible
+    user_agent: Optional[str] = Field(None, max_length=500)
+    resource: Optional[str] = Field(None, max_length=500)
+    action: str = Field(..., max_length=100)
+    status: Literal['success', 'failure', 'error']
+    details: Optional[dict] = None
+    
+    @validator('ip_address')
+    def validate_ip_address(cls, v):
+        # Basic IP address validation
+        if not re.match(r'^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$', v):
+            raise ValueError('Invalid IP address format')
+        return v 

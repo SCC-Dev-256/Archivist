@@ -152,3 +152,39 @@
 #flask-migrate==4.0.5
 #psutil==5.9.8
 #flask-jwt-extended==4.7.1
+
+# Security Requirements - OWASP Top 10 Protection
+# CSRF Protection
+Flask-WTF>=1.2.1,<2.0.0
+
+# Enhanced Input Validation and Sanitization
+bleach>=6.1.0,<7.0.0
+markupsafe>=2.1.5,<3.0.0
+html5lib>=1.1,<2.0
+
+# Security Headers and CSP
+flask-talisman>=1.1.0,<2.0.0
+
+# Enhanced Authentication and Session Security
+flask-session>=0.5.0,<1.0.0
+
+# Password Security
+bcrypt>=4.1.2,<5.0.0
+passlib>=1.7.4,<2.0.0
+
+# Content Security Policy
+flask-csp>=0.1.0,<1.0.0
+
+# Security Monitoring and Logging
+python-json-logger>=2.0.7,<3.0.0
+sentry-sdk>=1.29.2,<2.0.0
+
+# Input Validation and Sanitization
+email-validator>=2.1.0,<3.0.0
+
+# Secure File Upload Validation
+python-magic>=0.4.27,<1.0.0
+
+# Additional Security Utilities
+cryptography>=41.0.7,<42.0.0
+pyjwt>=2.8.0,<3.0.0

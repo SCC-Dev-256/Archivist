@@ -108,13 +108,15 @@
     <script>
         let currentPath = '';
         let queueUpdateInterval;
-        let selectedFile = null;
+        let selectedFiles = new Set(); // Track multiple selected files
 
         // Initialize
-        loadFiles();
-        updateQueue();
-        loadCompletedTranscriptions();
-        queueUpdateInterval = setInterval(updateQueue, 5000);
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFiles();
+            updateQueue();
+            loadCompletedTranscriptions();
+            queueUpdateInterval = setInterval(updateQueue, 5000);
+        });
 
         // Search functionality
         document.getElementById('search-input').addEventListener('input', function(e) {
@@ -129,9 +131,9 @@
         // Search functions
         function searchFiles(query) {
             const fileList = document.getElementById('file-list');
-            const items = fileList.getElementsByClassName('hover:bg-gray-700');
+            const items = fileList.getElementsByClassName('file-item');
             Array.from(items).forEach(item => {
-                const name = item.querySelector('span:nth-child(2)').textContent.toLowerCase();
+                const name = item.querySelector('.file-name').textContent.toLowerCase();
                 if (name.includes(query.toLowerCase())) {
                     item.style.display = '';
                 } else {
@@ -142,7 +144,7 @@
 
         function searchTranscriptions(query) {
             const completedList = document.getElementById('completed-list');
-            const items = completedList.getElementsByClassName('bg-gray-700');
+            const items = completedList.getElementsByClassName('transcription-item');
             Array.from(items).forEach(item => {
                 const name = item.querySelector('h3').textContent.toLowerCase();
                 if (name.includes(query.toLowerCase())) {
@@ -156,6 +158,11 @@
         // Load files for current directory
         function loadFiles() {
             const path = currentPath || '';
+            const fileList = document.getElementById('file-list');
+            
+            // Show loading state
+            fileList.innerHTML = '<div class="text-gray-400 p-4 text-center">Loading...</div>';
+            
             fetch(`/api/browse?path=${encodeURIComponent(path)}`)
                 .then(response => {
                     if (!response.ok) {
@@ -165,11 +172,11 @@
                 })
                 .then(items => {
                     if (!Array.isArray(items)) {
-                        showNotification('Error loading files. Please try again.', 'error');
-                        return;
+                        throw new Error('Invalid response format');
                     }
-                    const fileList = document.getElementById('file-list');
+                    
                     document.getElementById('current-path').value = path;
+                    selectedFiles.clear(); // Clear selection when loading new directory
                     
                     if (items.length === 0) {
                         fileList.innerHTML = '<div class="text-gray-400 p-4 text-center">No files found</div>';
@@ -178,68 +185,88 @@
                     
                     fileList.innerHTML = items.map(item => {
                         if (item.type === 'directory') {
-                            // Directory: row is clickable for navigation
                             return `
-                                <div class="flex items-center justify-between p-2 hover:bg-gray-700 rounded cursor-pointer" onclick="navigate('${item.path}')">
+                                <div class="file-item flex items-center justify-between p-2 hover:bg-gray-700 rounded cursor-pointer" onclick="navigate('${item.path}')">
                                     <div class="flex items-center gap-2">
                                         <span class="text-gray-400">📁</span>
-                                        <span>${item.name}</span>
+                                        <span class="file-name">${item.name}</span>
                                     </div>
-                                    <span class="text-sm text-gray-400"></span>
+                                    <span class="text-sm text-gray-400">Directory</span>
                                 </div>
                             `;
                         } else {
-                            // File: checkbox for selection
                             return `
-                                <div class="flex items-center justify-between p-2 hover:bg-gray-700 rounded">
+                                <div class="file-item flex items-center justify-between p-2 hover:bg-gray-700 rounded">
                                     <div class="flex items-center gap-2">
-                                        <input type="checkbox" class="file-checkbox" value="${item.path}">
+                                        <input type="checkbox" class="file-checkbox" value="${item.path}" 
+                                               onchange="handleFileSelection('${item.path}', this.checked)">
                                         <span class="text-gray-400">📄</span>
-                                        <span>${item.name}</span>
+                                        <span class="file-name">${item.name}</span>
                                     </div>
                                     <span class="text-sm text-gray-400">${formatSize(item.size)}</span>
                                 </div>
                             `;
                         }
                     }).join('');
-
-                    // Add the batch queue button below the file list:
-                    const batchButtonId = 'queue-selected-btn';
-                    if (!document.getElementById(batchButtonId)) {
-                        const batchBtn = document.createElement('button');
-                        batchBtn.id = batchButtonId;
-                        batchBtn.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded';
-                        batchBtn.textContent = 'Queue Selected for Transcription';
-                        batchBtn.onclick = queueSelectedFiles;
-                        fileList.parentNode.appendChild(batchBtn);
-                    }
                 })
                 .catch(error => {
                     console.error('Error loading files:', error);
-                    showNotification('Error loading files. Please try again.', 'error');
+                    showNotification('Error loading files: ' + error.message, 'error');
+                    fileList.innerHTML = '<div class="text-red-400 p-4 text-center">Error loading files</div>';
                 });
+        }
+
+        // Handle file selection
+        function handleFileSelection(path, isSelected) {
+            if (isSelected) {
+                selectedFiles.add(path);
+            } else {
+                selectedFiles.delete(path);
+            }
+            
+            // Update queue button state
+            const queueBtn = document.getElementById('queue-selected-btn');
+            if (selectedFiles.size > 0) {
+                queueBtn.textContent = `Queue ${selectedFiles.size} Selected File(s)`;
+                queueBtn.classList.remove('bg-gray-600');
+                queueBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            } else {
+                queueBtn.textContent = 'Queue Selected for Transcription';
+                queueBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                queueBtn.classList.add('bg-gray-600');
+            }
         }
 
         // Load completed transcriptions
         function loadCompletedTranscriptions() {
             fetch('/api/transcriptions')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.error) {
-                        showNotification(data.error, 'error');
-                        return;
+                        throw new Error(data.error);
                     }
                     if (!Array.isArray(data)) {
-                        showNotification('Invalid response format', 'error');
+                        throw new Error('Invalid response format');
+                    }
+                    
+                    const completedList = document.getElementById('completed-list');
+                    if (data.length === 0) {
+                        completedList.innerHTML = '<div class="text-gray-400 p-4 text-center">No completed transcriptions</div>';
                         return;
                     }
-                    const completedList = document.getElementById('completed-list');
+                    
                     completedList.innerHTML = data.map(trans => `
-                        <div class="bg-gray-700 rounded p-4">
+                        <div class="transcription-item bg-gray-700 rounded p-4">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <h3 class="font-semibold">${trans.video_path.split('/').pop()}</h3>
                                     <p class="text-sm text-gray-400">Completed: ${new Date(trans.completed_at).toLocaleString()}</p>
+                                    <p class="text-sm text-gray-400">Status: ${trans.status}</p>
                                 </div>
                                 <div class="flex gap-2">
                                     <button onclick="viewTranscription('${trans.id}')" 
@@ -263,43 +290,34 @@
                 })
                 .catch(error => {
                     console.error('Error loading transcriptions:', error);
-                    showNotification('Error loading transcriptions. Please try again.', 'error');
+                    showNotification('Error loading transcriptions: ' + error.message, 'error');
+                    document.getElementById('completed-list').innerHTML = 
+                        '<div class="text-red-400 p-4 text-center">Error loading transcriptions</div>';
                 });
-        }
-
-        // Select file for transcription
-        function selectFile(path) {
-            selectedFile = path;
-            const fileList = document.getElementById('file-list');
-            const items = fileList.getElementsByClassName('hover:bg-gray-700');
-            Array.from(items).forEach(item => {
-                item.classList.remove('bg-blue-600');
-            });
-            event.currentTarget.classList.add('bg-blue-600');
-            
-            // Show transcribe button
-            const transcribeButton = document.createElement('button');
-            transcribeButton.className = 'mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded';
-            transcribeButton.textContent = 'Transcribe Selected File';
-            transcribeButton.onclick = () => transcribe(selectedFile);
-            
-            const existingButton = fileList.querySelector('button');
-            if (existingButton) {
-                existingButton.remove();
-            }
-            fileList.appendChild(transcribeButton);
         }
 
         // Show file details
         function showFileDetails() {
-            if (!selectedFile) {
+            const selectedFilesList = Array.from(selectedFiles);
+            if (selectedFilesList.length === 0) {
                 showNotification('Please select a file first', 'warning');
                 return;
             }
-
-            fetch(`/api/file-details?path=${encodeURIComponent(selectedFile)}`)
-                .then(response => response.json())
+            
+            const filePath = selectedFilesList[0]; // Show details for first selected file
+            
+            fetch(`/api/file-details?path=${encodeURIComponent(filePath)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(details => {
+                    if (details.error) {
+                        throw new Error(details.error);
+                    }
+                    
                     const modal = document.getElementById('file-details-modal');
                     const content = document.getElementById('file-details-content');
                     
@@ -313,7 +331,7 @@
                             ${details.metadata ? `
                                 <div class="mt-4">
                                     <h4 class="font-semibold mb-2">Metadata</h4>
-                                    <pre class="bg-gray-700 p-2 rounded text-sm">${JSON.stringify(details.metadata, null, 2)}</pre>
+                                    <pre class="bg-gray-700 p-2 rounded text-sm overflow-auto max-h-48">${JSON.stringify(details.metadata, null, 2)}</pre>
                                 </div>
                             ` : ''}
                         </div>
@@ -323,7 +341,7 @@
                 })
                 .catch(error => {
                     console.error('Error loading file details:', error);
-                    showNotification('Error loading file details', 'error');
+                    showNotification('Error loading file details: ' + error.message, 'error');
                 });
         }
 
@@ -345,14 +363,24 @@
         // Show notification
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 p-4 rounded-lg ${
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg z-50 ${
                 type === 'error' ? 'bg-red-600' :
                 type === 'warning' ? 'bg-yellow-600' :
-                'bg-green-600'
-            } text-white`;
+                type === 'success' ? 'bg-green-600' :
+                'bg-blue-600'
+            } text-white shadow-lg`;
             notification.textContent = message;
             document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 5000);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+            
+            // Allow manual dismissal
+            notification.addEventListener('click', () => notification.remove());
         }
 
         // Format file size
@@ -368,20 +396,13 @@
             return `${s.toFixed(1)} ${units[unitIndex]}`;
         }
 
-        // Refresh files (alias for loadFiles)
+        // Refresh files
         function refreshFiles() {
-            // Clear any selected file state
-            selectedFile = null;
-            
-            // Show loading feedback
+            selectedFiles.clear();
             const fileList = document.getElementById('file-list');
             fileList.innerHTML = '<div class="text-gray-400 p-4 text-center">Refreshing...</div>';
-            
-            // Load fresh data
             loadFiles();
-            
-            // Show success notification
-            showNotification('File list refreshed', 'info');
+            showNotification('File list refreshed', 'success');
         }
 
         // Navigate to directory
@@ -391,7 +412,7 @@
                 return;
             }
             currentPath = path;
-            selectedFile = null;  // Reset selected file
+            selectedFiles.clear();
             loadFiles();
         }
 
@@ -404,53 +425,73 @@
                 parts.pop();
                 currentPath = parts.length ? parts.join('/') : '';
             }
-            selectedFile = null;  // Reset selected file
+            selectedFiles.clear();
             loadFiles();
         }
 
-        // Start transcription
+        // Start transcription for single file
         function transcribe(path) {
             fetch('/api/transcribe', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ path })
+                body: JSON.stringify({ path: path })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.job_id) {
+                    showNotification('Transcription job started successfully', 'success');
                     updateQueue();
                 } else {
-                    alert('Error starting transcription. Please try again.');
+                    throw new Error(data.error || 'Unknown error');
                 }
             })
             .catch(error => {
                 console.error('Error starting transcription:', error);
-                alert('Error starting transcription. Please try again.');
+                showNotification('Error starting transcription: ' + error.message, 'error');
             });
         }
 
         // Update queue display
         function updateQueue() {
             fetch('/api/queue')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(jobs => {
+                    if (!Array.isArray(jobs)) {
+                        throw new Error('Invalid response format');
+                    }
+                    
                     const queueList = document.getElementById('queue-list');
+                    if (jobs.length === 0) {
+                        queueList.innerHTML = '<div class="text-gray-400 p-4 text-center">No jobs in queue</div>';
+                        return;
+                    }
+                    
                     queueList.innerHTML = jobs.map(job => `
                         <div class="bg-gray-700 rounded p-4">
                             <div class="flex justify-between items-start mb-2">
                                 <div>
-                                    <h3 class="font-semibold">${job.video_path.split('/').pop()}</h3>
+                                    <h3 class="font-semibold">${job.video_path ? job.video_path.split('/').pop() : 'Unknown file'}</h3>
                                     <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
                                 </div>
                                 <div class="flex gap-2">
-                                <span class="px-2 py-1 rounded text-sm ${
-                                    job.status === 'completed' ? 'bg-green-600' :
-                                    job.status === 'failed' ? 'bg-red-600' :
-                                    job.status === 'processing' ? 'bg-blue-600' :
+                                    <span class="px-2 py-1 rounded text-sm ${
+                                        job.status === 'completed' ? 'bg-green-600' :
+                                        job.status === 'failed' ? 'bg-red-600' :
+                                        job.status === 'processing' || job.status === 'started' ? 'bg-blue-600' :
                                         'bg-yellow-600'
-                                }">${job.status}</span>
+                                    }">${job.status}</span>
                                     ${job.status !== 'completed' && job.status !== 'failed' ? `
                                         <button onclick="cancelJob('${job.id}')" 
                                                 class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
@@ -459,9 +500,9 @@
                                     ` : ''}
                                 </div>
                             </div>
-                            ${job.progress !== null ? `
+                            ${job.progress !== null && job.progress !== undefined ? `
                                 <div class="w-full bg-gray-600 rounded-full h-2 mb-2">
-                                    <div class="bg-blue-600 h-2 rounded-full" style="width: ${job.progress}%"></div>
+                                    <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: ${job.progress}%"></div>
                                 </div>
                                 <p class="text-sm text-gray-400">${job.progress.toFixed(1)}% complete</p>
                             ` : ''}
@@ -475,46 +516,63 @@
                 })
                 .catch(error => {
                     console.error('Error updating queue:', error);
+                    document.getElementById('queue-list').innerHTML = 
+                        '<div class="text-red-400 p-4 text-center">Error loading queue</div>';
                 });
         }
 
         // Format time remaining
         function formatTimeRemaining(seconds) {
+            if (!seconds || seconds <= 0) return 'Unknown';
             if (seconds > 3600) {
                 return `${(seconds / 3600).toFixed(1)} hours`;
             } else if (seconds > 60) {
-                return `${(seconds / 60).toFixed(0)} minutes`;
+                return `${Math.round(seconds / 60)} minutes`;
             } else {
-                return `${seconds.toFixed(0)} seconds`;
+                return `${Math.round(seconds)} seconds`;
             }
         }
 
-        // Add JS function to handle batch queueing:
+        // Queue selected files for transcription
         function queueSelectedFiles() {
-            const checkboxes = document.querySelectorAll('.file-checkbox:checked');
-            const paths = Array.from(checkboxes).map(cb => cb.value);
+            const paths = Array.from(selectedFiles);
             if (paths.length === 0) {
                 showNotification('Please select at least one video file.', 'warning');
                 return;
             }
+            
             fetch('/api/transcribe/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paths })
+                body: JSON.stringify({ paths: paths })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                let message = '';
                 if (data.queued && data.queued.length > 0) {
-                    showNotification(`Queued ${data.queued.length} file(s) for transcription.`, 'info');
+                    message += `Successfully queued ${data.queued.length} file(s) for transcription.`;
                     updateQueue();
+                    
+                    // Clear selections after successful queueing
+                    selectedFiles.clear();
+                    document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
+                    handleFileSelection('', false); // Update button state
                 }
                 if (data.errors && data.errors.length > 0) {
-                    showNotification(`Some files could not be queued: ${data.errors.join(', ')}`, 'error');
+                    if (message) message += ' ';
+                    message += `However, ${data.errors.length} file(s) could not be queued.`;
+                    console.error('Queueing errors:', data.errors);
                 }
+                showNotification(message, data.errors && data.errors.length > 0 ? 'warning' : 'success');
             })
             .catch(error => {
                 console.error('Error queueing files:', error);
-                showNotification('Error queueing files. Please try again.', 'error');
+                showNotification('Error queueing files: ' + error.message, 'error');
             });
         }
 
@@ -527,38 +585,52 @@
             fetch(`/api/queue/stop/${jobId}`, {
                 method: 'POST'
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
                     showNotification('Job cancelled successfully', 'success');
                     updateQueue();
                 } else {
-                    showNotification(data.error || 'Failed to cancel job', 'error');
+                    throw new Error(data.error || 'Unknown error');
                 }
             })
             .catch(error => {
                 console.error('Error cancelling job:', error);
-                showNotification('Error cancelling job', 'error');
+                showNotification('Error cancelling job: ' + error.message, 'error');
             });
         }
 
         // Remove failed transcription
         function removeTranscription(transcriptionId) {
+            if (!confirm('Are you sure you want to remove this transcription?')) {
+                return;
+            }
+            
             fetch(`/api/transcriptions/${transcriptionId}/remove`, {
                 method: 'DELETE'
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.message) {
                     showNotification(data.message, 'success');
                     loadCompletedTranscriptions();
                 } else {
-                    showNotification(data.error, 'error');
+                    throw new Error(data.error || 'Unknown error');
                 }
             })
             .catch(error => {
                 console.error('Error removing transcription:', error);
-                showNotification('Error removing transcription. Please try again.', 'error');
+                showNotification('Error removing transcription: ' + error.message, 'error');
             });
         }
     </script>

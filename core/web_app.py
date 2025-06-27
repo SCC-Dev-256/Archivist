@@ -17,6 +17,7 @@ from flask_limiter.util import get_remote_address
 from flask_restx import Api, Resource, Namespace, fields
 from core.logging_config import setup_logging
 from core.file_manager import file_manager
+from core.security import security_manager, validate_json_input, sanitize_output, require_csrf_token
 from datetime import datetime
 import json
 import time
@@ -36,11 +37,18 @@ def register_routes(app, limiter):
         path = request.args.get('path')
         if not path:
             return jsonify({'error': 'Path is required'}), 400
+        
+        # Validate path to prevent directory traversal
+        if not security_manager.validate_path(path, NAS_PATH):
+            logger.warning(f"Invalid path access attempt: {path}")
+            return jsonify({'error': 'Invalid path'}), 400
+        
         try:
             details = file_manager.get_file_details(path)
-            return jsonify(details)
+            return jsonify(sanitize_output(details))
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Error getting file details: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
 
     @bp_api.route('/transcriptions')
     @limiter.limit("30/minute")
@@ -49,38 +57,61 @@ def register_routes(app, limiter):
             transcriptions = TranscriptionResultORM.query.order_by(
                 TranscriptionResultORM.completed_at.desc()
             ).all()
-            return jsonify([{
+            result = [{
                 'id': t.id,
                 'video_path': t.video_path,
                 'completed_at': t.completed_at.isoformat(),
                 'status': t.status,
                 'output_path': t.output_path
-            } for t in transcriptions])
+            } for t in transcriptions]
+            return jsonify(sanitize_output(result))
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Error getting transcriptions: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
 
     @bp_api.route('/transcriptions/<transcription_id>/view')
     @limiter.limit("30/minute")
     def view_transcription(transcription_id):
         try:
+            # Validate transcription_id to prevent injection
+            if not transcription_id or len(transcription_id) > 36:
+                return jsonify({'error': 'Invalid transcription ID'}), 400
+            
             transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
             if not os.path.exists(transcription.output_path):
                 return jsonify({'error': 'Transcription file not found'}), 404
+            
+            # Validate file path
+            if not security_manager.validate_path(transcription.output_path, OUTPUT_DIR):
+                logger.warning(f"Invalid file access attempt: {transcription.output_path}")
+                return jsonify({'error': 'Invalid file path'}), 400
+            
             return send_file(
                 transcription.output_path,
                 mimetype='text/plain',
                 as_attachment=False
             )
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Error viewing transcription: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
 
     @bp_api.route('/transcriptions/<transcription_id>/download')
     @limiter.limit("30/minute")
     def download_transcription(transcription_id):
         try:
+            # Validate transcription_id
+            if not transcription_id or len(transcription_id) > 36:
+                return jsonify({'error': 'Invalid transcription ID'}), 400
+            
             transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
             if not os.path.exists(transcription.output_path):
                 return jsonify({'error': 'Transcription file not found'}), 404
+            
+            # Validate file path
+            if not security_manager.validate_path(transcription.output_path, OUTPUT_DIR):
+                logger.warning(f"Invalid file access attempt: {transcription.output_path}")
+                return jsonify({'error': 'Invalid file path'}), 400
+            
             return send_file(
                 transcription.output_path,
                 mimetype='text/plain',
@@ -88,22 +119,35 @@ def register_routes(app, limiter):
                 download_name=f"{os.path.basename(transcription.video_path)}.txt"
             )
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Error downloading transcription: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
 
     @bp_api.route('/transcriptions/<transcription_id>/remove', methods=['DELETE'])
     @limiter.limit("30/minute")
+    @require_csrf_token
     def remove_transcription(transcription_id):
         try:
+            # Validate transcription_id
+            if not transcription_id or len(transcription_id) > 36:
+                return jsonify({'error': 'Invalid transcription ID'}), 400
+            
             transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
-            # Remove the output file if it exists
+            
+            # Validate file path before deletion
             if os.path.exists(transcription.output_path):
+                if not security_manager.validate_path(transcription.output_path, OUTPUT_DIR):
+                    logger.warning(f"Invalid file deletion attempt: {transcription.output_path}")
+                    return jsonify({'error': 'Invalid file path'}), 400
                 os.remove(transcription.output_path)
+            
             # Delete the record from the database
             db.session.delete(transcription)
             db.session.commit()
             return jsonify({'message': 'Transcription removed successfully'})
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Error removing transcription: {e}")
+            db.session.rollback()
+            return jsonify({'error': 'Internal server error'}), 500
 
     # Now register the blueprint
     api = Api(bp_api, doc='/docs')
@@ -178,6 +222,11 @@ def register_routes(app, limiter):
                     # For relative paths, join with NAS_PATH
                     full_path = os.path.join(NAS_PATH, current_path)
                 
+                # Validate path to prevent directory traversal
+                if not security_manager.validate_path(current_path, NAS_PATH):
+                    logger.warning(f"Directory traversal attempt: {current_path}")
+                    return ErrorResponse(error='Invalid path').dict(), 400
+                
                 if not current_path:
                     # At root: list only flex* directories
                     items = []
@@ -229,17 +278,23 @@ def register_routes(app, limiter):
                 return ErrorResponse(error=str(e)).dict(), 400
             except Exception as e:
                 logger.error(f"Error browsing directory: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/transcribe')
     class Transcribe(Resource):
         @limiter.limit("10 per minute")
+        @validate_json_input(TranscribeRequest)
         def post(self):
             """API endpoint for starting transcription"""
             try:
-                # Validate request body
-                transcribe_req = TranscribeRequest(**request.json)
+                # Get validated data from g context
+                transcribe_req = g.validated_data
                 video_path = os.path.join('/mnt', transcribe_req.path)
+                
+                # Validate file path
+                if not security_manager.validate_path(transcribe_req.path, '/mnt'):
+                    logger.warning(f"Invalid video path: {transcribe_req.path}")
+                    return ErrorResponse(error='Invalid video path').dict(), 400
                 
                 if not os.path.exists(video_path):
                     return ErrorResponse(error='Video file not found').dict(), 404
@@ -252,34 +307,50 @@ def register_routes(app, limiter):
                 return ErrorResponse(error=str(e)).dict(), 400
             except Exception as e:
                 logger.error(f"Transcription error: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/transcribe/batch')
     class TranscribeBatch(Resource):
         @limiter.limit("10 per minute")
+        @require_csrf_token
         def post(self):
-            """Batch API endpoint for starting transcription on multiple files"""
+            """API endpoint for batch transcription"""
             try:
                 data = request.get_json()
-                paths = data.get('paths', [])
-                if not isinstance(paths, list) or not paths:
-                    return ErrorResponse(error='No files provided').dict(), 400
+                if not data or 'paths' not in data:
+                    return ErrorResponse(error='Paths array is required').dict(), 400
+                
+                paths = data['paths']
+                if not isinstance(paths, list):
+                    return ErrorResponse(error='Paths must be an array').dict(), 400
+                
                 queued = []
                 errors = []
-                for rel_path in paths:
-                    video_path = os.path.join('/mnt', rel_path)
-                    if not os.path.exists(video_path):
-                        errors.append(rel_path)
-                        continue
+                
+                for path in paths:
                     try:
-                        job_id = queue_manager.enqueue_transcription(video_path, None)
-                        queued.append(rel_path)
+                        # Validate each path
+                        if not security_manager.validate_path(path, '/mnt'):
+                            errors.append(f"Invalid path: {path}")
+                            continue
+                        
+                        video_path = os.path.join('/mnt', path)
+                        if not os.path.exists(video_path):
+                            errors.append(f"File not found: {path}")
+                            continue
+                        
+                        job_id = queue_manager.enqueue_transcription(video_path)
+                        queued.append({'path': path, 'job_id': job_id})
                     except Exception as e:
-                        errors.append(f"{rel_path}: {str(e)}")
-                return jsonify({"queued": queued, "errors": errors})
+                        errors.append(f"Error processing {path}: {str(e)}")
+                
+                return jsonify({
+                    'queued': queued,
+                    'errors': errors
+                })
             except Exception as e:
                 logger.error(f"Batch transcription error: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/queue')
     class Queue(Resource):
@@ -295,19 +366,25 @@ def register_routes(app, limiter):
                     except Exception as e:
                         logger.warning(f"Skipping job due to validation error: {e} | job: {job}")
                         continue
-                return jsonify(job_statuses)
+                return jsonify(sanitize_output(job_statuses))
             except Exception as e:
                 logger.error(f"Error getting queue: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/queue/reorder')
     class QueueReorder(Resource):
         @limiter.limit("20 per minute")
+        @validate_json_input(QueueReorderRequest)
+        @require_csrf_token
         def post(self):
             """Reorder a job in the queue"""
             try:
-                # Validate request body
-                reorder_req = QueueReorderRequest(**request.json)
+                # Get validated data from g context
+                reorder_req = g.validated_data
+                
+                # Validate job_id
+                if not reorder_req.job_id or len(reorder_req.job_id) > 36:
+                    return ErrorResponse(error='Invalid job ID').dict(), 400
                 
                 success = queue_manager.reorder_job(reorder_req.job_id, reorder_req.position)
                 if success:
@@ -318,49 +395,64 @@ def register_routes(app, limiter):
                 return ErrorResponse(error=str(e)).dict(), 400
             except Exception as e:
                 logger.error(f"Error reordering queue: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/queue/stop/<string:job_id>')
     class QueueStop(Resource):
         @limiter.limit("10 per minute")
+        @require_csrf_token
         def post(self, job_id):
-            """Stop a running job"""
+            """Stop a job in the queue"""
             try:
+                # Validate job_id
+                if not job_id or len(job_id) > 36:
+                    return ErrorResponse(error='Invalid job ID').dict(), 400
+                
                 success = queue_manager.stop_job(job_id)
                 if success:
                     return SuccessResponse(status='success').dict()
                 return ErrorResponse(error='Failed to stop job').dict(), 500
             except Exception as e:
                 logger.error(f"Error stopping job: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/queue/pause/<string:job_id>')
     class QueuePause(Resource):
         @limiter.limit("10 per minute")
+        @require_csrf_token
         def post(self, job_id):
-            """Pause a running job"""
+            """Pause a job in the queue"""
             try:
+                # Validate job_id
+                if not job_id or len(job_id) > 36:
+                    return ErrorResponse(error='Invalid job ID').dict(), 400
+                
                 success = queue_manager.pause_job(job_id)
                 if success:
                     return SuccessResponse(status='success').dict()
                 return ErrorResponse(error='Failed to pause job').dict(), 500
             except Exception as e:
                 logger.error(f"Error pausing job: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/queue/resume/<string:job_id>')
     class QueueResume(Resource):
         @limiter.limit("10 per minute")
+        @require_csrf_token
         def post(self, job_id):
-            """Resume a paused job"""
+            """Resume a job in the queue"""
             try:
+                # Validate job_id
+                if not job_id or len(job_id) > 36:
+                    return ErrorResponse(error='Invalid job ID').dict(), 400
+                
                 success = queue_manager.resume_job(job_id)
                 if success:
                     return SuccessResponse(status='success').dict()
                 return ErrorResponse(error='Failed to resume job').dict(), 500
             except Exception as e:
                 logger.error(f"Error resuming job: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/status/<string:job_id>')
     class Status(Resource):
@@ -368,13 +460,17 @@ def register_routes(app, limiter):
         def get(self, job_id):
             """Get status of a specific job"""
             try:
+                # Validate job_id
+                if not job_id or len(job_id) > 36:
+                    return ErrorResponse(error='Invalid job ID').dict(), 400
+                
                 status = queue_manager.get_job_status(job_id)
                 if status:
                     return JobStatus(**status).dict()
                 return ErrorResponse(error='Job not found').dict(), 404
             except Exception as e:
                 logger.error(f"Error getting job status: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/download/<path:filepath>')
     class Download(Resource):
@@ -382,27 +478,37 @@ def register_routes(app, limiter):
         def get(self, filepath):
             """Download a transcription file"""
             try:
+                # Validate filepath to prevent directory traversal
+                if not security_manager.validate_path(filepath, OUTPUT_DIR):
+                    logger.warning(f"Invalid download path: {filepath}")
+                    return ErrorResponse(error='Invalid file path').dict(), 400
+                
                 full_path = os.path.join(OUTPUT_DIR, filepath)
                 if not os.path.exists(full_path):
                     return ErrorResponse(error='File not found').dict(), 404
                 return send_file(full_path, as_attachment=True)
             except Exception as e:
                 logger.error(f"Error downloading file: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     @ns.route('/queue/remove/<string:job_id>')
     class QueueRemove(Resource):
         @limiter.limit("10 per minute")
+        @require_csrf_token
         def post(self, job_id):
             """Remove a job from the queue"""
             try:
+                # Validate job_id
+                if not job_id or len(job_id) > 36:
+                    return ErrorResponse(error='Invalid job ID').dict(), 400
+                
                 success = queue_manager.remove_job(job_id)
                 if success:
                     return SuccessResponse(status='success').dict()
                 return ErrorResponse(error='Failed to remove job').dict(), 500
             except Exception as e:
                 logger.error(f"Error removing job: {e}")
-                return ErrorResponse(error=str(e)).dict(), 500
+                return ErrorResponse(error='Internal server error').dict(), 500
 
     # Register root and health check routes
     @app.route('/')
