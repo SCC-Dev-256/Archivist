@@ -38,7 +38,7 @@ from flask import (
     Flask, request, jsonify, current_app, g, 
     session, abort, make_response
 )
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, generate_csrf, validate_csrf
 from flask_talisman import Talisman
 from werkzeug.security import safe_str_cmp
 from werkzeug.utils import secure_filename
@@ -67,7 +67,7 @@ class SecurityManager:
         if app is not None:
             self.init_app(app)
     
-    def init_app(self, app: Flask):
+    def init_app(self, app: Flask, force_https: bool = False):
         """Initialize security features with the Flask app."""
         self.app = app
         
@@ -89,7 +89,7 @@ class SecurityManager:
                 'connect-src': ["'self'"],
                 'frame-ancestors': ["'none'"],
             },
-            force_https=False,  # Set to True in production
+            force_https=force_https,  # Configurable HTTPS enforcement
             strict_transport_security=True,
             strict_transport_security_max_age=31536000,
             frame_options='DENY',
@@ -109,7 +109,7 @@ class SecurityManager:
         app.register_error_handler(413, self._handle_payload_too_large)
         app.register_error_handler(429, self._handle_rate_limit_exceeded)
         
-        logger.info("Security manager initialized successfully")
+        logger.info(f"Security manager initialized successfully (HTTPS enforced: {force_https})")
     
     def _setup_security_headers(self, app: Flask):
         """Configure additional security headers."""
@@ -138,6 +138,35 @@ class SecurityManager:
         
         # Check for suspicious patterns in request
         self._check_suspicious_patterns()
+        
+        # Validate CSRF token for state-changing operations
+        self._validate_csrf_token()
+    
+    def _validate_csrf_token(self):
+        """Validate CSRF token for state-changing operations."""
+        if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
+            # Skip CSRF validation for API endpoints that don't need it
+            if request.path.startswith('/api/health') or request.path.startswith('/api/status'):
+                return
+            
+            try:
+                # Check for CSRF token in headers (for AJAX/JSON requests)
+                csrf_token = request.headers.get('X-CSRF-Token') or request.headers.get('X-XSRF-TOKEN')
+                
+                if not csrf_token:
+                    # Fall back to form data for traditional forms
+                    csrf_token = request.form.get('csrf_token')
+                
+                if csrf_token:
+                    validate_csrf(csrf_token)
+                else:
+                    # For API requests, require CSRF token
+                    if request.is_json or request.path.startswith('/api/'):
+                        logger.warning(f"Missing CSRF token for {request.method} {request.path}")
+                        abort(400, description="CSRF token required")
+            except Exception as e:
+                logger.warning(f"CSRF validation failed for {request.method} {request.path}: {e}")
+                abort(400, description="Invalid CSRF token")
     
     def _validate_request_headers(self):
         """Validate request headers for security."""
@@ -172,6 +201,34 @@ class SecurityManager:
                 if self._contains_suspicious_pattern(value):
                     logger.warning(f"Suspicious pattern in form data {key}: {value}")
                     abort(400, description="Invalid request")
+        
+        # Check JSON data
+        if request.is_json:
+            try:
+                json_data = request.get_json()
+                self._check_json_suspicious_patterns(json_data)
+            except Exception as e:
+                logger.warning(f"Error checking JSON data: {e}")
+                abort(400, description="Invalid JSON data")
+    
+    def _check_json_suspicious_patterns(self, data, path=""):
+        """Recursively check JSON data for suspicious patterns."""
+        if isinstance(data, dict):
+            for key, value in data.items():
+                current_path = f"{path}.{key}" if path else key
+                if isinstance(value, (dict, list)):
+                    self._check_json_suspicious_patterns(value, current_path)
+                elif isinstance(value, str) and self._contains_suspicious_pattern(value):
+                    logger.warning(f"Suspicious pattern in JSON data at {current_path}: {value}")
+                    abort(400, description="Invalid request data")
+        elif isinstance(data, list):
+            for i, item in enumerate(data):
+                current_path = f"{path}[{i}]"
+                if isinstance(item, (dict, list)):
+                    self._check_json_suspicious_patterns(item, current_path)
+                elif isinstance(item, str) and self._contains_suspicious_pattern(item):
+                    logger.warning(f"Suspicious pattern in JSON data at {current_path}: {item}")
+                    abort(400, description="Invalid request data")
     
     def _contains_suspicious_pattern(self, value: str) -> bool:
         """Check if value contains suspicious patterns."""
@@ -374,7 +431,7 @@ def require_csrf_token(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if request.method != 'GET':
-            # CSRF protection is handled by Flask-WTF
+            # CSRF protection is handled by Flask-WTF and security middleware
             pass
         return f(*args, **kwargs)
     return decorated_function
@@ -406,4 +463,8 @@ def sanitize_output(data: Any) -> Any:
     elif isinstance(data, list):
         return [sanitize_output(item) for item in data]
     else:
-        return data 
+        return data
+
+def get_csrf_token():
+    """Get CSRF token for use in forms or AJAX requests."""
+    return generate_csrf() 

@@ -17,7 +17,7 @@ from flask_limiter.util import get_remote_address
 from flask_restx import Api, Resource, Namespace, fields
 from core.logging_config import setup_logging
 from core.file_manager import file_manager
-from core.security import security_manager, validate_json_input, sanitize_output, require_csrf_token
+from core.security import security_manager, validate_json_input, sanitize_output, require_csrf_token, get_csrf_token
 from datetime import datetime
 import json
 import time
@@ -26,13 +26,26 @@ from core.app import db  # Add db import from core.app where it's initialized
 # Set up logging
 setup_logging()
 
+# Rate limiting configuration via environment variables
+BROWSE_RATE_LIMIT = os.getenv('BROWSE_RATE_LIMIT', '30 per minute')
+TRANSCRIBE_RATE_LIMIT = os.getenv('TRANSCRIBE_RATE_LIMIT', '10 per minute')
+QUEUE_RATE_LIMIT = os.getenv('QUEUE_RATE_LIMIT', '60 per minute')
+QUEUE_OPERATION_RATE_LIMIT = os.getenv('QUEUE_OPERATION_RATE_LIMIT', '10 per minute')
+FILE_OPERATION_RATE_LIMIT = os.getenv('FILE_OPERATION_RATE_LIMIT', '30 per minute')
+
 def register_routes(app, limiter):
     # Initialize API documentation on its own blueprint
     bp_api = Blueprint('api', __name__, url_prefix='/api')
 
+    # CSRF token endpoint for AJAX requests
+    @bp_api.route('/csrf-token')
+    def get_csrf_token_endpoint():
+        """Get CSRF token for AJAX requests"""
+        return jsonify({'csrf_token': get_csrf_token()})
+
     # Move all function-based endpoints here BEFORE registering the blueprint
     @bp_api.route('/file-details')
-    @limiter.limit("30/minute")
+    @limiter.limit(FILE_OPERATION_RATE_LIMIT)
     def get_file_details():
         path = request.args.get('path')
         if not path:
@@ -51,7 +64,7 @@ def register_routes(app, limiter):
             return jsonify({'error': 'Internal server error'}), 500
 
     @bp_api.route('/transcriptions')
-    @limiter.limit("30/minute")
+    @limiter.limit(FILE_OPERATION_RATE_LIMIT)
     def get_transcriptions():
         try:
             transcriptions = TranscriptionResultORM.query.order_by(
@@ -70,7 +83,7 @@ def register_routes(app, limiter):
             return jsonify({'error': 'Internal server error'}), 500
 
     @bp_api.route('/transcriptions/<transcription_id>/view')
-    @limiter.limit("30/minute")
+    @limiter.limit(FILE_OPERATION_RATE_LIMIT)
     def view_transcription(transcription_id):
         try:
             # Validate transcription_id to prevent injection
@@ -96,7 +109,7 @@ def register_routes(app, limiter):
             return jsonify({'error': 'Internal server error'}), 500
 
     @bp_api.route('/transcriptions/<transcription_id>/download')
-    @limiter.limit("30/minute")
+    @limiter.limit(FILE_OPERATION_RATE_LIMIT)
     def download_transcription(transcription_id):
         try:
             # Validate transcription_id
@@ -123,7 +136,7 @@ def register_routes(app, limiter):
             return jsonify({'error': 'Internal server error'}), 500
 
     @bp_api.route('/transcriptions/<transcription_id>/remove', methods=['DELETE'])
-    @limiter.limit("30/minute")
+    @limiter.limit(FILE_OPERATION_RATE_LIMIT)
     @require_csrf_token
     def remove_transcription(transcription_id):
         try:
@@ -202,7 +215,7 @@ def register_routes(app, limiter):
 
     @ns.route('/browse')
     class Browse(Resource):
-        @limiter.limit("30 per minute")
+        @limiter.limit(BROWSE_RATE_LIMIT)
         def get(self):
             try:
                 # Validate request parameters
@@ -282,7 +295,7 @@ def register_routes(app, limiter):
 
     @ns.route('/transcribe')
     class Transcribe(Resource):
-        @limiter.limit("10 per minute")
+        @limiter.limit(TRANSCRIBE_RATE_LIMIT)
         @validate_json_input(TranscribeRequest)
         def post(self):
             """API endpoint for starting transcription"""
@@ -311,7 +324,7 @@ def register_routes(app, limiter):
 
     @ns.route('/transcribe/batch')
     class TranscribeBatch(Resource):
-        @limiter.limit("10 per minute")
+        @limiter.limit(TRANSCRIBE_RATE_LIMIT)
         @require_csrf_token
         def post(self):
             """API endpoint for batch transcription"""
@@ -354,7 +367,7 @@ def register_routes(app, limiter):
 
     @ns.route('/queue')
     class Queue(Resource):
-        @limiter.limit("60 per minute")
+        @limiter.limit(QUEUE_RATE_LIMIT)
         def get(self):
             """Get all jobs in the queue"""
             try:
@@ -373,7 +386,7 @@ def register_routes(app, limiter):
 
     @ns.route('/queue/reorder')
     class QueueReorder(Resource):
-        @limiter.limit("20 per minute")
+        @limiter.limit(QUEUE_OPERATION_RATE_LIMIT)
         @validate_json_input(QueueReorderRequest)
         @require_csrf_token
         def post(self):
@@ -399,7 +412,7 @@ def register_routes(app, limiter):
 
     @ns.route('/queue/stop/<string:job_id>')
     class QueueStop(Resource):
-        @limiter.limit("10 per minute")
+        @limiter.limit(QUEUE_OPERATION_RATE_LIMIT)
         @require_csrf_token
         def post(self, job_id):
             """Stop a job in the queue"""
@@ -418,7 +431,7 @@ def register_routes(app, limiter):
 
     @ns.route('/queue/pause/<string:job_id>')
     class QueuePause(Resource):
-        @limiter.limit("10 per minute")
+        @limiter.limit(QUEUE_OPERATION_RATE_LIMIT)
         @require_csrf_token
         def post(self, job_id):
             """Pause a job in the queue"""
@@ -437,7 +450,7 @@ def register_routes(app, limiter):
 
     @ns.route('/queue/resume/<string:job_id>')
     class QueueResume(Resource):
-        @limiter.limit("10 per minute")
+        @limiter.limit(QUEUE_OPERATION_RATE_LIMIT)
         @require_csrf_token
         def post(self, job_id):
             """Resume a job in the queue"""
@@ -456,7 +469,7 @@ def register_routes(app, limiter):
 
     @ns.route('/status/<string:job_id>')
     class Status(Resource):
-        @limiter.limit("60 per minute")
+        @limiter.limit(QUEUE_RATE_LIMIT)
         def get(self, job_id):
             """Get status of a specific job"""
             try:
@@ -474,7 +487,7 @@ def register_routes(app, limiter):
 
     @ns.route('/download/<path:filepath>')
     class Download(Resource):
-        @limiter.limit("30 per minute")
+        @limiter.limit(FILE_OPERATION_RATE_LIMIT)
         def get(self, filepath):
             """Download a transcription file"""
             try:
@@ -493,7 +506,7 @@ def register_routes(app, limiter):
 
     @ns.route('/queue/remove/<string:job_id>')
     class QueueRemove(Resource):
-        @limiter.limit("10 per minute")
+        @limiter.limit(QUEUE_OPERATION_RATE_LIMIT)
         @require_csrf_token
         def post(self, job_id):
             """Remove a job from the queue"""

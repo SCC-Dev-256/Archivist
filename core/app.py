@@ -1,11 +1,12 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-# Debug prints
-import os
-print("DATABASE_URL from environment:", os.getenv('DATABASE_URL'))
-print("SQLALCHEMY_DATABASE_URI from environment:", os.getenv('SQLALCHEMY_DATABASE_URI'))
+# Debug prints - REMOVED for security (leaked sensitive configuration)
+# import os
+# print("DATABASE_URL from environment:", os.getenv('DATABASE_URL'))
+# print("SQLALCHEMY_DATABASE_URI from environment:", os.getenv('SQLALCHEMY_DATABASE_URI'))
 
+import os
 from flask import Flask, render_template
 from flask_caching import Cache
 from flask_limiter import Limiter
@@ -17,17 +18,22 @@ from core.logging_config import setup_logging
 from core.database import db
 from core.web_app import register_routes
 from core.security import security_manager
+from loguru import logger
 
 # Initialize extensions
 migrate = Migrate()
 cache = Cache()
 
 # Initialize limiter with Redis storage for better security
+# Rate limiting configuration via environment variables
+RATE_LIMIT_DAILY = os.getenv('RATE_LIMIT_DAILY', '200 per day')
+RATE_LIMIT_HOURLY = os.getenv('RATE_LIMIT_HOURLY', '50 per hour')
+
 limiter = Limiter(
     key_func=get_remote_address,
     storage_uri="redis://localhost:6379/0",
     strategy="fixed-window",
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=[RATE_LIMIT_DAILY, RATE_LIMIT_HOURLY],
     headers_enabled=True,
     retry_after="x-ratelimit-reset"
 )
@@ -79,11 +85,22 @@ def create_app(testing=False):
          supports_credentials=True
     )
     
-    # Initialize security manager
-    security_manager.init_app(app)
+    # Initialize security manager with HTTPS enforcement based on environment
+    force_https = os.getenv('FLASK_ENV') == 'production' or os.getenv('FORCE_HTTPS', 'false').lower() == 'true'
+    security_manager.init_app(app, force_https=force_https)
     
     # Register routes from web_app
     register_routes(app, limiter)
+    
+    # Log application startup (without sensitive details)
+    if testing:
+        logger.info("Flask application created in testing mode")
+    else:
+        logger.info("Flask application created successfully")
+        # Log non-sensitive configuration details
+        logger.debug(f"Environment: {os.getenv('FLASK_ENV', 'development')}")
+        logger.debug(f"HTTPS enforced: {force_https}")
+        logger.debug(f"Rate limiting: {RATE_LIMIT_DAILY}, {RATE_LIMIT_HOURLY}")
     
     return app
 
