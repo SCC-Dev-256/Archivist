@@ -106,3 +106,38 @@ POSTGRES_CONFIG = {
     "max_parallel_workers": 4,
     "max_parallel_workers_per_gather": 2
 } 
+
+# Cablecast configuration
+CABLECAST_BASE_URL = os.getenv("CABLECAST_BASE_URL", "https://api.cablecast.com")
+CABLECAST_API_KEY = os.getenv("CABLECAST_API_KEY", "your_api_key_here")
+CABLECAST_LOCATION_ID = os.getenv("CABLECAST_LOCATION_ID", "123456")
+
+# VOD Integration Configuration
+CABLECAST_API_URL = os.getenv("CABLECAST_API_URL", "https://vod.scctv.org/ui/api-docs/explorer")
+VOD_DEFAULT_QUALITY = int(os.getenv("VOD_DEFAULT_QUALITY", "1"))
+VOD_UPLOAD_TIMEOUT = int(os.getenv("VOD_UPLOAD_TIMEOUT", "300"))
+VOD_MAX_RETRIES = int(os.getenv("VOD_MAX_RETRIES", "3"))
+VOD_RETRY_DELAY = int(os.getenv("VOD_RETRY_DELAY", "60"))
+VOD_BATCH_SIZE = int(os.getenv("VOD_BATCH_SIZE", "10"))
+VOD_STATUS_CHECK_INTERVAL = int(os.getenv("VOD_STATUS_CHECK_INTERVAL", "30"))
+VOD_PROCESSING_TIMEOUT = int(os.getenv("VOD_PROCESSING_TIMEOUT", "1800"))
+
+# VOD Advanced Settings
+VOD_ENABLE_CHAPTERS = os.getenv("VOD_ENABLE_CHAPTERS", "true").lower() == "true"
+VOD_ENABLE_METADATA_ENHANCEMENT = os.getenv("VOD_ENABLE_METADATA_ENHANCEMENT", "true").lower() == "true"
+VOD_ENABLE_AUTO_TAGGING = os.getenv("VOD_ENABLE_AUTO_TAGGING", "false").lower() == "true"
+
+# VOD Quality Settings
+VOD_QUALITY_LOW = int(os.getenv("VOD_QUALITY_LOW", "1"))
+VOD_QUALITY_MEDIUM = int(os.getenv("VOD_QUALITY_MEDIUM", "2"))
+VOD_QUALITY_HIGH = int(os.getenv("VOD_QUALITY_HIGH", "3"))
+VOD_QUALITY_ORIGINAL = int(os.getenv("VOD_QUALITY_ORIGINAL", "4"))
+
+# VOD Error Handling
+VOD_ENABLE_RETRY_ON_FAILURE = os.getenv("VOD_ENABLE_RETRY_ON_FAILURE", "true").lower() == "true"
+VOD_MAX_RETRY_ATTEMPTS = int(os.getenv("VOD_MAX_RETRY_ATTEMPTS", "5"))
+VOD_RETRY_BACKOFF_MULTIPLIER = float(os.getenv("VOD_RETRY_BACKOFF_MULTIPLIER", "2"))
+
+# VOD Logging
+VOD_LOG_LEVEL = os.getenv("VOD_LOG_LEVEL", "INFO")
+VOD_ENABLE_DEBUG_LOGGING = os.getenv("VOD_ENABLE_DEBUG_LOGGING", "false").lower() == "true"

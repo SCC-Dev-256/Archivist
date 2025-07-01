@@ -40,7 +40,7 @@ from flask import (
 )
 from flask_wtf.csrf import CSRFProtect, generate_csrf, validate_csrf
 from flask_talisman import Talisman
-from werkzeug.security import safe_str_cmp
+# safe_str_cmp was removed in newer Werkzeug versions, use direct comparison instead
 from werkzeug.utils import secure_filename
 import jwt
 from loguru import logger
@@ -93,7 +93,6 @@ class SecurityManager:
             strict_transport_security=True,
             strict_transport_security_max_age=31536000,
             frame_options='DENY',
-            content_type_nosniff=True,
             x_xss_protection=True,
             x_content_type_options=True,
             referrer_policy='strict-origin-when-cross-origin'

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator, root_validator
-from typing import Optional, List, Literal, Union
+from typing import Optional, List, Literal, Union, Dict, Any
 import os
 from pathlib import Path
 from datetime import datetime
@@ -127,7 +127,7 @@ class QueueReorderRequest(BaseModel):
 
 class JobStatus(BaseModel):
     id: str = Field(..., max_length=36)
-    status: str = Field(..., regex='^(queued|processing|paused|completed|failed)$')
+    status: str = Field(..., pattern='^(queued|processing|paused|completed|failed)$')
     video_path: str = Field(..., max_length=500)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -204,7 +204,7 @@ class SecurityConfig(BaseModel):
 class AuditLogEntry(BaseModel):
     """Audit log entry model for security events"""
     timestamp: datetime
-    event_type: str = Field(..., regex='^(login|logout|file_access|file_upload|file_delete|admin_action)$')
+    event_type: str = Field(..., pattern='^(login|logout|file_access|file_upload|file_delete|admin_action)$')
     user_id: Optional[str] = Field(None, max_length=36)
     ip_address: str = Field(..., max_length=45)  # IPv6 compatible
     user_agent: Optional[str] = Field(None, max_length=500)
@@ -219,3 +219,107 @@ class AuditLogEntry(BaseModel):
         if not re.match(r'^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$', v):
             raise ValueError('Invalid IP address format')
         return v 
+
+class CablecastShowORM(db.Model):
+    __tablename__ = 'cablecast_shows'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    duration = db.Column(db.Integer, nullable=True)  # in seconds
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    cablecast_id = db.Column(db.Integer, unique=True, nullable=False)
+    transcription_id = db.Column(db.String(36), db.ForeignKey('transcription_results.id'), nullable=True)
+    
+    transcription = db.relationship('TranscriptionResultORM', backref='cablecast_shows')
+
+class CablecastVODORM(db.Model):
+    __tablename__ = 'cablecast_vods'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    show_id = db.Column(db.Integer, db.ForeignKey('cablecast_shows.id'), nullable=False)
+    quality = db.Column(db.Integer, nullable=False)  # VODTranscodeQuality ID
+    file_name = db.Column(db.String(255), nullable=False)
+    length = db.Column(db.Integer, nullable=True)  # in seconds
+    url = db.Column(db.String(500), nullable=True)
+    embed_code = db.Column(db.Text, nullable=True)
+    web_vtt_url = db.Column(db.String(500), nullable=True)  # for chapters
+    vod_state = db.Column(db.String(50), nullable=False, default='processing')
+    percent_complete = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    show = db.relationship('CablecastShowORM', backref='vods')
+
+class CablecastVODChapterORM(db.Model):
+    __tablename__ = 'cablecast_vod_chapters'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    vod_id = db.Column(db.Integer, db.ForeignKey('cablecast_vods.id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+    start_time = db.Column(db.Float, nullable=False)  # in seconds
+    end_time = db.Column(db.Float, nullable=True)  # in seconds
+    description = db.Column(db.Text, nullable=True)
+    
+    vod = db.relationship('CablecastVODORM', backref='chapters')
+
+# VOD Integration Pydantic Models
+class VODContentRequest(BaseModel):
+    title: str = Field(..., max_length=255, description="Content title")
+    description: Optional[str] = Field(None, max_length=2000, description="Content description")
+    file_path: str = Field(..., max_length=500, description="Path to video file")
+    auto_transcribe: bool = Field(True, description="Automatically transcribe the video")
+    
+    @validator('file_path')
+    def validate_file_path(cls, v):
+        if '..' in v:
+            raise ValueError('Invalid path: cannot contain ".."')
+        return v
+
+class VODContentResponse(BaseModel):
+    id: str = Field(..., max_length=36)
+    title: str = Field(..., max_length=255)
+    description: Optional[str] = None
+    file_path: str = Field(..., max_length=500)
+    duration: Optional[float] = None
+    resolution: Optional[str] = None
+    status: str = Field(..., pattern='^(processing|ready|error)$')
+    created_at: datetime
+    updated_at: datetime
+    transcription_available: bool = False
+    stream_url: Optional[str] = None
+
+class VODPlaylistRequest(BaseModel):
+    name: str = Field(..., max_length=255, description="Playlist name")
+    description: Optional[str] = Field(None, max_length=2000, description="Playlist description")
+    is_public: bool = Field(False, description="Whether playlist is public")
+    content_ids: List[str] = Field(default=[], description="List of content IDs to add")
+
+class VODStreamRequest(BaseModel):
+    content_id: str = Field(..., max_length=36, description="Content ID to stream")
+    quality: Optional[str] = Field(None, pattern='^(low|medium|high|original)$', description="Stream quality")
+    start_time: Optional[float] = Field(None, ge=0, description="Start time in seconds")
+
+class VODPublishRequest(BaseModel):
+    quality: Optional[int] = Field(1, ge=1, le=10, description="VOD quality setting")
+    auto_transcribe: bool = Field(True, description="Automatically transcribe if not already done")
+
+class VODBatchPublishRequest(BaseModel):
+    transcription_ids: List[str] = Field(..., min_items=1, max_items=100, description="List of transcription IDs to publish")
+    quality: Optional[int] = Field(1, ge=1, le=10, description="VOD quality setting")
+
+class VODSyncStatusResponse(BaseModel):
+    total_transcriptions: int = Field(..., ge=0)
+    synced_transcriptions: int = Field(..., ge=0)
+    sync_percentage: float = Field(..., ge=0, le=100)
+    recent_syncs: List[Dict[str, Any]] = Field(default=[])
+
+class CablecastShowResponse(BaseModel):
+    id: int = Field(..., description="Cablecast show ID")
+    title: str = Field(..., max_length=255)
+    description: Optional[str] = None
+    duration: Optional[int] = None
+    created_at: datetime
+    transcription_available: bool = False
+    vod_count: int = Field(0, ge=0) 

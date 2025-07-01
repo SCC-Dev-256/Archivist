@@ -10,7 +10,7 @@ from core.task_queue import queue_manager
 from core.models import (
     BrowseRequest, TranscribeRequest, QueueReorderRequest,
     JobStatus, FileItem, ErrorResponse, SuccessResponse,
-    TranscriptionJobORM, TranscriptionResultORM
+    TranscriptionJobORM, TranscriptionResultORM, CablecastShowORM
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -22,6 +22,9 @@ from datetime import datetime
 import json
 import time
 from core.app import db  # Add db import from core.app where it's initialized
+from core.vod_content_manager import VODContentManager
+from core.cablecast_client import CablecastAPIClient
+from core.cablecast_integration import CablecastIntegrationService
 
 # Set up logging
 setup_logging()
@@ -521,6 +524,106 @@ def register_routes(app, limiter):
                 return ErrorResponse(error='Failed to remove job').dict(), 500
             except Exception as e:
                 logger.error(f"Error removing job: {e}")
+                return ErrorResponse(error='Internal server error').dict(), 500
+
+    @ns.route('/vod/publish/<string:transcription_id>')
+    class PublishToVOD(Resource):
+        @limiter.limit('10 per hour')
+        @require_csrf_token
+        def post(self, transcription_id):
+            """Publish Archivist transcription to VOD system"""
+            try:
+                # Validate transcription exists
+                transcription = TranscriptionResultORM.query.get_or_404(transcription_id)
+                
+                # Process content for VOD
+                vod_manager = VODContentManager()
+                result = vod_manager.process_archivist_content_for_vod(transcription_id)
+                
+                if result:
+                    return jsonify({
+                        'status': 'success',
+                        'message': 'Content published to VOD system',
+                        'data': result
+                    })
+                else:
+                    return ErrorResponse(error='Failed to publish to VOD system').dict(), 500
+                
+            except Exception as e:
+                logger.error(f"Error publishing to VOD: {e}")
+                return ErrorResponse(error='Internal server error').dict(), 500
+
+    @ns.route('/vod/batch-publish')
+    class BatchPublishToVOD(Resource):
+        @limiter.limit('5 per hour')
+        @require_csrf_token
+        def post(self):
+            """Batch publish multiple transcriptions to VOD system"""
+            try:
+                data = request.get_json()
+                transcription_ids = data.get('transcription_ids', [])
+                
+                if not transcription_ids:
+                    return ErrorResponse(error='No transcription IDs provided').dict(), 400
+                
+                vod_manager = VODContentManager()
+                results = []
+                errors = []
+                
+                for transcription_id in transcription_ids:
+                    try:
+                        result = vod_manager.process_archivist_content_for_vod(transcription_id)
+                        if result:
+                            results.append(result)
+                        else:
+                            errors.append(f"Failed to process {transcription_id}")
+                    except Exception as e:
+                        errors.append(f"Error processing {transcription_id}: {str(e)}")
+                
+                return jsonify({
+                    'status': 'success',
+                    'published_count': len(results),
+                    'error_count': len(errors),
+                    'results': results,
+                    'errors': errors
+                })
+                
+            except Exception as e:
+                logger.error(f"Error batch publishing to VOD: {e}")
+                return ErrorResponse(error='Internal server error').dict(), 500
+
+    @ns.route('/vod/sync-status')
+    class VODSyncStatus(Resource):
+        @limiter.limit('30 per minute')
+        def get(self):
+            """Get sync status between Archivist and VOD system"""
+            try:
+                # Get counts
+                total_transcriptions = TranscriptionResultORM.query.count()
+                synced_transcriptions = TranscriptionResultORM.query.join(
+                    CablecastShowORM
+                ).count()
+                
+                # Get recent sync activity
+                recent_syncs = CablecastShowORM.query.order_by(
+                    CablecastShowORM.created_at.desc()
+                ).limit(10).all()
+                
+                recent_data = [{
+                    'title': show.title,
+                    'synced_at': show.created_at.isoformat(),
+                    'cablecast_id': show.cablecast_id
+                } for show in recent_syncs]
+                
+                return jsonify({
+                    'total_transcriptions': total_transcriptions,
+                    'synced_transcriptions': synced_transcriptions,
+                    'sync_percentage': (synced_transcriptions / total_transcriptions * 100) if total_transcriptions > 0 else 0,
+                    'recent_syncs': recent_data
+                })
+                
+            except Exception as e:
+                logger.error(f"Error getting VOD sync status: {e}")
                 return ErrorResponse(error='Internal server error').dict(), 500
 
     # Register root and health check routes
