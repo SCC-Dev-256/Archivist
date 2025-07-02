@@ -43,27 +43,38 @@ class CablecastAPIClient:
         logger.info(f"Initialized Cablecast API client for {self.base_url}")
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[Dict]:
-        """Make HTTP request to Cablecast API with error handling"""
-        try:
-            url = f"{self.base_url}{endpoint}"
-            logger.debug(f"Making {method} request to {url}")
-            
-            response = self.session.request(method, url, **kwargs)
-            response.raise_for_status()
-            
-            if response.content:
-                return response.json()
-            return {}
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API request failed: {e}")
-            return None
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON response: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error in API request: {e}")
-            return None
+        """Make HTTP request to Cablecast API with retry logic and error handling"""
+        from core.config import VOD_MAX_RETRIES, VOD_RETRY_DELAY
+        
+        for attempt in range(VOD_MAX_RETRIES):
+            try:
+                url = f"{self.base_url}{endpoint}"
+                logger.debug(f"Making {method} request to {url} (attempt {attempt + 1}/{VOD_MAX_RETRIES})")
+                
+                response = self.session.request(method, url, **kwargs)
+                response.raise_for_status()
+                
+                if response.content:
+                    return response.json()
+                return {}
+                
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"API request failed (attempt {attempt + 1}/{VOD_MAX_RETRIES}): {e}")
+                if attempt < VOD_MAX_RETRIES - 1:
+                    # Exponential backoff
+                    delay = VOD_RETRY_DELAY * (2 ** attempt)
+                    logger.info(f"Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    logger.error(f"API request failed after {VOD_MAX_RETRIES} attempts: {e}")
+                    return None
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                return None
+            except Exception as e:
+                logger.error(f"Unexpected error in API request: {e}")
+                return None
     
     def get_shows(self, location_id: int = None) -> List[Dict]:
         """Get shows from Cablecast"""

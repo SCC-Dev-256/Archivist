@@ -426,6 +426,16 @@ def run_whisper_transcription(video_path: str) -> Dict[str, Any]:
                 'duration': formatted_segments[-1]["end"] if formatted_segments else 0
             })
             
+        # Auto-link to Cablecast show if enabled
+        if os.getenv('AUTO_LINK_TO_CABLECAST', 'false').lower() == 'true':
+            try:
+                from core.task_queue import queue_manager
+                from core.vod_automation import auto_link_transcription_to_show
+                queue_manager.enqueue_task(auto_link_transcription_to_show, result.id)
+                logger.info(f"Queued auto-link to Cablecast show for transcription {result.id}")
+            except Exception as e:
+                logger.error(f"Failed to queue auto-link to Cablecast show: {e}")
+        
         return {
             'srt_path': local_srt_path,
             'central_srt_path': central_srt_path,

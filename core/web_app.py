@@ -169,6 +169,10 @@ def register_routes(app, limiter):
     api = Api(bp_api, doc='/docs')
     ns = api.namespace('', description='Archivist API')
     app.register_blueprint(bp_api)
+    
+    # Register Cablecast blueprint
+    from web.api.cablecast import cablecast_bp
+    app.register_blueprint(cablecast_bp)
 
     # Model definitions for Swagger docs
     browse_request = ns.model('BrowseRequest', {
