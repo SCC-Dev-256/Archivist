@@ -97,6 +97,9 @@ class VODContentManager:
             )
             db.session.add(cablecast_show)
             
+            # Flush to get the show ID
+            db.session.flush()
+            
             # Create VOD record
             cablecast_vod = CablecastVODORM(
                 id=vod_id,
