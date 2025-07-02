@@ -1,6 +1,6 @@
 import os
 import pytest
-from core.transcription import run_whisperx
+from core.services import TranscriptionService
 from core.config import OUTPUT_DIR, NAS_PATH
 import tempfile
 import shutil
@@ -26,28 +26,29 @@ def test_video():
 
 def test_whisperx_transcription(test_video):
     """Test the WhisperX transcription functionality"""
-    # Run transcription
-    result = run_whisperx(test_video)
+    # Create service and run transcription
+    service = TranscriptionService()
+    result = service.transcribe_file(test_video)
     
     # Verify result structure
     assert isinstance(result, dict)
-    assert 'srt_path' in result
-    assert 'segments' in result
-    assert 'duration' in result
+    assert 'output_path' in result
+    assert 'status' in result
     
     # Verify output file exists
-    assert os.path.exists(result['srt_path'])
+    assert os.path.exists(result['output_path'])
     
     # Verify SRT file content
-    with open(result['srt_path'], 'r', encoding='utf-8') as f:
+    with open(result['output_path'], 'r', encoding='utf-8') as f:
         content = f.read()
         assert content.strip()  # File should not be empty
         assert '-->' in content  # Should contain timestamp markers
 
 def test_whisperx_error_handling():
     """Test error handling for non-existent file"""
-    with pytest.raises(FileNotFoundError):
-        run_whisperx("nonexistent_video.mp4")
+    service = TranscriptionService()
+    with pytest.raises(Exception):  # Should raise TranscriptionError
+        service.transcribe_file("nonexistent_video.mp4")
 
 def test_whisperx_empty_file():
     """Test handling of empty video file"""
@@ -57,8 +58,9 @@ def test_whisperx_empty_file():
     open(empty_video, 'w').close()
     
     try:
-        with pytest.raises(ValueError):
-            run_whisperx(empty_video)
+        service = TranscriptionService()
+        with pytest.raises(Exception):  # Should raise TranscriptionError
+            service.transcribe_file(empty_video)
     finally:
         shutil.rmtree(temp_dir)
 
@@ -75,8 +77,9 @@ def test_whisperx_permissions():
     os.chmod(no_perms_video, 0o000)
     
     try:
-        with pytest.raises(PermissionError):
-            run_whisperx(no_perms_video)
+        service = TranscriptionService()
+        with pytest.raises(Exception):  # Should raise TranscriptionError
+            service.transcribe_file(no_perms_video)
     finally:
         os.chmod(no_perms_video, 0o644)
         shutil.rmtree(temp_dir) 

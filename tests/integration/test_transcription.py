@@ -1,10 +1,10 @@
-from core.transcription import run_whisper_transcription
+from core.services import TranscriptionService
+from core.config import BATCH_SIZE, NUM_WORKERS, NAS_PATH
 from loguru import logger
 import sys
 import os
 import subprocess
 from typing import List, Dict
-from config import BATCH_SIZE, NUM_WORKERS, NAS_PATH
 
 # Configure logger to show more details
 logger.remove()
@@ -72,18 +72,21 @@ def main():
         import time
         start_time = time.time()
         
-        success, result = run_whisper_transcription(video_path)
+        # Use the new service layer
+        transcription_service = TranscriptionService()
+        result = transcription_service.transcribe_file(video_path)
         
         end_time = time.time()
         duration = end_time - start_time
         
-        if success:
+        if result and result.get('output_path'):
             logger.info(f"Transcription completed successfully in {duration/60:.2f} minutes")
-            logger.info(f"SRT file saved at: {result}")
+            logger.info(f"SRT file saved at: {result['output_path']}")
             
             # Verify the SRT file exists and has content
-            if os.path.exists(result):
-                srt_size = os.path.getsize(result)
+            srt_path = result['output_path']
+            if os.path.exists(srt_path):
+                srt_size = os.path.getsize(srt_path)
                 logger.info(f"SRT file size: {srt_size} bytes")
                 if srt_size == 0:
                     logger.error("SRT file is empty!")

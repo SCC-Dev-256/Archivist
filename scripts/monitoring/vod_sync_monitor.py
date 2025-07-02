@@ -24,6 +24,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from loguru import logger
+from core.services import VODService
 
 # Add the core directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'core'))
@@ -68,11 +69,8 @@ class VODSyncMonitor:
     def initialize_components(self):
         """Initialize VOD manager and Cablecast client"""
         try:
-            from core.vod_content_manager import VODContentManager
-            from core.cablecast_client import CablecastAPIClient
-            
-            self.vod_manager = VODContentManager()
-            self.cablecast_client = CablecastAPIClient()
+            self.vod_manager = VODService()
+            self.cablecast_client = VODService().client
             logger.info("VOD components initialized successfully")
             return True
         except Exception as e:

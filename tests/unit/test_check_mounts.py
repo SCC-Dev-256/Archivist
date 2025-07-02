@@ -16,13 +16,11 @@ if 'loguru' not in sys.modules:
     sys.modules['loguru'] = dummy_logger
 
 from loguru import logger
+from core.services import FileService
 
-spec = importlib.util.spec_from_file_location(
-    "check_mounts", Path(__file__).resolve().parents[1] / "core" / "check_mounts.py"
-)
-check_mounts = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(check_mounts)
-verify_critical_mounts = check_mounts.verify_critical_mounts
+# Use the service layer instead of direct import
+file_service = FileService()
+verify_critical_mounts = file_service.verify_critical_mounts
 
 all_mounts = [
     "/mnt/flex-1",

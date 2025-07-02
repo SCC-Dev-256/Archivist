@@ -1,13 +1,11 @@
 # Add to core/cablecast_integration.py
 from typing import Dict, List, Optional
 from loguru import logger
-from core.cablecast_client import CablecastAPIClient
 from core.models import CablecastShowORM, CablecastVODORM, CablecastVODChapterORM
-from core.transcription import run_whisper_transcription
 from core.app import db
 from core.config import CABLECAST_BASE_URL, CABLECAST_API_KEY, CABLECAST_LOCATION_ID
 from datetime import datetime
-from core.task_queue import queue_manager
+from core.cablecast_client import CablecastAPIClient
 
 
 class CablecastIntegrationService:
@@ -116,7 +114,7 @@ class CablecastIntegrationService:
             # For now, we'll assume the video is accessible via the URL
             
             # Start transcription job
-            job_id = queue_manager.enqueue_transcription(vod.url, metadata={
+            job_id = QueueService().enqueue_transcription(vod.url, metadata={
                 'cablecast_show_id': show_id,
                 'cablecast_vod_id': vod.id,
                 'source': 'cablecast'

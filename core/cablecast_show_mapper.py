@@ -27,8 +27,8 @@ from core.cablecast_client import CablecastAPIClient
 class CablecastShowMapper:
     """Maps Archivist transcriptions to existing Cablecast shows"""
     
-    def __init__(self):
-        self.cablecast_client = CablecastAPIClient()
+    def __init__(self, cablecast_client=None):
+        self.cablecast_client = cablecast_client or CablecastAPIClient()
         self.cache = {}  # Simple cache for show data
     
     def find_matching_show(self, video_path: str, transcription_metadata: Dict) -> Optional[int]:

@@ -26,8 +26,8 @@ from core.app import db
 class CablecastTranscriptionLinker:
     """Links transcriptions to existing Cablecast shows"""
     
-    def __init__(self):
-        self.cablecast_client = CablecastAPIClient()
+    def __init__(self, cablecast_client=None):
+        self.cablecast_client = cablecast_client or CablecastAPIClient()
     
     def link_transcription_to_show(self, transcription_id: str, show_id: int) -> bool:
         """

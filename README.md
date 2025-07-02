@@ -4,10 +4,11 @@ A Flask-based REST API service for audio transcription and analysis, built with 
 
 ## Features
 
+- **Service Layer Architecture** - Clean separation of concerns with modular services
 - Audio transcription using WhisperX
 - Speaker diarization with Pyannote
-- **NEW: Cablecast VOD Integration** - Automated content publishing to VOD systems
-- **NEW: Content Management** - Sync and manage content between Archivist and Cablecast
+- **Cablecast VOD Integration** - Automated content publishing to VOD systems
+- **Content Management** - Sync and manage content between Archivist and Cablecast
 - RESTful API with OpenAPI documentation
 - PostgreSQL database with SQLAlchemy ORM
 - Redis caching and rate limiting
@@ -101,9 +102,34 @@ curl -X GET "http://localhost:5000/api/vod/sync-status"
 ## Development
 
 - Run tests: `pytest`
+- Test service layer: `python test_service_import.py`
 - Format code: `black .`
 - Sort imports: `isort .`
 - Type checking: `mypy .`
+
+### Service Layer Architecture
+
+The application now uses a clean service layer architecture:
+
+```
+core/
+├── services/           # Service layer abstractions
+│   ├── transcription.py  # Transcription operations
+│   ├── file.py          # File management operations
+│   ├── queue.py         # Job queue operations
+│   ├── vod.py           # VOD integration operations
+│   └── __init__.py      # Service exports and singletons
+├── api/                # API endpoints
+├── models.py           # Data models
+├── exceptions.py       # Custom exceptions
+└── config.py           # Configuration management
+```
+
+**Key Benefits:**
+- **Separation of Concerns**: Business logic separated from API layer
+- **Testability**: Services can be easily mocked and tested
+- **Reusability**: Services can be used across different parts of the application
+- **Maintainability**: Clear interfaces and error handling
 
 ## Production Deployment
 
@@ -141,6 +167,7 @@ Once the server is running, visit:
 ## Documentation
 
 - [Main Documentation](README.md)
+- **[Service Layer Guide](docs/SERVICE_LAYER.md)** - Service layer architecture and usage
 - **[VOD Integration Guide](docs/CABLECAST_VOD_INTEGRATION.md)** - Comprehensive VOD integration documentation
 - **[VOD Quick Reference](docs/VOD_QUICK_REFERENCE.md)** - Quick commands and examples
 - [API Documentation](core/api_docs.py)

@@ -29,7 +29,7 @@ from core.vod_automation import (
     get_show_suggestions,
     process_transcription_queue
 )
-from core.cablecast_client import CablecastAPIClient
+from core.services import VODService
 from core.models import TranscriptionResultORM
 from core.app import db
 
@@ -47,7 +47,7 @@ limiter = Limiter(
 def list_shows():
     """List all Cablecast shows"""
     try:
-        client = CablecastAPIClient()
+        client = VODService().client
         shows = client.get_shows()
         
         return jsonify({
@@ -68,7 +68,7 @@ def list_shows():
 def get_show(show_id):
     """Get specific Cablecast show details"""
     try:
-        client = CablecastAPIClient()
+        client = VODService().client
         show = client.get_show(show_id)
         
         if not show:
@@ -292,7 +292,7 @@ def process_queue():
 def health_check():
     """Health check for Cablecast integration"""
     try:
-        client = CablecastAPIClient()
+        client = VODService().client
         
         # Test connection by getting shows
         shows = client.get_shows()

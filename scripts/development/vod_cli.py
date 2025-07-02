@@ -18,6 +18,7 @@ import sys
 import argparse
 import json
 from loguru import logger
+from core.services import VODService
 
 # Add the core directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'core'))
@@ -30,9 +31,7 @@ def setup_logging():
 def sync_status():
     """Get sync status between Archivist and VOD system"""
     try:
-        from core.vod_content_manager import VODContentManager
-        
-        manager = VODContentManager()
+        manager = VODService()
         status = manager.get_sync_status()
         
         print("\n" + "="*60)
@@ -57,9 +56,7 @@ def sync_status():
 def publish_transcription(transcription_id):
     """Publish a single transcription to VOD"""
     try:
-        from core.vod_content_manager import VODContentManager
-        
-        manager = VODContentManager()
+        manager = VODService()
         result = manager.process_archivist_content_for_vod(transcription_id)
         
         if result:
@@ -79,9 +76,7 @@ def publish_transcription(transcription_id):
 def batch_publish_transcriptions(transcription_ids):
     """Batch publish multiple transcriptions to VOD"""
     try:
-        from core.vod_content_manager import VODContentManager
-        
-        manager = VODContentManager()
+        manager = VODService()
         results = manager.batch_process_transcriptions(transcription_ids)
         
         print(f"\n" + "="*60)
@@ -111,9 +106,7 @@ def batch_publish_transcriptions(transcription_ids):
 def sync_shows():
     """Sync shows from Cablecast to Archivist database"""
     try:
-        from core.vod_content_manager import VODContentManager
-        
-        manager = VODContentManager()
+        manager = VODService()
         synced_count = manager.sync_shows_from_cablecast()
         
         print(f"\n✓ Synced {synced_count} shows from Cablecast")
@@ -126,9 +119,7 @@ def sync_shows():
 def sync_vods():
     """Sync VODs from Cablecast to Archivist database"""
     try:
-        from core.vod_content_manager import VODContentManager
-        
-        manager = VODContentManager()
+        manager = VODService()
         synced_count = manager.sync_vods_from_cablecast()
         
         print(f"\n✓ Synced {synced_count} VODs from Cablecast")
@@ -141,9 +132,8 @@ def sync_vods():
 def test_connection():
     """Test connection to Cablecast API"""
     try:
-        from core.cablecast_client import CablecastAPIClient
-        
-        client = CablecastAPIClient()
+        manager = VODService()
+        client = manager.client
         success = client.test_connection()
         
         if success:

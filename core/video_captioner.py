@@ -1,6 +1,7 @@
 import subprocess
 import os
 import torch
+from core.services import TranscriptionService
 
 
 def run_whisper_transcription(video_path: str) -> str:
@@ -16,11 +17,8 @@ def run_whisper_transcription(video_path: str) -> str:
     Raises:
         RuntimeError: If transcription fails
     """
-    # Import the actual transcription function
-    from core.transcription import run_whisper_transcription as transcribe
-    
     try:
-        result = transcribe(video_path)
+        result = TranscriptionService().transcribe_file(video_path)
         return result['srt_path']
     except Exception as e:
         raise RuntimeError(f"Transcription failed: {e}")
