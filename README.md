@@ -60,6 +60,7 @@ cp .env.example /opt/Archivist/.env
 CABLECAST_API_URL=https://your-cablecast-instance.com/api
 CABLECAST_API_KEY=your_api_key_here
 AUTO_PUBLISH_TO_VOD=true
+# Transcriptions will automatically publish to VOD after completion
 ```
 
 5. Initialize the database:
@@ -137,6 +138,7 @@ Once the server is running, visit:
 - Prometheus metrics: `http://192.168.181.154:5050/metrics`
 - Grafana dashboards: `http://192.168.181.154:3000`
 - **NEW: VOD Integration metrics** - Publishing success rates, sync status
+- Run `scripts/vod_sync_monitor.py` to log `/api/vod/sync-status` regularly
 
 ## Documentation
 
