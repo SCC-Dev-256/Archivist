@@ -257,4 +257,208 @@ class VODService:
             return self.client.wait_for_vod_processing(vod_id, timeout)
         except Exception as e:
             logger.error(f"Failed to wait for VOD processing {vod_id}: {e}")
-            raise VODError(f"VOD processing wait failed: {str(e)}") 
+            raise VODError(f"VOD processing wait failed: {str(e)}")
+
+    @handle_vod_error
+    def delete_vod(self, vod_id: int) -> bool:
+        """Delete a VOD from Cablecast.
+        
+        Args:
+            vod_id: ID of the VOD to delete
+            
+        Returns:
+            True if deletion was successful
+        """
+        try:
+            success = self.client.delete_vod(vod_id)
+            if success:
+                logger.info(f"VOD {vod_id} deleted successfully")
+            return success
+        except Exception as e:
+            logger.error(f"Failed to delete VOD {vod_id}: {e}")
+            raise VODError(f"VOD deletion failed: {str(e)}")
+
+    @handle_vod_error
+    def get_vod_chapters(self, vod_id: int) -> List[Dict]:
+        """Get chapters for a VOD.
+        
+        Args:
+            vod_id: ID of the VOD
+            
+        Returns:
+            List of chapter dictionaries
+        """
+        try:
+            chapters = self.client.get_vod_chapters(vod_id)
+            logger.info(f"Retrieved {len(chapters)} chapters for VOD {vod_id}")
+            return chapters
+        except Exception as e:
+            logger.error(f"Failed to get VOD chapters: {e}")
+            raise VODError(f"Failed to retrieve VOD chapters: {str(e)}")
+
+    @handle_vod_error
+    def create_vod_chapter(self, vod_id: int, chapter_data: Dict) -> Optional[Dict]:
+        """Create a new chapter for a VOD.
+        
+        Args:
+            vod_id: ID of the VOD
+            chapter_data: Chapter data dictionary
+            
+        Returns:
+            Created chapter dictionary or None
+        """
+        try:
+            chapter = self.client.create_vod_chapter(vod_id, chapter_data)
+            if chapter:
+                logger.info(f"Created chapter for VOD {vod_id}")
+            return chapter
+        except Exception as e:
+            logger.error(f"Failed to create VOD chapter: {e}")
+            raise VODError(f"Failed to create VOD chapter: {str(e)}")
+
+    @handle_vod_error
+    def update_vod_chapter(self, vod_id: int, chapter_id: int, chapter_data: Dict) -> bool:
+        """Update a VOD chapter.
+        
+        Args:
+            vod_id: ID of the VOD
+            chapter_id: ID of the chapter
+            chapter_data: Updated chapter data
+            
+        Returns:
+            True if update was successful
+        """
+        try:
+            success = self.client.update_vod_chapter(vod_id, chapter_id, chapter_data)
+            if success:
+                logger.info(f"Updated chapter {chapter_id} for VOD {vod_id}")
+            return success
+        except Exception as e:
+            logger.error(f"Failed to update VOD chapter: {e}")
+            raise VODError(f"Failed to update VOD chapter: {str(e)}")
+
+    @handle_vod_error
+    def delete_vod_chapter(self, vod_id: int, chapter_id: int) -> bool:
+        """Delete a VOD chapter.
+        
+        Args:
+            vod_id: ID of the VOD
+            chapter_id: ID of the chapter
+            
+        Returns:
+            True if deletion was successful
+        """
+        try:
+            success = self.client.delete_vod_chapter(vod_id, chapter_id)
+            if success:
+                logger.info(f"Deleted chapter {chapter_id} for VOD {vod_id}")
+            return success
+        except Exception as e:
+            logger.error(f"Failed to delete VOD chapter: {e}")
+            raise VODError(f"Failed to delete VOD chapter: {str(e)}")
+
+    @handle_vod_error
+    def get_locations(self) -> List[Dict]:
+        """Get all Cablecast locations.
+        
+        Returns:
+            List of location dictionaries
+        """
+        try:
+            locations = self.client.get_locations()
+            logger.info(f"Retrieved {len(locations)} locations from Cablecast")
+            return locations
+        except Exception as e:
+            logger.error(f"Failed to get locations: {e}")
+            raise VODError(f"Failed to retrieve locations: {str(e)}")
+
+    @handle_vod_error
+    def get_qualities(self) -> List[Dict]:
+        """Get all VOD quality settings.
+        
+        Returns:
+            List of quality setting dictionaries
+        """
+        try:
+            qualities = self.client.get_vod_qualities()
+            logger.info(f"Retrieved {len(qualities)} quality settings from Cablecast")
+            return qualities
+        except Exception as e:
+            logger.error(f"Failed to get qualities: {e}")
+            raise VODError(f"Failed to retrieve qualities: {str(e)}")
+
+    @handle_vod_error
+    def search_shows(self, query: str, location_id: Optional[int] = None) -> List[Dict]:
+        """Search shows by title or description.
+        
+        Args:
+            query: Search query string
+            location_id: Optional location ID to filter results
+            
+        Returns:
+            List of matching show dictionaries
+        """
+        try:
+            shows = self.client.search_shows(query, location_id)
+            logger.info(f"Found {len(shows)} shows matching '{query}'")
+            return shows
+        except Exception as e:
+            logger.error(f"Failed to search shows: {e}")
+            raise VODError(f"Show search failed: {str(e)}")
+
+    @handle_vod_error
+    def get_vod_embed_code(self, vod_id: int) -> Optional[str]:
+        """Get embed code for a VOD.
+        
+        Args:
+            vod_id: ID of the VOD
+            
+        Returns:
+            Embed code string or None
+        """
+        try:
+            embed_code = self.client.get_vod_embed_code(vod_id)
+            if embed_code:
+                logger.debug(f"Retrieved embed code for VOD {vod_id}")
+            return embed_code
+        except Exception as e:
+            logger.error(f"Failed to get VOD embed code: {e}")
+            raise VODError(f"Failed to retrieve VOD embed code: {str(e)}")
+
+    @handle_vod_error
+    def get_vod_stream_url(self, vod_id: int) -> Optional[str]:
+        """Get streaming URL for a VOD.
+        
+        Args:
+            vod_id: ID of the VOD
+            
+        Returns:
+            Stream URL string or None
+        """
+        try:
+            stream_url = self.client.get_vod_stream_url(vod_id)
+            if stream_url:
+                logger.debug(f"Retrieved stream URL for VOD {vod_id}")
+            return stream_url
+        except Exception as e:
+            logger.error(f"Failed to get VOD stream URL: {e}")
+            raise VODError(f"Failed to retrieve VOD stream URL: {str(e)}")
+
+    @handle_vod_error
+    def get_vod_analytics(self, vod_id: int) -> Optional[Dict]:
+        """Get analytics data for a VOD.
+        
+        Args:
+            vod_id: ID of the VOD
+            
+        Returns:
+            Analytics data dictionary or None
+        """
+        try:
+            analytics = self.client.get_vod_analytics(vod_id)
+            if analytics:
+                logger.debug(f"Retrieved analytics for VOD {vod_id}")
+            return analytics
+        except Exception as e:
+            logger.error(f"Failed to get VOD analytics: {e}")
+            raise VODError(f"Failed to retrieve VOD analytics: {str(e)}") 

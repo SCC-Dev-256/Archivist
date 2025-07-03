@@ -32,6 +32,7 @@ from core.vod_automation import (
 from core.services import VODService
 from core.models import TranscriptionResultORM
 from core.database import db
+from core.security import require_csrf_token
 
 # Create blueprint
 cablecast_bp = Blueprint('cablecast', __name__, url_prefix='/api/cablecast')
@@ -313,4 +314,407 @@ def health_check():
             'cablecast_connected': False,
             'error': str(e),
             'message': 'Cablecast integration is not working'
+        }), 500
+
+# Enhanced VOD Management Endpoints
+
+@cablecast_bp.route('/vods', methods=['GET'])
+@limiter.limit("100 per hour")
+def list_vods():
+    """List all Cablecast VODs"""
+    try:
+        client = VODService().client
+        show_id = request.args.get('show_id', type=int)
+        vods = client.get_vods(show_id)
+        
+        return jsonify({
+            'success': True,
+            'vods': vods,
+            'count': len(vods)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error listing Cablecast VODs: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>', methods=['GET'])
+@limiter.limit("200 per hour")
+def get_vod(vod_id):
+    """Get specific Cablecast VOD details"""
+    try:
+        client = VODService().client
+        vod = client.get_vod(vod_id)
+        
+        if not vod:
+            return jsonify({
+                'success': False,
+                'error': 'VOD not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'vod': vod
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting Cablecast VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>', methods=['DELETE'])
+@limiter.limit("20 per hour")
+@require_csrf_token
+def delete_vod(vod_id):
+    """Delete a Cablecast VOD"""
+    try:
+        client = VODService().client
+        success = client.delete_vod(vod_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'VOD {vod_id} deleted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to delete VOD'
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error deleting Cablecast VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/chapters', methods=['GET'])
+@limiter.limit("100 per hour")
+def get_vod_chapters(vod_id):
+    """Get chapters for a VOD"""
+    try:
+        client = VODService().client
+        chapters = client.get_vod_chapters(vod_id)
+        
+        return jsonify({
+            'success': True,
+            'chapters': chapters,
+            'count': len(chapters)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting chapters for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/chapters', methods=['POST'])
+@limiter.limit("50 per hour")
+@require_csrf_token
+def create_vod_chapter(vod_id):
+    """Create a new chapter for a VOD"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Chapter data is required'
+            }), 400
+        
+        client = VODService().client
+        chapter = client.create_vod_chapter(vod_id, data)
+        
+        if chapter:
+            return jsonify({
+                'success': True,
+                'chapter': chapter
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to create chapter'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error creating chapter for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/chapters/<int:chapter_id>', methods=['PUT'])
+@limiter.limit("50 per hour")
+@require_csrf_token
+def update_vod_chapter(vod_id, chapter_id):
+    """Update a VOD chapter"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Chapter data is required'
+            }), 400
+        
+        client = VODService().client
+        success = client.update_vod_chapter(vod_id, chapter_id, data)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Chapter {chapter_id} updated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to update chapter'
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error updating chapter {chapter_id} for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/chapters/<int:chapter_id>', methods=['DELETE'])
+@limiter.limit("20 per hour")
+@require_csrf_token
+def delete_vod_chapter(vod_id, chapter_id):
+    """Delete a VOD chapter"""
+    try:
+        client = VODService().client
+        success = client.delete_vod_chapter(vod_id, chapter_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Chapter {chapter_id} deleted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to delete chapter'
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error deleting chapter {chapter_id} for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/locations', methods=['GET'])
+@limiter.limit("100 per hour")
+def list_locations():
+    """List all Cablecast locations"""
+    try:
+        client = VODService().client
+        locations = client.get_locations()
+        
+        return jsonify({
+            'success': True,
+            'locations': locations,
+            'count': len(locations)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error listing Cablecast locations: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/qualities', methods=['GET'])
+@limiter.limit("100 per hour")
+def list_qualities():
+    """List all VOD quality settings"""
+    try:
+        client = VODService().client
+        qualities = client.get_vod_qualities()
+        
+        return jsonify({
+            'success': True,
+            'qualities': qualities,
+            'count': len(qualities)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error listing VOD qualities: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/sync/vods', methods=['POST'])
+@limiter.limit("10 per hour")
+@require_csrf_token
+def sync_vods():
+    """Sync VODs from Cablecast to local database"""
+    try:
+        from core.cablecast_integration import CablecastIntegrationService
+        
+        integration_service = CablecastIntegrationService()
+        synced_count = integration_service.sync_vods()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Synced {synced_count} VODs from Cablecast',
+            'synced_count': synced_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error syncing VODs: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/status', methods=['GET'])
+@limiter.limit("100 per hour")
+def get_vod_status(vod_id):
+    """Get detailed status for a VOD"""
+    try:
+        client = VODService().client
+        status = client.get_vod_status(vod_id)
+        
+        if not status:
+            return jsonify({
+                'success': False,
+                'error': 'VOD status not found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'status': status
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting status for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/metadata', methods=['PUT'])
+@limiter.limit("50 per hour")
+@require_csrf_token
+def update_vod_metadata(vod_id):
+    """Update VOD metadata"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Metadata is required'
+            }), 400
+        
+        client = VODService().client
+        success = client.update_vod_metadata(vod_id, data)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'VOD {vod_id} metadata updated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to update VOD metadata'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error updating metadata for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/search/shows', methods=['GET'])
+@limiter.limit("100 per hour")
+def search_shows():
+    """Search shows by title or description"""
+    try:
+        query = request.args.get('q')
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'Search query is required'
+            }), 400
+        
+        location_id = request.args.get('location_id', type=int)
+        client = VODService().client
+        shows = client.search_shows(query, location_id)
+        
+        return jsonify({
+            'success': True,
+            'shows': shows,
+            'count': len(shows),
+            'query': query
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching shows: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/embed', methods=['GET'])
+@limiter.limit("200 per hour")
+def get_vod_embed(vod_id):
+    """Get embed code for a VOD"""
+    try:
+        client = VODService().client
+        embed_code = client.get_vod_embed_code(vod_id)
+        
+        if embed_code:
+            return jsonify({
+                'success': True,
+                'embed_code': embed_code,
+                'vod_id': vod_id
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Embed code not available'
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Error getting embed code for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/stream', methods=['GET'])
+@limiter.limit("200 per hour")
+def get_vod_stream(vod_id):
+    """Get streaming URL for a VOD"""
+    try:
+        client = VODService().client
+        stream_url = client.get_vod_stream_url(vod_id)
+        
+        if stream_url:
+            return jsonify({
+                'success': True,
+                'stream_url': stream_url,
+                'vod_id': vod_id
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Stream URL not available'
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Error getting stream URL for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500 

@@ -293,3 +293,97 @@ class CablecastAPIClient:
         
         logger.error(f"VOD {vod_id} processing timed out after {timeout} seconds")
         return False
+
+    def delete_vod(self, vod_id: int) -> bool:
+        """Delete a VOD from Cablecast"""
+        try:
+            response = self._make_request('DELETE', f'/vods/{vod_id}')
+            if response is not None:
+                logger.info(f"Deleted VOD {vod_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting VOD {vod_id}: {e}")
+            return False
+
+    def update_vod_chapter(self, vod_id: int, chapter_id: int, chapter_data: Dict) -> bool:
+        """Update a VOD chapter"""
+        try:
+            response = self._make_request('PUT', f'/vods/{vod_id}/chapters/{chapter_id}', json=chapter_data)
+            if response is not None:
+                logger.info(f"Updated chapter {chapter_id} for VOD {vod_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error updating VOD chapter {chapter_id}: {e}")
+            return False
+
+    def delete_vod_chapter(self, vod_id: int, chapter_id: int) -> bool:
+        """Delete a VOD chapter"""
+        try:
+            response = self._make_request('DELETE', f'/vods/{vod_id}/chapters/{chapter_id}')
+            if response is not None:
+                logger.info(f"Deleted chapter {chapter_id} for VOD {vod_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting VOD chapter {chapter_id}: {e}")
+            return False
+
+    def get_vod_embed_code(self, vod_id: int) -> Optional[str]:
+        """Get embed code for a VOD"""
+        try:
+            vod = self.get_vod(vod_id)
+            if vod:
+                return vod.get('embedCode')
+            return None
+        except Exception as e:
+            logger.error(f"Error getting embed code for VOD {vod_id}: {e}")
+            return None
+
+    def get_vod_stream_url(self, vod_id: int) -> Optional[str]:
+        """Get streaming URL for a VOD"""
+        try:
+            vod = self.get_vod(vod_id)
+            if vod:
+                return vod.get('url')
+            return None
+        except Exception as e:
+            logger.error(f"Error getting stream URL for VOD {vod_id}: {e}")
+            return None
+
+    def search_shows(self, query: str, location_id: int = None) -> List[Dict]:
+        """Search shows by title or description"""
+        try:
+            params = {'search': query}
+            if location_id:
+                params['location'] = location_id
+            
+            response = self._make_request('GET', '/shows', params=params)
+            if response:
+                logger.info(f"Found {len(response)} shows matching '{query}'")
+                return response
+            return []
+        except Exception as e:
+            logger.error(f"Error searching shows: {e}")
+            return []
+
+    def get_show_vods(self, show_id: int) -> List[Dict]:
+        """Get all VODs for a specific show"""
+        try:
+            return self.get_vods(show_id)
+        except Exception as e:
+            logger.error(f"Error getting VODs for show {show_id}: {e}")
+            return []
+
+    def get_vod_analytics(self, vod_id: int) -> Optional[Dict]:
+        """Get analytics data for a VOD"""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/analytics')
+            if response:
+                logger.debug(f"Retrieved analytics for VOD {vod_id}")
+                return response
+            return None
+        except Exception as e:
+            logger.error(f"Error getting VOD analytics: {e}")
+            return None
