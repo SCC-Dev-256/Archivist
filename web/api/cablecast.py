@@ -717,4 +717,71 @@ def get_vod_stream(vod_id):
         return jsonify({
             'success': False,
             'error': str(e)
+        }), 500
+
+@cablecast_bp.route('/vods/<int:vod_id>/captions', methods=['POST'])
+@limiter.limit("50 per hour")
+@require_csrf_token
+def upload_vod_caption(vod_id):
+    """Upload SRT caption file as sidecar to VOD"""
+    try:
+        # Check if file was uploaded
+        if 'caption_file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No caption file provided'
+            }), 400
+        
+        caption_file = request.files['caption_file']
+        if caption_file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected'
+            }), 400
+        
+        # Validate file extension
+        if not caption_file.filename.lower().endswith('.srt'):
+            return jsonify({
+                'success': False,
+                'error': 'Only SRT files are supported'
+            }), 400
+        
+        # Save file temporarily
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.srt') as temp_file:
+            caption_file.save(temp_file.name)
+            temp_path = temp_file.name
+        
+        try:
+            # Upload to Cablecast
+            vod_service = VODService()
+            success = vod_service.upload_srt_caption(vod_id, temp_path)
+            
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': f'Caption file uploaded successfully for VOD {vod_id}',
+                    'vod_id': vod_id,
+                    'filename': caption_file.filename
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to upload caption file'
+                }), 500
+                
+        finally:
+            # Clean up temporary file
+            try:
+                os.unlink(temp_path)
+            except Exception as e:
+                logger.warning(f"Failed to clean up temporary file {temp_path}: {e}")
+        
+    except Exception as e:
+        logger.error(f"Error uploading caption for VOD {vod_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500 

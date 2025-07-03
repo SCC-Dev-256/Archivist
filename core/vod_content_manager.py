@@ -256,14 +256,22 @@ class VODContentManager:
                 'transcription_completed_at': transcription.completed_at.isoformat(),
                 'searchable_content': transcription_text,
                 'content_type': 'transcribed_video',
-                'source_system': 'archivist'
+                'source_system': 'archivist',
+                'caption_file_uploaded': True
             }
             
             # Update VOD metadata in Cablecast
-            success = self.cablecast_client.update_vod_metadata(vod_id, metadata)
-            if success:
-                logger.info(f"Enhanced VOD {vod_id} with transcription metadata")
+            metadata_success = self.cablecast_client.update_vod_metadata(vod_id, metadata)
+            
+            # Upload SRT file as caption sidecar
+            caption_success = self.cablecast_client.upload_srt_file(vod_id, transcription.output_path)
+            
+            if metadata_success and caption_success:
+                logger.info(f"Enhanced VOD {vod_id} with transcription metadata and uploaded SRT caption")
                 return True
+            elif metadata_success:
+                logger.warning(f"Updated VOD {vod_id} metadata but failed to upload SRT caption")
+                return True  # Still consider it successful if metadata was updated
             else:
                 logger.error(f"Failed to enhance VOD {vod_id} with transcription metadata")
                 return False

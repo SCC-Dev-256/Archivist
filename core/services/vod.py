@@ -461,4 +461,24 @@ class VODService:
             return analytics
         except Exception as e:
             logger.error(f"Failed to get VOD analytics: {e}")
-            raise VODError(f"Failed to retrieve VOD analytics: {str(e)}") 
+            raise VODError(f"Failed to retrieve VOD analytics: {str(e)}")
+
+    @handle_vod_error
+    def upload_srt_caption(self, vod_id: int, srt_path: str) -> bool:
+        """Upload SRT caption file as sidecar to VOD.
+        
+        Args:
+            vod_id: ID of the VOD
+            srt_path: Path to the SRT file
+            
+        Returns:
+            True if upload was successful
+        """
+        try:
+            success = self.client.upload_srt_file(vod_id, srt_path)
+            if success:
+                logger.info(f"Successfully uploaded SRT caption for VOD {vod_id}")
+            return success
+        except Exception as e:
+            logger.error(f"Failed to upload SRT caption for VOD {vod_id}: {e}")
+            raise VODError(f"Failed to upload SRT caption: {str(e)}") 

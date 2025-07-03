@@ -205,6 +205,20 @@ class CablecastAPIClient:
         except Exception as e:
             logger.error(f"Error uploading video file: {e}")
             return False
+
+    def upload_srt_file(self, vod_id: int, srt_path: str) -> bool:
+        """Upload SRT caption file as sidecar to VOD"""
+        try:
+            with open(srt_path, 'rb') as f:
+                files = {'caption': f}
+                response = self._make_request('POST', f'/vods/{vod_id}/captions', files=files)
+                if response is not None:
+                    logger.info(f"Uploaded SRT caption file for VOD {vod_id}")
+                    return True
+                return False
+        except Exception as e:
+            logger.error(f"Error uploading SRT file for VOD {vod_id}: {e}")
+            return False
     
     def get_vod_qualities(self) -> List[Dict]:
         """Get available VOD quality settings"""
