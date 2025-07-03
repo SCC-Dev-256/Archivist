@@ -24,7 +24,7 @@ from core.security import security_manager, validate_json_input, sanitize_output
 from datetime import datetime
 import json
 import time
-from core.app import db
+from core.database import db
 from core.cablecast_client import CablecastAPIClient
 from core.cablecast_integration import CablecastIntegrationService
 

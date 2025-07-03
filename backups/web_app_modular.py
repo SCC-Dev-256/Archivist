@@ -4,29 +4,14 @@ This module provides the main web application setup and route registration
 using the new modular route structure while maintaining all original functionality.
 """
 
-from flask import Flask, Blueprint, render_template, jsonify, request, send_file
-from pathlib import Path
-import os
-import glob
+from flask import Flask, Blueprint, jsonify
 from loguru import logger
-from core.config import NAS_PATH, OUTPUT_DIR
-from core.services import TranscriptionService, VODService, FileService, QueueService
-from core.models import (
-    BrowseRequest, TranscribeRequest, QueueReorderRequest,
-    JobStatus, FileItem, ErrorResponse, SuccessResponse,
-    TranscriptionJobORM, TranscriptionResultORM, CablecastShowORM
-)
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_restx import Api, Resource, Namespace, fields
+from flask_restx import Api
 from core.logging_config import setup_logging
-from core.security import security_manager, validate_json_input, sanitize_output, require_csrf_token, get_csrf_token
+from core.security import get_csrf_token
 from datetime import datetime
-import json
-import time
-from core.app import db
-from core.cablecast_client import CablecastAPIClient
-from core.cablecast_integration import CablecastIntegrationService
 
 # Set up logging
 setup_logging()

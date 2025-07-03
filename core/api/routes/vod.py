@@ -9,7 +9,7 @@ import os
 from core.services import VODService
 from core.models import TranscriptionResultORM
 from core.security import sanitize_output, require_csrf_token
-from core.app import db
+from core.database import db
 
 def create_vod_blueprint(limiter):
     """Create VOD blueprint with routes."""

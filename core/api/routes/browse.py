@@ -12,7 +12,7 @@ from core.config import NAS_PATH, OUTPUT_DIR
 from core.services import FileService
 from core.models import BrowseRequest, TranscriptionResultORM
 from core.security import security_manager, sanitize_output
-from core.app import db
+from core.database import db
 
 # Rate limiting configuration
 BROWSE_RATE_LIMIT = os.getenv('BROWSE_RATE_LIMIT', '30 per minute')

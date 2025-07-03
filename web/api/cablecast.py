@@ -31,7 +31,7 @@ from core.vod_automation import (
 )
 from core.services import VODService
 from core.models import TranscriptionResultORM
-from core.app import db
+from core.database import db
 
 # Create blueprint
 cablecast_bp = Blueprint('cablecast', __name__, url_prefix='/api/cablecast')
