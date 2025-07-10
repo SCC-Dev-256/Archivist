@@ -81,17 +81,17 @@ def main():
         
         if result and result.get('output_path'):
             logger.info(f"Transcription completed successfully in {duration/60:.2f} minutes")
-            logger.info(f"SRT file saved at: {result['output_path']}")
+            logger.info(f"SCC file saved at: {result['output_path']}")
             
-            # Verify the SRT file exists and has content
-            srt_path = result['output_path']
-            if os.path.exists(srt_path):
-                srt_size = os.path.getsize(srt_path)
-                logger.info(f"SRT file size: {srt_size} bytes")
-                if srt_size == 0:
-                    logger.error("SRT file is empty!")
+            # Verify the SCC file exists and has content
+            scc_path = result['output_path']
+            if os.path.exists(scc_path):
+                scc_size = os.path.getsize(scc_path)
+                logger.info(f"SCC file size: {scc_size} bytes")
+                if scc_size == 0:
+                    logger.error("SCC file is empty!")
             else:
-                logger.error("SRT file was not created!")
+                logger.error("SCC file was not created!")
         else:
             logger.error(f"Transcription failed after {duration/60:.2f} minutes")
             logger.error(f"Error details: {result}")

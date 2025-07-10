@@ -464,21 +464,36 @@ class VODService:
             raise VODError(f"Failed to retrieve VOD analytics: {str(e)}")
 
     @handle_vod_error
-    def upload_srt_caption(self, vod_id: int, srt_path: str) -> bool:
-        """Upload SRT caption file as sidecar to VOD.
+    def upload_scc_caption(self, vod_id: int, scc_path: str) -> bool:
+        """Upload SCC (Scenarist Closed Caption) file as sidecar to VOD.
         
         Args:
             vod_id: ID of the VOD
-            srt_path: Path to the SRT file
+            scc_path: Path to the SCC file
             
         Returns:
             True if upload was successful
         """
         try:
-            success = self.client.upload_srt_file(vod_id, srt_path)
+            success = self.client.upload_scc_file(vod_id, scc_path)
             if success:
-                logger.info(f"Successfully uploaded SRT caption for VOD {vod_id}")
+                logger.info(f"Successfully uploaded SCC caption for VOD {vod_id}")
             return success
         except Exception as e:
-            logger.error(f"Failed to upload SRT caption for VOD {vod_id}: {e}")
-            raise VODError(f"Failed to upload SRT caption: {str(e)}") 
+            logger.error(f"Failed to upload SCC caption for VOD {vod_id}: {e}")
+            raise VODError(f"Failed to upload SCC caption: {str(e)}")
+
+    # Legacy method for backward compatibility
+    @handle_vod_error
+    def upload_srt_caption(self, vod_id: int, srt_path: str) -> bool:
+        """Legacy method that redirects to SCC upload (backward compatibility)
+        
+        Args:
+            vod_id: ID of the VOD
+            srt_path: Path to the file (should be SCC format)
+            
+        Returns:
+            True if upload was successful
+        """
+        logger.warning("upload_srt_caption is deprecated. Use upload_scc_caption instead.")
+        return self.upload_scc_caption(vod_id, srt_path) 

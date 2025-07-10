@@ -188,3 +188,5 @@ python-magic>=0.4.27,<1.0.0
 # Additional Security Utilities
 cryptography>=41.0.7,<42.0.0
 pyjwt>=2.8.0,<3.0.0
+
+# Local Summarization with Transformers (already included in ml.txt)

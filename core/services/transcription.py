@@ -1,11 +1,11 @@
 """Transcription service for Archivist application.
 
 This service provides a clean interface for all transcription-related operations,
-including WhisperX integration, summarization, and captioning.
+including WhisperX integration, summarization, and captioning using SCC format.
 
 Key Features:
 - WhisperX transcription
-- SRT summarization
+- SCC (Scenarist Closed Caption) summarization
 - Video captioning
 - Error handling and validation
 - Progress tracking
@@ -21,7 +21,7 @@ from typing import Dict, Optional, List
 from loguru import logger
 from core.exceptions import TranscriptionError, handle_transcription_error
 from core.transcription import run_whisper_transcription
-from core.scc_summarizer import summarize_srt
+from core.scc_summarizer import summarize_scc
 from core.config import WHISPER_MODEL, USE_GPU, LANGUAGE
 
 class TranscriptionService:
@@ -52,8 +52,8 @@ class TranscriptionService:
             result = run_whisper_transcription(video_path=file_path)
             
             # Convert the result to match expected format
-            if result.get('success'):
-                output_path = result.get('srt_path', '')
+            if result.get('success') is not False:  # Handle None or True
+                output_path = result.get('scc_path', '')
                 logger.info(f"Transcription completed: {output_path}")
                 return {
                     'output_path': output_path,
@@ -69,36 +69,39 @@ class TranscriptionService:
             raise TranscriptionError(f"Transcription failed: {str(e)}")
     
     @handle_transcription_error
-    def summarize_transcription(self, srt_path: str) -> Dict:
-        """Summarize an SRT transcription file.
+    def summarize_transcription(self, scc_path: str) -> Dict:
+        """Summarize an SCC transcription file.
         
         Args:
-            srt_path: Path to the SRT file
+            scc_path: Path to the SCC file
             
         Returns:
             Dictionary containing summary results
         """
-        if not os.path.exists(srt_path):
-            raise TranscriptionError(f"SRT file not found: {srt_path}")
+        if not os.path.exists(scc_path):
+            raise TranscriptionError(f"SCC file not found: {scc_path}")
         
-        logger.info(f"Starting summarization of {srt_path}")
+        logger.info(f"Starting summarization of {scc_path}")
         
         try:
-            summary = summarize_srt(srt_path)
-            logger.info(f"Summarization completed for {srt_path}")
-            return summary
+            summary_path = summarize_scc(scc_path)
+            if summary_path:
+                logger.info(f"Summarization completed for {scc_path}")
+                return {'summary_path': summary_path, 'status': 'completed'}
+            else:
+                raise TranscriptionError("Summarization failed to produce output file")
             
         except Exception as e:
-            logger.error(f"Summarization failed for {srt_path}: {e}")
+            logger.error(f"Summarization failed for {scc_path}: {e}")
             raise TranscriptionError(f"Summarization failed: {str(e)}")
     
     @handle_transcription_error
-    def create_captions(self, video_path: str, srt_path: str, output_path: Optional[str] = None) -> str:
-        """Create captioned video from SRT file.
+    def create_captions(self, video_path: str, scc_path: str, output_path: Optional[str] = None) -> str:
+        """Create captioned video from SCC file.
         
         Args:
             video_path: Path to the video file
-            srt_path: Path to the SRT file
+            scc_path: Path to the SCC file
             output_path: Output path for captioned video
             
         Returns:
@@ -107,8 +110,8 @@ class TranscriptionService:
         if not os.path.exists(video_path):
             raise TranscriptionError(f"Video file not found: {video_path}")
         
-        if not os.path.exists(srt_path):
-            raise TranscriptionError(f"SRT file not found: {srt_path}")
+        if not os.path.exists(scc_path):
+            raise TranscriptionError(f"SCC file not found: {scc_path}")
         
         logger.info(f"Creating captions for {video_path}")
         
@@ -139,16 +142,16 @@ class TranscriptionService:
         try:
             # Step 1: Transcribe
             transcription_result = self.transcribe_file(video_path, output_dir)
-            srt_path = transcription_result.get('output_path')
+            scc_path = transcription_result.get('output_path')
             
-            if not srt_path or not os.path.exists(srt_path):
-                raise TranscriptionError("Transcription failed to produce SRT file")
+            if not scc_path or not os.path.exists(scc_path):
+                raise TranscriptionError("Transcription failed to produce SCC file")
             
             # Step 2: Summarize
-            summary_result = self.summarize_transcription(srt_path)
+            summary_result = self.summarize_transcription(scc_path)
             
             # Step 3: Create captions
-            captioned_path = self.create_captions(video_path, srt_path, output_dir)
+            captioned_path = self.create_captions(video_path, scc_path, output_dir)
             
             # Combine results
             pipeline_result = {
@@ -180,14 +183,14 @@ class TranscriptionService:
         base_name = os.path.splitext(os.path.basename(file_path))[0]
         output_dir = os.path.dirname(file_path)
         
-        srt_path = os.path.join(output_dir, f"{base_name}.srt")
+        scc_path = os.path.join(output_dir, f"{base_name}.scc")
         summary_path = os.path.join(output_dir, f"{base_name}_summary.txt")
         
         status = {
             'file_path': file_path,
-            'transcription_exists': os.path.exists(srt_path),
+            'transcription_exists': os.path.exists(scc_path),
             'summary_exists': os.path.exists(summary_path),
-            'srt_path': srt_path if os.path.exists(srt_path) else None,
+            'scc_path': scc_path if os.path.exists(scc_path) else None,
             'summary_path': summary_path if os.path.exists(summary_path) else None
         }
         

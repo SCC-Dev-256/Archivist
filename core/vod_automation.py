@@ -74,33 +74,45 @@ def auto_link_transcription_to_show(transcription_id: str) -> Dict:
             'file_path': transcription.video_path
         }
         
-        # Calculate duration from SRT file if available
+        # Calculate duration from SCC file if available
         if os.path.exists(transcription.output_path):
             try:
                 with open(transcription.output_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                     lines = content.strip().split('\n')
                     
-                    # Find the last timestamp
-                    for line in reversed(lines):
-                        if ' --> ' in line:
-                            end_time = line.split(' --> ')[1]
-                            # Parse timestamp to get duration
-                            end_time = end_time.replace(',', '.')
-                            parts = end_time.split(':')
+                    # Find the last timestamp in SCC format
+                    last_timestamp = None
+                    segment_count = 0
+                    
+                    for line in lines:
+                        line = line.strip()
+                        # SCC timestamp format: HH:MM:SS:FF or HH:MM:SS;FF
+                        import re
+                        if re.match(r'\d{2}:\d{2}:\d{2}[:;]\d{2}', line):
+                            timestamp = line.split('\t')[0]  # Get timestamp part
+                            last_timestamp = timestamp
+                            segment_count += 1
+                    
+                    if last_timestamp:
+                        # Parse SMPTE timestamp to get duration
+                        # Format: HH:MM:SS:FF or HH:MM:SS;FF
+                        time_part = last_timestamp.replace(';', ':')  # Handle drop frame
+                        parts = time_part.split(':')
+                        if len(parts) >= 4:
                             hours = int(parts[0])
                             minutes = int(parts[1])
-                            seconds = float(parts[2])
-                            duration = hours * 3600 + minutes * 60 + seconds
+                            seconds = int(parts[2])
+                            frames = int(parts[3])
+                            # Convert frames to seconds (assuming 29.97 fps)
+                            frame_seconds = frames / 29.97
+                            duration = hours * 3600 + minutes * 60 + seconds + frame_seconds
                             transcription_metadata['duration'] = duration
-                            break
                     
-                    # Count segments
-                    segments = [line for line in lines if ' --> ' in line]
-                    transcription_metadata['segments'] = len(segments)
+                    transcription_metadata['segments'] = segment_count
                     
             except Exception as e:
-                logger.warning(f"Could not calculate duration from SRT: {e}")
+                logger.warning(f"Could not calculate duration from SCC: {e}")
         
         # Find matching show
         show_id = show_mapper.find_matching_show(transcription.video_path, transcription_metadata)

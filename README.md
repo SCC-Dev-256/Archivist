@@ -1,178 +1,811 @@
-# Archivist - Audio Transcription and Analysis Service
+# Archivist - Comprehensive Transcription & VOD Management System
 
-A Flask-based REST API service for audio transcription and analysis, built with modern best practices and optimized for production deployment. Now with integrated VOD (Video on Demand) system support for Cablecast platforms.
+A comprehensive Flask-based REST API service for audio/video transcription, analysis, and Video-on-Demand (VOD) management, designed for production deployment in Proxmox VM environments with advanced integration capabilities.
 
-## Features
+## 🏗️ System Architecture
 
-- **Service Layer Architecture** - Clean separation of concerns with modular services
-- Audio transcription using WhisperX
-- Speaker diarization with Pyannote
-- **Cablecast VOD Integration** - Automated content publishing to VOD systems
-- **Content Management** - Sync and manage content between Archivist and Cablecast
-- RESTful API with OpenAPI documentation
-- PostgreSQL database with SQLAlchemy ORM
-- Redis caching and rate limiting
-- Prometheus metrics and Grafana dashboards
-- Docker support with HTTPS via Let's Encrypt
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ARCHIVIST ECOSYSTEM                          │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────────┐  │
+│  │   Flex-1    │   │   Flex-2    │   │      Flex-N         │  │
+│  │  /mnt/flex-1│   │ /mnt/flex-2 │   │   /mnt/flex-N       │  │
+│  │  Content    │   │  Content    │   │    Content          │  │
+│  │  Storage    │   │  Storage    │   │    Storage          │  │
+│  └─────────────┘   └─────────────┘   └─────────────────────┘  │
+│           │                │                    │              │
+│           └────────────────┼────────────────────┘              │
+│                           │                                   │
+│  ┌─────────────────────────┼─────────────────────────────────┐ │
+│  │             ARCHIVIST CORE SYSTEM                      │ │
+│  │  ┌─────────────────────┴─────────────────────────────┐  │ │
+│  │  │           WhisperX Transcription                  │  │ │
+│  │  │              SCC Format Output                    │  │ │
+│  │  │           Local Model Summarization               │  │ │
+│  │  └───────────────────────────────────────────────────┘  │ │
+│  │  ┌───────────────────────────────────────────────────┐  │ │
+│  │  │               REST API Layer                      │  │ │
+│  │  │  • Browse & File Management                       │  │ │
+│  │  │  • Transcription Control                          │  │ │
+│  │  │  • Queue Management                               │  │ │
+│  │  │  • VOD Integration                                │  │ │
+│  │  └───────────────────────────────────────────────────┘  │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                           │                                   │
+│  ┌─────────────────────────┼─────────────────────────────────┐ │
+│  │          EXTERNAL INTEGRATIONS                          │ │
+│  │  ┌─────────────────┐   ┌─────────────────┐                │ │
+│  │  │   Cablecast     │   │   SCCTV VOD     │                │ │
+│  │  │   API Server    │   │   Database      │                │ │
+│  │  │                 │   │                 │                │ │
+│  │  │ • Show Mgmt     │   │ • Content DB    │                │ │
+│  │  │ • VOD Creation  │   │ • Metadata      │                │ │
+│  │  │ • Metadata      │   │ • Publishing    │                │ │
+│  │  └─────────────────┘   └─────────────────┘                │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-## VOD Integration Features
+## 🚀 Features
 
-- **Automated Publishing**: Automatically publish transcriptions to VOD systems
-- **Content Synchronization**: Sync shows and VODs between Archivist and Cablecast
-- **Batch Processing**: Process multiple files simultaneously
+### Core Transcription System
+- **WhisperX Integration**: High-quality speech-to-text with timestamp alignment
+- **SCC Format Output**: Industry-standard Scenarist Closed Caption files
+- **Local Model Summarization**: CPU-optimized local transformer models (facebook/bart-large-cnn)
+- **Multi-language Support**: Configurable language detection and processing
+- **Progress Tracking**: Real-time job status and progress monitoring
+- **Error Recovery**: Robust error handling with detailed logging
+
+### File Management & Storage
+- **Multi-Mount Support**: Flexible storage across multiple flex servers (/mnt/flex-1 through /mnt/flex-9)
+- **Location-Based Access**: User and location-specific access controls
+- **File Validation**: Comprehensive file type and permission checking
+- **Metadata Extraction**: Automatic video metadata and file information
+- **Storage Monitoring**: Mount point health checking and statistics
+
+### VOD Integration & Management
+- **Cablecast Integration**: Complete API integration for show and VOD management
+- **Automated Publishing**: Seamless content publishing to VOD platforms
+- **Content Synchronization**: Bidirectional sync between Archivist and Cablecast
+- **Batch Processing**: Efficient bulk operations for multiple files
 - **Status Monitoring**: Real-time tracking of VOD processing status
-- **Metadata Enhancement**: Enrich VOD content with transcription data
-- **API Integration**: Full REST API for VOD content management
+- **Metadata Enhancement**: Automatic enrichment with transcription data
 
-## Requirements
+### Production-Ready Infrastructure
+- **Service Layer Architecture**: Clean separation of concerns with modular services
+- **PostgreSQL Database**: Full relational database with SQLAlchemy ORM and Alembic migrations
+- **Redis Caching**: Response caching and rate limiting with Flask-Limiter
+- **Docker Support**: Complete containerization with HTTPS via Let's Encrypt and Certbot
+- **Monitoring**: Prometheus metrics and Grafana dashboards
+- **Security**: CSRF protection, input validation, and secure authentication
 
-- Python 3.11+
-- PostgreSQL 14+
-- Redis 6+
-- CUDA-compatible GPU (recommended)
-- **NEW: Cablecast API access** (for VOD integration)
+## 📋 System Requirements
 
-## Setup
+### Hardware Requirements
+- **CPU**: Multi-core processor (minimum 4 cores recommended for transcription)
+- **RAM**: 16GB minimum (32GB recommended for large file processing)
+- **Storage**: High-speed SSD for application, network storage for content
+- **Network**: Gigabit Ethernet for flex server access
 
-1. Create and activate a virtual environment:
+### Software Requirements
+- **Operating System**: Debian Linux (tested on 6.8.12-10-pve)
+- **Python**: 3.11+
+- **Database**: PostgreSQL 14+
+- **Cache**: Redis 6+
+- **Container Runtime**: Docker & Docker Compose (optional)
+
+### Network Infrastructure
+- **Proxmox VM Environment**: Optimized for VLAN-segmented networks
+- **Flex Server Access**: Network mounts to /mnt/flex-1 through /mnt/flex-9
+- **External API Access**: HTTPS connectivity to Cablecast and other integrations
+
+## 🔧 Installation & Setup
+
+### 1. Environment Preparation
+
 ```bash
+# Create application directory
+sudo mkdir -p /opt/Archivist
+cd /opt/Archivist
+
+# Create virtual environment
 python3.11 -m venv venv_py311
 source venv_py311/bin/activate
+
+# Clone repository
+git clone <repository-url> .
 ```
 
-2. Install dependencies:
-```bash
-# For development
-pip install -r requirements/dev.txt
+### 2. Dependency Installation
 
-# For production
+```bash
+# Production installation
 pip install -r requirements/prod.txt
+
+# Development installation (includes testing tools)
+pip install -r requirements/dev.txt
 ```
 
-3. Set up environment variables:
+### 3. Flex Server Configuration
+
 ```bash
+# Configure transcription users group
+sudo groupadd transcription_users
+sudo usermod -a -G transcription_users $USER
+
+# Set up flex server directories
+for i in {1..9}; do
+    sudo mkdir -p /mnt/flex-$i/transcriptions
+    sudo chown -R :transcription_users /mnt/flex-$i/transcriptions
+    sudo chmod -R g+rwx /mnt/flex-$i/transcriptions
+done
+
+# Update fstab for persistent mounts (see setup_transcriptions.sh)
+sudo ./setup_transcriptions.sh
+```
+
+### 4. Database Setup
+
+```bash
+# Install PostgreSQL
+sudo apt update && sudo apt install postgresql postgresql-contrib
+
+# Create database and user
+sudo -u postgres createdb archivist_db
+sudo -u postgres createuser archivist_user
+
+# Set password and permissions
+sudo -u postgres psql -c "ALTER USER archivist_user PASSWORD 'your_secure_password';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE archivist_db TO archivist_user;"
+```
+
+### 5. Environment Configuration
+
+```bash
+# Copy and configure environment file
 cp .env.example /opt/Archivist/.env
-# Edit /opt/Archivist/.env with your configuration
+
+# Edit configuration (see Configuration section for details)
+nano /opt/Archivist/.env
 ```
 
-4. **NEW: Configure VOD Integration** (optional):
-```bash
-# Add to .env file
-CABLECAST_API_URL=https://your-cablecast-instance.com/api
-CABLECAST_API_KEY=your_api_key_here
-AUTO_PUBLISH_TO_VOD=true
-```
+### 6. Database Migration
 
-5. Initialize the database:
 ```bash
+# Initialize database schema
 flask db upgrade
+
+# Verify tables created
+flask db current
 ```
 
-6. Run the development server:
+## ⚙️ Configuration
+
+### Core Application Settings
+
 ```bash
-flask run
+# Application Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
+API_WORKERS=4
+
+# Database Configuration
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=archivist_db
+POSTGRES_USER=archivist_user
+POSTGRES_PASSWORD=your_secure_password
+
+# Redis Configuration
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_PASSWORD=your_redis_password
+
+# Storage Configuration
+OUTPUT_DIR=/mnt/nas/transcriptions
+NAS_PATH=/mnt/nas
+
+# Flex server paths (automatically configured)
+FLEX1_PATH=/mnt/flex-1
+FLEX2_PATH=/mnt/flex-2
+# ... (up to flex-9)
 ```
 
-## VOD Integration Quick Start
+### Transcription Configuration
 
-### Enable VOD Features
 ```bash
-# Add to your .env file
+# WhisperX Settings
+WHISPER_MODEL=large-v2
+USE_GPU=false
+COMPUTE_TYPE=int8
+BATCH_SIZE=16
+NUM_WORKERS=4
+LANGUAGE=en
+
+# Summarization Settings
+SUMMARIZATION_MODEL=facebook/bart-large-cnn
+SUMMARIZATION_MAX_LENGTH=100
+SUMMARIZATION_MIN_LENGTH=30
+SUMMARIZATION_CHUNK_SIZE=10
+```
+
+### VOD Integration Settings
+
+```bash
+# Cablecast API Configuration
 CABLECAST_API_URL=https://your-cablecast-instance.com/api
 CABLECAST_API_KEY=your_api_key_here
+CABLECAST_LOCATION_ID=1
+CABLECAST_USER_ID=your_user_id
+CABLECAST_PASSWORD=your_password
+
+# VOD Processing Settings
 AUTO_PUBLISH_TO_VOD=true
+VOD_DEFAULT_QUALITY=1
+VOD_UPLOAD_TIMEOUT=300
+VOD_MAX_RETRIES=3
+VOD_RETRY_DELAY=60
+VOD_BATCH_SIZE=10
+
+# Advanced VOD Settings
+VOD_ENABLE_CHAPTERS=true
+VOD_ENABLE_METADATA_ENHANCEMENT=true
+VOD_ENABLE_AUTO_TAGGING=false
 ```
 
-### Publish Content to VOD
+### Security & Monitoring
+
 ```bash
-# Publish a single transcription
-curl -X POST "http://localhost:5000/api/vod/publish/transcription-uuid"
+# Security Settings
+FLASK_SECRET_KEY=your_very_secure_secret_key
+CSRF_SECRET_KEY=your_csrf_secret_key
+
+# Rate Limiting
+DEFAULT_RATE_LIMIT=200 per day, 50 per hour
+BROWSE_RATE_LIMIT=30 per minute
+TRANSCRIBE_RATE_LIMIT=10 per minute
+
+# Monitoring
+PROMETHEUS_ENABLED=true
+GRAFANA_ENABLED=true
+LOG_LEVEL=INFO
+```
+
+## 🏃‍♂️ Running the System
+
+### Development Mode
+
+```bash
+# Activate virtual environment
+source /opt/Archivist/venv_py311/bin/activate
+
+# Set environment variables
+export FLASK_ENV=development
+export FLASK_DEBUG=true
+
+# Run development server
+flask run --host=0.0.0.0 --port=8000
+```
+
+### Production Mode
+
+```bash
+# Using Gunicorn (recommended)
+gunicorn -w 4 -b 0.0.0.0:8000 app:app
+
+# Using Flask (development only)
+python -m flask run --host=0.0.0.0 --port=8000
+```
+
+### Docker Deployment
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+
+# Check logs
+docker-compose logs -f archivist
+
+# Scale workers
+docker-compose up -d --scale worker=4
+```
+
+### Systemd Service (Production)
+
+```bash
+# Create service file
+sudo nano /etc/systemd/system/archivist.service
+
+# Enable and start service
+sudo systemctl enable archivist
+sudo systemctl start archivist
+
+# Check status
+sudo systemctl status archivist
+```
+
+## 📁 Flex Server Management
+
+### Flex Server Overview
+
+The Archivist system supports up to 9 flex servers (/mnt/flex-1 through /mnt/flex-9) for distributed content storage:
+
+- **flex-1**: Primary video storage and active content
+- **flex-2**: Secondary storage and backup content  
+- **flex-3**: Archive storage for older content
+- **flex-4**: Special projects and custom content
+- **flex-5**: Test and development content
+- **flex-6-9**: Additional storage as needed
+
+### Content Organization
+
+```
+/mnt/flex-N/
+├── transcriptions/          # Generated transcription files
+│   ├── scc_files/          # SCC caption files
+│   ├── summaries/          # AI-generated summaries
+│   └── logs/               # Transcription logs
+├── videos/                 # Source video files
+│   ├── city_council/       # Council meeting recordings
+│   ├── public_access/      # Public access programming
+│   └── special_events/     # Special event recordings
+├── metadata/               # File metadata and indexing
+└── temp/                   # Temporary processing files
+```
+
+### File Management Operations
+
+```bash
+# Check mount status
+python -c "from core.check_mounts import main; main()"
+
+# List flex server contents
+curl -X GET "http://localhost:8000/api/browse?path=/mnt/flex-1"
+
+# Get storage statistics
+curl -X GET "http://localhost:8000/api/storage/info"
+
+# Validate critical mounts
+curl -X GET "http://localhost:8000/api/storage/verify"
+```
+
+### Backup and Archival
+
+```bash
+# Create backup script
+#!/bin/bash
+# backup_flex_content.sh
+
+for i in {1..5}; do
+    rsync -av --progress /mnt/flex-$i/transcriptions/ \
+          /backup/flex-$i/transcriptions/
+done
+
+# Schedule backup (crontab -e)
+0 2 * * * /opt/Archivist/scripts/backup_flex_content.sh
+```
+
+## 🔗 API Documentation
+
+### Authentication
+
+All API endpoints support authentication via:
+- **Session Authentication**: For web interface
+- **API Key Authentication**: For programmatic access
+
+```bash
+# Generate API key
+curl -X POST "http://localhost:8000/api/auth/apikey" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My API Key"}'
+
+# Use API key
+curl -X GET "http://localhost:8000/api/files" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Core Endpoints
+
+#### File Management
+
+```bash
+# Browse directories
+GET /api/browse?path=/mnt/flex-1&user=admin&location=default
+
+# Get file details
+GET /api/file-details?path=/mnt/flex-1/video.mp4
+
+# List mount points
+GET /api/mount-points
+
+# Storage information
+GET /api/storage/info
+```
+
+#### Transcription Operations
+
+```bash
+# Start transcription
+POST /api/transcribe
+{
+  "path": "/mnt/flex-1/video.mp4",
+  "position": 0
+}
+
+# Check transcription status
+GET /api/status/{job_id}
+
+# Get transcription results
+GET /api/results/{job_id}
+
+# List completed transcriptions
+GET /api/transcriptions
+```
+
+#### Queue Management
+
+```bash
+# Get queue status
+GET /api/queue/status
+
+# Reorder queue
+POST /api/queue/reorder
+{
+  "job_id": "uuid-123",
+  "position": 1
+}
+
+# Pause/resume jobs
+POST /api/queue/pause/{job_id}
+POST /api/queue/resume/{job_id}
+
+# Clear completed jobs
+DELETE /api/queue/clear-completed
+```
+
+### VOD Integration Endpoints
+
+#### Content Publishing
+
+```bash
+# Publish single transcription to VOD
+POST /api/vod/publish/{transcription_id}
+{
+  "quality": 1,
+  "auto_transcribe": true
+}
 
 # Batch publish multiple transcriptions
-curl -X POST "http://localhost:5000/api/vod/batch-publish" \
-  -H "Content-Type: application/json" \
-  -d '{"transcription_ids": ["uuid1", "uuid2"]}'
+POST /api/vod/batch-publish
+{
+  "transcription_ids": ["uuid-1", "uuid-2", "uuid-3"]
+}
+
+# Check VOD sync status
+GET /api/vod/sync-status
 ```
 
-### Check VOD Status
+#### Cablecast Management
+
 ```bash
-curl -X GET "http://localhost:5000/api/vod/sync-status"
+# List Cablecast shows
+GET /api/cablecast/shows
+
+# Sync shows from Cablecast
+POST /api/cablecast/sync/shows
+
+# Sync VODs from Cablecast
+POST /api/cablecast/sync/vods
+
+# Link transcription to show
+POST /api/cablecast/link/{transcription_id}
+{
+  "show_id": 123,
+  "auto_link": true
+}
+
+# Get VOD stream information
+GET /api/cablecast/vods/{vod_id}/stream
 ```
 
-## Development
+### Response Formats
 
-- Run tests: `pytest`
-- Test service layer: `python test_service_import.py`
-- Format code: `black .`
-- Sort imports: `isort .`
-- Type checking: `mypy .`
+#### Successful Response
 
-### Service Layer Architecture
-
-The application now uses a clean service layer architecture:
-
-```
-core/
-├── services/           # Service layer abstractions
-│   ├── transcription.py  # Transcription operations
-│   ├── file.py          # File management operations
-│   ├── queue.py         # Job queue operations
-│   ├── vod.py           # VOD integration operations
-│   └── __init__.py      # Service exports and singletons
-├── api/                # API endpoints
-├── models.py           # Data models
-├── exceptions.py       # Custom exceptions
-└── config.py           # Configuration management
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": {
+    "transcription_id": "uuid-123",
+    "status": "completed",
+    "output_path": "/mnt/flex-1/video.scc"
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
 ```
 
-**Key Benefits:**
-- **Separation of Concerns**: Business logic separated from API layer
-- **Testability**: Services can be easily mocked and tested
-- **Reusability**: Services can be used across different parts of the application
-- **Maintainability**: Clear interfaces and error handling
+#### Error Response
 
-## Production Deployment
+```json
+{
+  "success": false,
+  "error": "File not found",
+  "error_code": "FILE_NOT_FOUND",
+  "details": {
+    "path": "/mnt/flex-1/missing.mp4",
+    "available_paths": ["/mnt/flex-1", "/mnt/flex-2"]
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
 
-1. Build and run with Docker:
+## 🔄 Integration Workflows
+
+### Complete Transcription Workflow
+
+```mermaid
+graph TD
+    A[Video File] --> B[Queue Job]
+    B --> C[WhisperX Processing]
+    C --> D[SCC Generation]
+    D --> E[Local Summarization]
+    E --> F[File Storage]
+    F --> G[VOD Publishing]
+    G --> H[Cablecast Integration]
+    H --> I[Content Available]
+```
+
+### VOD Processing Pipeline
+
+```mermaid
+graph LR
+    A[Transcription Complete] --> B[VOD Content Manager]
+    B --> C[Cablecast API]
+    C --> D[Show Creation]
+    D --> E[VOD Generation]
+    E --> F[Metadata Enhancement]
+    F --> G[Publishing Complete]
+```
+
+### Automated Monitoring
+
 ```bash
-docker-compose up -d
+# Health check script
+#!/bin/bash
+# health_check.sh
+
+# Check core services
+curl -f http://localhost:8000/health || exit 1
+
+# Check mount points
+python -c "from core.check_mounts import verify_critical_mounts; exit(0 if verify_critical_mounts() else 1)"
+
+# Check VOD integration
+curl -f http://localhost:8000/api/vod/sync-status || exit 1
+
+echo "All systems operational"
 ```
 
-2. Set up HTTPS with Let's Encrypt:
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Mount Point Problems
+
 ```bash
-certbot --nginx -d your-domain.com
+# Check mount status
+mount | grep flex
+
+# Remount flex servers
+sudo mount -a
+
+# Check permissions
+ls -la /mnt/flex-*
 ```
 
-## API Documentation
+#### Transcription Failures
 
-Once the server is running, visit:
-- Swagger UI: `http://192.168.181.154:5050/api/`
-- ReDoc: `http://192.168.181.154:5050/api/redoc`
+```bash
+# Check transcription logs
+tail -f /opt/Archivist/logs/transcription.log
 
-### New VOD API Endpoints
+# Test WhisperX installation
+python -c "from core.transcription import run_whisper_transcription; print('WhisperX OK')"
 
-- `POST /api/vod/publish/<id>` - Publish transcription to VOD
-- `POST /api/vod/batch-publish` - Batch publish transcriptions
-- `GET /api/vod/sync-status` - Get VOD sync status
-- `GET /api/cablecast/shows` - List synced Cablecast shows
-- `POST /api/cablecast/sync/shows` - Sync shows from Cablecast
-- `POST /api/cablecast/sync/vods` - Sync VODs from Cablecast
+# Check available models
+ls ~/.cache/huggingface/transformers/
+```
 
-## Monitoring
+#### VOD Integration Issues
 
-- Prometheus metrics: `http://192.168.181.154:5050/metrics`
-- Grafana dashboards: `http://192.168.181.154:3000`
-- **NEW: VOD Integration metrics** - Publishing success rates, sync status
+```bash
+# Test Cablecast connection
+curl -X GET "http://localhost:8000/api/cablecast/health"
 
-## Documentation
+# Check API credentials
+python -c "from core.cablecast_client import CablecastAPIClient; client = CablecastAPIClient(); print(client.test_connection())"
 
-- [Main Documentation](README.md)
-- **[Service Layer Guide](docs/SERVICE_LAYER.md)** - Service layer architecture and usage
-- **[VOD Integration Guide](docs/CABLECAST_VOD_INTEGRATION.md)** - Comprehensive VOD integration documentation
-- **[VOD Quick Reference](docs/VOD_QUICK_REFERENCE.md)** - Quick commands and examples
-- [API Documentation](core/api_docs.py)
-- [Database Schema](core/models.py)
+# Sync status
+curl -X GET "http://localhost:8000/api/vod/sync-status"
+```
 
-## License
+### Performance Optimization
 
-MIT License 
+#### CPU Optimization
+
+```bash
+# Adjust worker threads
+export NUM_WORKERS=8
+export BATCH_SIZE=32
+
+# Monitor CPU usage
+htop -p $(pgrep -f "whisper")
+```
+
+#### Memory Optimization
+
+```bash
+# Check memory usage
+free -h
+ps aux --sort=-%mem | head
+
+# Adjust batch sizes
+export BATCH_SIZE=8  # Reduce for lower memory usage
+```
+
+#### Storage Optimization
+
+```bash
+# Check disk usage
+df -h /mnt/flex-*
+
+# Clean temporary files
+find /mnt/flex-*/temp -name "*.tmp" -mtime +1 -delete
+
+# Archive old transcriptions
+find /mnt/flex-*/transcriptions -name "*.scc" -mtime +30 -exec mv {} /archive/ \;
+```
+
+## 📊 Monitoring & Metrics
+
+### Prometheus Metrics
+
+Access metrics at `http://localhost:8000/metrics`:
+
+- `archivist_transcriptions_total`: Total transcriptions completed
+- `archivist_transcription_duration_seconds`: Transcription processing time
+- `archivist_vod_publishes_total`: VOD publishing operations
+- `archivist_storage_usage_bytes`: Storage utilization by mount point
+- `archivist_queue_length`: Current queue length
+- `archivist_api_requests_total`: API request metrics
+
+### Grafana Dashboards
+
+Access dashboards at `http://localhost:3000`:
+
+1. **System Overview**: General health, storage, and performance
+2. **Transcription Pipeline**: Processing statistics and queue metrics
+3. **VOD Integration**: Publishing success rates and sync status
+4. **Storage Management**: Flex server utilization and health
+
+### Log Management
+
+```bash
+# Application logs
+tail -f /opt/Archivist/logs/archivist.log
+
+# Transcription logs
+tail -f /opt/Archivist/logs/transcription.log
+
+# VOD integration logs
+tail -f /opt/Archivist/logs/vod.log
+
+# Configure log rotation
+sudo nano /etc/logrotate.d/archivist
+```
+
+## 🔒 Security Considerations
+
+### Network Security
+
+- Deploy behind HTTPS with Let's Encrypt certificates
+- Configure firewall rules for necessary ports only
+- Use VPN access for administrative functions
+- Implement network segmentation for flex servers
+
+### Authentication & Authorization
+
+- Change default admin password immediately
+- Use strong API keys for programmatic access
+- Implement role-based access control
+- Regular security audits and updates
+
+### Data Protection
+
+- Encrypt sensitive configuration data
+- Regular backups of database and transcriptions
+- Secure storage of API credentials
+- Monitor access logs for suspicious activity
+
+## 🤝 Contributing
+
+### Development Setup
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd Archivist
+
+# Create development environment
+python3.11 -m venv venv_dev
+source venv_dev/bin/activate
+pip install -r requirements/dev.txt
+
+# Install pre-commit hooks
+pre-commit install
+
+# Run tests
+pytest tests/
+```
+
+### Code Standards
+
+- Follow PEP 8 Python style guidelines
+- Maintain 90%+ test coverage
+- Use type hints where appropriate
+- Document all public APIs
+- Include docstrings for all modules and functions
+
+### Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test categories
+pytest tests/unit/
+pytest tests/integration/
+pytest tests/api/
+
+# Generate coverage report
+pytest --cov=core --cov-report=html
+```
+
+## 📚 Additional Resources
+
+### Documentation Links
+
+- [Service Layer Architecture](docs/SERVICE_LAYER.md)
+- [VOD Integration Guide](docs/CABLECAST_VOD_INTEGRATION.md)
+- [VOD Quick Reference](docs/VOD_QUICK_REFERENCE.md)
+- [API Documentation](docs/API_REFERENCE.md)
+- [Database Schema](docs/DATABASE_SCHEMA.md)
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
+
+### External Resources
+
+- [WhisperX Documentation](https://github.com/m-bain/whisperX)
+- [Cablecast API Documentation](docs/pdf/cablecast_api_last_half.pdf)
+- [SCC Format Specification](docs/SCC_FORMAT_SPEC.md)
+- [Flask Documentation](https://flask.palletsprojects.com/)
+- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
+
+### Support
+
+For technical support and questions:
+
+1. Check the troubleshooting section above
+2. Review the logs for error details
+3. Consult the API documentation
+4. Submit issues via the project repository
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+**Built with ❤️ for efficient video transcription and VOD management** 

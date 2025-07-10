@@ -67,42 +67,38 @@ def test_transcription_linker():
         
         linker = CablecastTranscriptionLinker()
         
-        # Test SRT parsing
-        test_srt_content = """1
-00:00:00,000 --> 00:00:05,000
-This is the first segment of the transcription.
+        # Test SCC parsing
+        test_scc_content = """Scenarist_SCC V1.0
 
-2
-00:00:05,000 --> 00:00:10,000
-This is the second segment with more content.
+00:00:00;00	9420 9420 94ae 94ae 9452 9452 97a2 97a2 d468 6973 2069 7320 f468 6520 6669 7273 7420 7365 676d 656e 7420 6f66 20f4 6865 2074 7261 6e73 6372 6970 f469 6f6e 2e9420 9420 942c 942c 8080 8080
 
-3
-00:00:10,000 --> 00:00:15,000
-And this is the final segment of our test."""
+00:00:05;00	9420 9420 94ae 94ae 9452 9452 97a2 97a2 d468 6973 2069 7320 f468 6520 7365 636f 6e64 2073 6567 6d65 6e74 2077 6974 6820 6d6f 7265 2063 6f6e f465 6e74 2e9420 9420 942c 942c 8080 8080
+
+00:00:10;00	9420 9420 94ae 94ae 9452 9452 97a2 97a2 c16e 6420 f468 6973 2069 7320 f468 6520 6669 6e61 6c20 7365 676d 656e 7420 6f66 206f 7572 2074 6573 742e 9420 9420 942c 942c 8080 8080"""
         
-        # Create a temporary SRT file
-        temp_srt_path = "/tmp/test_transcription.srt"
-        with open(temp_srt_path, 'w', encoding='utf-8') as f:
-            f.write(test_srt_content)
+        # Create a temporary SCC file
+        temp_scc_path = "/tmp/test_transcription.scc"
+        with open(temp_scc_path, 'w', encoding='utf-8') as f:
+            f.write(test_scc_content)
         
         try:
-            # Test transcription analysis
-            metadata = linker._analyze_transcription(test_srt_content)
+            # Test transcription analysis with SCC format
+            metadata = linker._analyze_transcription(test_scc_content)
             logger.info(f"Transcription analysis:")
             logger.info(f"  Total segments: {metadata.get('total_segments', 0)}")
             logger.info(f"  Total duration: {metadata.get('total_duration_seconds', 0)} seconds")
             logger.info(f"  Total words: {metadata.get('total_words', 0)}")
             logger.info(f"  Key phrases: {metadata.get('key_phrases', [])[:5]}")
             
-            # Test timestamp parsing
-            test_timestamp = "01:23:45,678"
+            # Test SMPTE timestamp parsing
+            test_timestamp = "01:23:45;15"
             seconds = linker._parse_timestamp(test_timestamp)
-            logger.info(f"Timestamp '{test_timestamp}' = {seconds} seconds")
+            logger.info(f"SMPTE Timestamp '{test_timestamp}' = {seconds} seconds")
             
         finally:
             # Clean up
-            if os.path.exists(temp_srt_path):
-                os.remove(temp_srt_path)
+            if os.path.exists(temp_scc_path):
+                os.remove(temp_scc_path)
         
         logger.info("✓ Transcription linker tests completed")
         return True

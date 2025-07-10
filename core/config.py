@@ -109,8 +109,15 @@ POSTGRES_CONFIG = {
 
 # Cablecast configuration
 CABLECAST_BASE_URL = os.getenv("CABLECAST_BASE_URL", "https://api.cablecast.com")
+CABLECAST_SERVER_URL = os.getenv("CABLECAST_SERVER_URL", CABLECAST_BASE_URL)  # Backward compatibility
 CABLECAST_API_KEY = os.getenv("CABLECAST_API_KEY", "your_api_key_here")
+CABLECAST_USER_ID = os.getenv("CABLECAST_USER_ID", "")
+CABLECAST_PASSWORD = os.getenv("CABLECAST_PASSWORD", "")
 CABLECAST_LOCATION_ID = os.getenv("CABLECAST_LOCATION_ID", "123456")
+
+# Request configuration
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 
 # VOD Integration Configuration
 CABLECAST_API_URL = os.getenv("CABLECAST_API_URL", "https://vod.scctv.org/ui/api-docs/explorer")
@@ -141,3 +148,9 @@ VOD_RETRY_BACKOFF_MULTIPLIER = float(os.getenv("VOD_RETRY_BACKOFF_MULTIPLIER", "
 # VOD Logging
 VOD_LOG_LEVEL = os.getenv("VOD_LOG_LEVEL", "INFO")
 VOD_ENABLE_DEBUG_LOGGING = os.getenv("VOD_ENABLE_DEBUG_LOGGING", "false").lower() == "true"
+
+# Local Summarization Configuration
+SUMMARIZATION_MODEL = os.getenv("SUMMARIZATION_MODEL", "facebook/bart-large-cnn")
+SUMMARIZATION_MAX_LENGTH = int(os.getenv("SUMMARIZATION_MAX_LENGTH", "100"))
+SUMMARIZATION_MIN_LENGTH = int(os.getenv("SUMMARIZATION_MIN_LENGTH", "30"))
+SUMMARIZATION_CHUNK_SIZE = int(os.getenv("SUMMARIZATION_CHUNK_SIZE", "5"))

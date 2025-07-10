@@ -723,7 +723,7 @@ def get_vod_stream(vod_id):
 @limiter.limit("50 per hour")
 @require_csrf_token
 def upload_vod_caption(vod_id):
-    """Upload SRT caption file as sidecar to VOD"""
+    """Upload SCC (Scenarist Closed Caption) file as sidecar to VOD"""
     try:
         # Check if file was uploaded
         if 'caption_file' not in request.files:
@@ -739,49 +739,61 @@ def upload_vod_caption(vod_id):
                 'error': 'No file selected'
             }), 400
         
-        # Validate file extension
-        if not caption_file.filename.lower().endswith('.srt'):
+        # Validate file extension - accept both SCC and SRT for backward compatibility
+        if not (caption_file.filename.lower().endswith('.scc') or caption_file.filename.lower().endswith('.srt')):
             return jsonify({
                 'success': False,
-                'error': 'Only SRT files are supported'
+                'error': 'Only SCC and SRT files are supported (SCC preferred)'
             }), 400
+        
+        # Warn if SRT file is uploaded
+        if caption_file.filename.lower().endswith('.srt'):
+            logger.warning(f"SRT file uploaded for VOD {vod_id}. SCC format is preferred.")
         
         # Save file temporarily
         import tempfile
         import os
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.srt') as temp_file:
+        # Determine file extension
+        file_ext = '.scc' if caption_file.filename.lower().endswith('.scc') else '.srt'
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
             caption_file.save(temp_file.name)
             temp_path = temp_file.name
         
         try:
-            # Upload to Cablecast
+            # Initialize VOD service
             vod_service = VODService()
-            success = vod_service.upload_srt_caption(vod_id, temp_path)
+            
+            # Upload caption file (use new SCC method, but maintain backward compatibility)
+            if caption_file.filename.lower().endswith('.scc'):
+                success = vod_service.upload_scc_caption(vod_id, temp_path)
+            else:
+                # For SRT files, use legacy method which will redirect to SCC upload
+                success = vod_service.upload_srt_caption(vod_id, temp_path)
             
             if success:
                 return jsonify({
                     'success': True,
                     'message': f'Caption file uploaded successfully for VOD {vod_id}',
-                    'vod_id': vod_id,
-                    'filename': caption_file.filename
+                    'file_type': 'SCC' if caption_file.filename.lower().endswith('.scc') else 'SRT (converted to SCC)'
                 })
             else:
                 return jsonify({
                     'success': False,
-                    'error': 'Failed to upload caption file'
+                    'error': 'Failed to upload caption file to Cablecast'
                 }), 500
                 
         finally:
             # Clean up temporary file
             try:
                 os.unlink(temp_path)
-            except Exception as e:
-                logger.warning(f"Failed to clean up temporary file {temp_path}: {e}")
-        
+            except OSError:
+                pass
+                
     except Exception as e:
-        logger.error(f"Error uploading caption for VOD {vod_id}: {e}")
+        logger.error(f"Error uploading caption file for VOD {vod_id}: {e}")
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'Internal server error'
         }), 500 
