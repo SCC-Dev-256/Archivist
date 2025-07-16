@@ -347,6 +347,10 @@ class HealthCheckManager:
         """Get current health status (cached for performance)."""
         # For now, run checks directly. In production, you might want to cache results
         return self.run_all_health_checks()
+    
+    def run_all_checks(self) -> Dict[str, Any]:
+        """Alias for run_all_health_checks for backward compatibility."""
+        return self.run_all_health_checks()
 
 # Global health check manager
 _health_manager: Optional[HealthCheckManager] = None

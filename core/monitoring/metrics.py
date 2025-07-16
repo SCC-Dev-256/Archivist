@@ -239,6 +239,40 @@ class VODMetricsCollector:
             "total_metrics": len(self.metrics),
             "total_circuit_breakers": len(self.circuit_breakers)
         }
+    
+    def collect_system_metrics(self):
+        """Collect system-level metrics for monitoring."""
+        try:
+            import psutil
+            
+            # System resource metrics
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage('/')
+            
+            # Update system metrics
+            self.gauge("system_cpu_percent", cpu_percent)
+            self.gauge("system_memory_percent", memory.percent)
+            self.gauge("system_memory_used_gb", memory.used / (1024**3))
+            self.gauge("system_memory_total_gb", memory.total / (1024**3))
+            self.gauge("system_disk_percent", disk.percent)
+            self.gauge("system_disk_used_gb", disk.used / (1024**3))
+            self.gauge("system_disk_total_gb", disk.total / (1024**3))
+            
+            # Network metrics
+            net_io = psutil.net_io_counters()
+            self.gauge("system_network_bytes_sent", net_io.bytes_sent)
+            self.gauge("system_network_bytes_recv", net_io.bytes_recv)
+            
+            # Process metrics
+            process = psutil.Process()
+            self.gauge("system_process_memory_mb", process.memory_info().rss / (1024**2))
+            self.gauge("system_process_cpu_percent", process.cpu_percent())
+            
+            logger.debug(f"System metrics collected - CPU: {cpu_percent}%, Memory: {memory.percent}%")
+            
+        except Exception as e:
+            logger.error(f"Error collecting system metrics: {e}")
 
 # Global metrics collector instance
 _metrics_collector: Optional[VODMetricsCollector] = None

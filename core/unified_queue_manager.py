@@ -402,7 +402,20 @@ class UnifiedQueueManager:
     def get_cached_data(self) -> Dict[str, Any]:
         """Get cached data for quick access."""
         with self._cache_lock:
-            return self._task_cache.copy()
+            cached_data = self._task_cache.copy()
+            
+            # Convert datetime objects to ISO format strings for JSON serialization
+            if 'timestamp' in cached_data and isinstance(cached_data['timestamp'], datetime):
+                cached_data['timestamp'] = cached_data['timestamp'].isoformat()
+            
+            # Convert datetime objects in tasks
+            if 'tasks' in cached_data:
+                for task in cached_data['tasks']:
+                    for key, value in task.items():
+                        if isinstance(value, datetime):
+                            task[key] = value.isoformat()
+            
+            return cached_data
 
 # Global instance
 _unified_queue_manager = None

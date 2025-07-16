@@ -10,7 +10,7 @@ from flask_cors import CORS
 import threading
 import time
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List, Any
 
 from loguru import logger
 from core.monitoring.integrated_dashboard import IntegratedDashboard
@@ -139,6 +139,283 @@ class AdminUI:
             logger.info("Successfully registered unified queue routes in admin UI")
         except Exception as e:
             logger.error(f"Failed to register unified queue routes: {e}")
+        
+        # Register dashboard API endpoints for testing compatibility
+        self._register_dashboard_api_routes()
+    
+    def _register_dashboard_api_routes(self):
+        """Register dashboard API endpoints for testing compatibility."""
+        
+        @self.app.route('/api/metrics')
+        def api_metrics():
+            """Get current metrics data."""
+            try:
+                from core.monitoring.metrics import get_metrics_collector
+                metrics_collector = get_metrics_collector()
+                return jsonify(metrics_collector.export_metrics())
+            except Exception as e:
+                logger.error(f"Error getting metrics: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/health')
+        def api_health():
+            """Get health check data."""
+            try:
+                from core.monitoring.health_checks import get_health_manager
+                health_manager = get_health_manager()
+                return jsonify(health_manager.get_health_status())
+            except Exception as e:
+                logger.error(f"Error getting health status: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/queue/jobs')
+        def api_queue_jobs():
+            """Get all queue jobs."""
+            try:
+                jobs = self.queue_manager.get_all_jobs()
+                return jsonify({
+                    'jobs': jobs,
+                    'total': len(jobs),
+                    'status_counts': self._count_job_statuses(jobs)
+                })
+            except Exception as e:
+                logger.error(f"Error getting queue jobs: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/celery/tasks')
+        def api_celery_tasks():
+            """Get Celery task statistics."""
+            try:
+                from core.tasks import celery_app
+                inspect = celery_app.control.inspect()
+                stats = inspect.stats()
+                active = inspect.active()
+                reserved = inspect.reserved()
+                
+                return jsonify({
+                    'stats': stats,
+                    'active': active,
+                    'reserved': reserved,
+                    'summary': self._summarize_celery_tasks(stats, active, reserved)
+                })
+            except Exception as e:
+                logger.error(f"Error getting Celery tasks: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/celery/workers')
+        def api_celery_workers():
+            """Get Celery worker status."""
+            try:
+                from core.tasks import celery_app
+                inspect = celery_app.control.inspect()
+                stats = inspect.stats()
+                ping = inspect.ping()
+                
+                return jsonify({
+                    'workers': stats,
+                    'ping': ping,
+                    'summary': self._summarize_celery_workers(stats, ping)
+                })
+            except Exception as e:
+                logger.error(f"Error getting Celery workers: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/unified/tasks')
+        def api_unified_tasks():
+            """Get unified task view (RQ + Celery)."""
+            try:
+                from core.tasks import celery_app
+                from core.unified_queue_manager import get_unified_queue_manager
+                
+                queue_manager = get_unified_queue_manager()
+                tasks = queue_manager.get_all_tasks()
+                
+                return jsonify({
+                    'tasks': tasks,
+                    'summary': {
+                        'total': len(tasks),
+                        'rq_tasks': len([t for t in tasks if t.get('queue_type') == 'rq']),
+                        'celery_tasks': len([t for t in tasks if t.get('queue_type') == 'celery'])
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error getting unified tasks: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/docs')
+        def api_docs():
+            """Main API documentation page."""
+            return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOD Processing System - API Documentation</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
+        .header {{ background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }}
+        .endpoint {{ background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; }}
+        .method {{ display: inline-block; padding: 4px 8px; border-radius: 4px; color: white; font-weight: bold; margin-right: 10px; }}
+        .get {{ background: #28a745; }}
+        .post {{ background: #007bff; }}
+        .delete {{ background: #dc3545; }}
+        .endpoint-url {{ font-family: monospace; font-size: 16px; color: #333; }}
+        .description {{ color: #666; margin-top: 10px; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎬 VOD Processing System API</h1>
+        <p>Complete API documentation for the VOD processing system</p>
+    </div>
+    
+    <h2>📋 Admin API Endpoints</h2>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/admin/status</span>
+        <div class="description">Get overall system status including queue and Celery information</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/admin/cities</span>
+        <div class="description">Get list of member cities and their configuration</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/admin/queue/summary</span>
+        <div class="description">Get RQ queue summary and job statistics</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/admin/celery/summary</span>
+        <div class="description">Get Celery worker and task summary</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="endpoint-url">/api/admin/tasks/trigger/&lt;task_name&gt;</span>
+        <div class="description">Trigger a specific Celery task</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="endpoint-url">/api/admin/queue/cleanup</span>
+        <div class="description">Clean up failed jobs from the queue</div>
+    </div>
+    
+    <h2>🔄 Unified Queue API Endpoints</h2>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/unified-queue/tasks/</span>
+        <div class="description">Get all tasks from both RQ and Celery queues</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/unified-queue/tasks/summary</span>
+        <div class="description">Get task summary statistics</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/unified-queue/workers/</span>
+        <div class="description">Get worker status information</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="endpoint-url">/api/unified-queue/tasks/trigger-celery</span>
+        <div class="description">Trigger a Celery task through unified API</div>
+    </div>
+    
+    <h2>📊 Dashboard API Endpoints</h2>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/metrics</span>
+        <div class="description">Get system metrics and performance data</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/health</span>
+        <div class="description">Get system health check results</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/queue/jobs</span>
+        <div class="description">Get all RQ queue jobs</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/celery/tasks</span>
+        <div class="description">Get Celery task statistics</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/celery/workers</span>
+        <div class="description">Get Celery worker status</div>
+    </div>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/unified/tasks</span>
+        <div class="description">Get unified view of all tasks</div>
+    </div>
+    
+    <h2>📚 Additional Documentation</h2>
+    
+    <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="endpoint-url">/api/unified-queue/docs</span>
+        <div class="description">Interactive API documentation for unified queue management</div>
+    </div>
+    
+    <p><strong>Note:</strong> All endpoints return JSON responses. For detailed API specifications, visit the interactive documentation at <a href="/api/unified-queue/docs">/api/unified-queue/docs</a></p>
+</body>
+</html>
+            """
+    
+    def _count_job_statuses(self, jobs: List[Dict]) -> Dict[str, int]:
+        """Count jobs by status."""
+        counts = {}
+        for job in jobs:
+            status = job.get('status', 'unknown')
+            counts[status] = counts.get(status, 0) + 1
+        return counts
+    
+    def _summarize_celery_tasks(self, stats: Dict, active: Dict, reserved: Dict) -> Dict[str, Any]:
+        """Summarize Celery task statistics."""
+        total_active = sum(len(tasks) for tasks in active.values()) if active else 0
+        total_reserved = sum(len(tasks) for tasks in reserved.values()) if reserved else 0
+        
+        return {
+            'total_active': total_active,
+            'total_reserved': total_reserved,
+            'total_tasks': total_active + total_reserved,
+            'workers_with_tasks': len(active) if active else 0
+        }
+    
+    def _summarize_celery_workers(self, stats: Dict, ping: Dict) -> Dict[str, Any]:
+        """Summarize Celery worker statistics."""
+        total_workers = len(stats) if stats else 0
+        online_workers = len(ping) if ping else 0
+        
+        return {
+            'total_workers': total_workers,
+            'online_workers': online_workers,
+            'offline_workers': total_workers - online_workers,
+            'health_status': 'healthy' if online_workers > 0 else 'unhealthy'
+        }
     
     def _render_admin_dashboard(self) -> str:
         """Render the main admin dashboard HTML with embedded monitoring."""
