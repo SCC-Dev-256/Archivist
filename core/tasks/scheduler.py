@@ -22,10 +22,22 @@ celery_app.conf.beat_schedule.update(
             "task": "caption_checks.check_latest_vod_captions",
             "schedule": crontab(minute=minute, hour=hour),
             "options": {"timezone": "UTC"},
+        },
+        "daily-vod-processing": {
+            "task": "vod_processing.process_recent_vods",
+            "schedule": crontab(minute=0, hour=4),  # Run at 4 AM UTC daily
+            "options": {"timezone": "UTC"},
+        },
+        "vod-cleanup": {
+            "task": "vod_processing.cleanup_temp_files",
+            "schedule": crontab(minute=30, hour=2),  # Run at 2:30 AM UTC daily
+            "options": {"timezone": "UTC"},
         }
     }
 )
 
 logger.info(
     f"Registered daily caption check task at {hour:02d}:{minute:02d} UTC via Celery beat"
-) 
+)
+logger.info("Registered daily VOD processing task at 04:00 UTC via Celery beat")
+logger.info("Registered VOD cleanup task at 02:30 UTC via Celery beat") 

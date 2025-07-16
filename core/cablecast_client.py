@@ -401,35 +401,131 @@ class CablecastAPIClient:
             logger.error(f"Error getting VOD stream URL for {vod_id}: {e}")
             return None
     
-    def get_vod_analytics(self, vod_id: int) -> Optional[Dict]:
-        """Get analytics data for a VOD."""
+    def get_recent_vods(self, city_id: str = None, limit: int = 10) -> List[Dict]:
+        """Get recent VODs, optionally filtered by city."""
         try:
-            response = self._make_request('GET', f'/vods/{vod_id}/analytics')
+            params = {'limit': limit, 'sort': 'created_at', 'order': 'desc'}
+            if city_id:
+                params['location_id'] = city_id
+            
+            response = self._make_request('GET', '/vods', params=params)
+            
             if response:
-                logger.debug(f"Retrieved analytics for VOD {vod_id}")
-                return response
+                vods = response.get('vods', [])
+                logger.debug(f"Retrieved {len(vods)} recent VODs")
+                return vods
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error getting recent VODs: {e}")
+            return []
+    
+    def get_vod_direct_url(self, vod_id: int) -> Optional[str]:
+        """Get direct download URL for a VOD."""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/download')
+            if response:
+                direct_url = response.get('direct_url') or response.get('url')
+                logger.debug(f"Retrieved direct URL for VOD {vod_id}")
+                return direct_url
             return None
         except Exception as e:
-            logger.error(f"Error getting VOD analytics for {vod_id}: {e}")
+            logger.error(f"Error getting VOD direct URL for {vod_id}: {e}")
+            return None
+    
+    def get_vod_captions(self, vod_id: int) -> Optional[Dict]:
+        """Get caption information for a VOD."""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/captions')
+            if response:
+                captions = response.get('captions') or response.get('scc')
+                logger.debug(f"Retrieved captions for VOD {vod_id}")
+                return captions
+            return None
+        except Exception as e:
+            logger.error(f"Error getting VOD captions for {vod_id}: {e}")
+            return None
+    
+    def upload_scc_file(self, vod_id: int, scc_file_path: str) -> bool:
+        """Upload SCC caption file for a VOD."""
+        try:
+            with open(scc_file_path, 'rb') as f:
+                files = {'scc_file': f}
+                response = self._make_request('POST', f'/vods/{vod_id}/captions', files=files)
+                if response is not None:
+                    logger.info(f"Uploaded SCC file for VOD {vod_id}")
+                    return True
+                return False
+        except Exception as e:
+            logger.error(f"Error uploading SCC file for VOD {vod_id}: {e}")
+            return False
+    
+    def update_vod_captions(self, vod_id: int, caption_data: Dict) -> bool:
+        """Update caption metadata for a VOD."""
+        try:
+            response = self._make_request('PUT', f'/vods/{vod_id}/captions', json=caption_data)
+            if response is not None:
+                logger.info(f"Updated captions for VOD {vod_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error updating VOD captions for {vod_id}: {e}")
+            return False
+    
+    def get_vod_processing_status(self, vod_id: int) -> Optional[Dict]:
+        """Get processing status for a VOD."""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/status')
+            if response:
+                status = response.get('status') or response.get('processing_status')
+                logger.debug(f"Retrieved processing status for VOD {vod_id}: {status}")
+                return status
+            return None
+        except Exception as e:
+            logger.error(f"Error getting VOD processing status for {vod_id}: {e}")
             return None
     
     def wait_for_vod_processing(self, vod_id: int, timeout: int = 1800) -> bool:
         """Wait for VOD processing to complete."""
-        import time
-        
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            status = self.get_vod_status(vod_id)
-            if status:
-                vod_state = status.get('vod_state', 'processing')
-                if vod_state == 'ready':
+        try:
+            start_time = datetime.now()
+            while (datetime.now() - start_time).seconds < timeout:
+                status = self.get_vod_processing_status(vod_id)
+                if status == 'completed' or status == 'ready':
                     logger.info(f"VOD {vod_id} processing completed")
                     return True
-                elif vod_state == 'failed':
+                elif status == 'failed' or status == 'error':
                     logger.error(f"VOD {vod_id} processing failed")
                     return False
+                
+                time.sleep(30)  # Check every 30 seconds
             
-            time.sleep(30)  # Check every 30 seconds
-        
-        logger.warning(f"VOD {vod_id} processing timeout after {timeout} seconds")
-        return False
+            logger.warning(f"VOD {vod_id} processing timed out after {timeout} seconds")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error waiting for VOD processing for {vod_id}: {e}")
+            return False
+    
+    def get_latest_vod(self, city_id: str) -> Optional[Dict]:
+        """Get the latest VOD for a specific city."""
+        try:
+            recent_vods = self.get_recent_vods(city_id, limit=1)
+            if recent_vods:
+                return recent_vods[0]
+            return None
+        except Exception as e:
+            logger.error(f"Error getting latest VOD for city {city_id}: {e}")
+            return None
+    
+    def create_show(self, show_data: Dict) -> Optional[Dict]:
+        """Create a new show in Cablecast."""
+        try:
+            response = self._make_request('POST', '/shows', json=show_data)
+            if response:
+                logger.info(f"Created show: {response.get('id')}")
+                return response
+            return None
+        except Exception as e:
+            logger.error(f"Error creating show: {e}")
+            return None

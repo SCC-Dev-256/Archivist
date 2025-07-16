@@ -1,0 +1,30 @@
+# Flex Server CIFS Mounts for /etc/fstab
+# These entries will mount the flex servers with proper permissions for user schum (UID 1000) and group archivist_users (GID 1001)
+# The credentials file /etc/flex-credentials contains the username and password from environment variables
+
+# Flex 1 - 192.168.181.56
+//192.168.181.56/contentdrive /mnt/flex-1 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0
+
+# Flex 2 - 192.168.181.57
+//192.168.181.57/contentdrive /mnt/flex-2 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0
+
+# Flex 3 - 192.168.181.58
+//192.168.181.58/contentdrive /mnt/flex-3 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0
+
+# Flex 4 - 192.168.181.59
+//192.168.181.59/contentdrive /mnt/flex-4 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0
+
+# Flex 5 - 192.168.181.60
+//192.168.181.60/contentdrive /mnt/flex-5 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0
+
+# Flex 6 - 192.168.181.61
+//192.168.181.61/contentdrive /mnt/flex-6 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0
+
+# Flex 7 - 192.168.181.62
+//192.168.181.62/contentdrive /mnt/flex-7 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0
+
+# Flex 8 - 192.168.181.63
+//192.168.181.63/contentdrive /mnt/flex-8 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0
+
+# Flex 9 - 192.168.181.64
+//192.168.181.64/contentdrive /mnt/flex-9 cifs credentials=/etc/flex-credentials,uid=1000,gid=1001,file_mode=0664,dir_mode=0775,vers=3.0,_netdev 0 0 

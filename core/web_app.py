@@ -38,6 +38,15 @@ def register_routes(app, limiter):
         from core.api.routes import register_routes as register_modular_routes
         api = register_modular_routes(app, limiter)
         logger.info("Successfully registered modular API routes")
+        
+        # Register unified queue management routes
+        try:
+            from core.api.unified_queue_routes import register_unified_queue_routes
+            register_unified_queue_routes(app)
+            logger.info("Successfully registered unified queue management routes")
+        except ImportError as e:
+            logger.warning(f"Failed to import unified queue routes: {e}")
+        
         return api
     except ImportError as e:
         logger.error(f"Failed to import modular routes: {e}")

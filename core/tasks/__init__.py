@@ -24,6 +24,7 @@ celery_app = Celery(
     backend=REDIS_URL,
     include=[
         "core.tasks.caption_checks",
+        "core.tasks.vod_processing",
     ],
 )
 
