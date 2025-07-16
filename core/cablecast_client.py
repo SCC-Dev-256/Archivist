@@ -65,7 +65,7 @@ class CablecastAPIClient:
         """
         try:
             # Try to get shows as a connection test
-            response = self._make_request('GET', '/shows', limit=1)
+            response = self._make_request('GET', '/shows', params={'limit': 1})
             if response is not None:
                 logger.info("✓ Cablecast API connection successful")
                 return True
@@ -78,13 +78,17 @@ class CablecastAPIClient:
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[Dict]:
         """Make HTTP request with authentication and retry logic."""
-        url = f"{self.base_url}/api/v1{endpoint}"
+        url = f"{self.base_url}{endpoint}"
+        
+        # Extract parameters that should be passed as query params, not as kwargs to session.request
+        params = kwargs.pop('params', {})
         
         for attempt in range(MAX_RETRIES):
             try:
                 response = self.session.request(
                     method, url, 
                     timeout=REQUEST_TIMEOUT,
+                    params=params,
                     **kwargs
                 )
                 

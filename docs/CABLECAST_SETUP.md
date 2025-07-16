@@ -11,12 +11,10 @@ You need to set the following environment variables in your `.env` file:
 ```bash
 # Cablecast Server Configuration
 CABLECAST_SERVER_URL=https://rays-house.cablecast.net
-CABLECAST_USER_ID=your_username
-CABLECAST_PASSWORD=your_password
+CABLECAST_USER_ID=admin
+CABLECAST_PASSWORD=rwscctrms
 CABLECAST_LOCATION_ID=your_location_id
 
-# Optional: API Key (if required by your Cablecast instance)
-CABLECAST_API_KEY=your_api_key_here
 ```
 
 ## Step-by-Step Setup
