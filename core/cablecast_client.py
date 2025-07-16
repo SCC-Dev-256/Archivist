@@ -4,7 +4,7 @@ This module provides a comprehensive interface for interacting with Cablecast's 
 including authentication, VOD management, and SCC caption file uploads.
 
 Key Features:
-- JWT-based authentication with automatic token refresh
+- HTTP Basic Authentication (username/password)
 - VOD (Video On Demand) content management
 - SCC (Scenarist Closed Caption) file uploads
 - Error handling and retry logic
@@ -19,7 +19,7 @@ Example:
 
 import os
 import requests
-import time
+import base64
 from typing import Dict, List, Optional, Any
 from loguru import logger
 from core.config import (
@@ -35,66 +35,49 @@ class CablecastAPIClient:
         """Initialize the Cablecast API client."""
         self.base_url = CABLECAST_SERVER_URL.rstrip('/')
         self.api_key = CABLECAST_API_KEY
-        self.user_id = CABLECAST_USER_ID
+        self.username = CABLECAST_USER_ID
         self.password = CABLECAST_PASSWORD
         self.session = requests.Session()
-        self.session.headers.update({
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        })
-        self.auth_token = None
-        self.token_expires_at = 0
         
-        # Authentication
-        self._authenticate()
+        # Set up HTTP Basic Authentication
+        if self.username and self.password:
+            # Create Basic Auth header
+            credentials = f"{self.username}:{self.password}"
+            encoded_credentials = base64.b64encode(credentials.encode()).decode()
+            self.session.headers.update({
+                'Authorization': f'Basic {encoded_credentials}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            })
+            logger.info("HTTP Basic Authentication configured")
+        else:
+            logger.warning("Cablecast credentials not provided - authentication may fail")
+        
+        # Test connection on initialization
+        if not self.test_connection():
+            logger.error("Failed to connect to Cablecast API - check credentials and server URL")
     
-    def _authenticate(self) -> bool:
-        """Authenticate with Cablecast API and get JWT token."""
+    def test_connection(self) -> bool:
+        """Test connection to Cablecast API.
+        
+        Returns:
+            True if connection is successful
+        """
         try:
-            auth_data = {
-                'UserID': self.user_id,
-                'Password': self.password
-            }
-            
-            response = self.session.post(
-                f"{self.base_url}/api/v1/auth/login",
-                json=auth_data,
-                timeout=REQUEST_TIMEOUT
-            )
-            
-            if response.status_code == 200:
-                token_data = response.json()
-                self.auth_token = token_data.get('access_token')
-                expires_in = token_data.get('expires_in', 3600)
-                self.token_expires_at = time.time() + expires_in - 300  # 5 min buffer
-                
-                # Update session headers with token
-                self.session.headers.update({
-                    'Authorization': f'Bearer {self.auth_token}'
-                })
-                
-                logger.info("Successfully authenticated with Cablecast API")
+            # Try to get shows as a connection test
+            response = self._make_request('GET', '/shows', limit=1)
+            if response is not None:
+                logger.info("✓ Cablecast API connection successful")
                 return True
             else:
-                logger.error(f"Authentication failed: {response.status_code} - {response.text}")
+                logger.error("✗ Cablecast API connection failed")
                 return False
-                
         except Exception as e:
-            logger.error(f"Authentication error: {e}")
+            logger.error(f"Connection test error: {e}")
             return False
-    
-    def _ensure_authenticated(self) -> bool:
-        """Ensure we have a valid authentication token."""
-        if not self.auth_token or time.time() >= self.token_expires_at:
-            return self._authenticate()
-        return True
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[Dict]:
         """Make HTTP request with authentication and retry logic."""
-        if not self._ensure_authenticated():
-            logger.error("Failed to authenticate")
-            return None
-        
         url = f"{self.base_url}/api/v1{endpoint}"
         
         for attempt in range(MAX_RETRIES):
@@ -105,13 +88,10 @@ class CablecastAPIClient:
                     **kwargs
                 )
                 
+                # Handle authentication errors
                 if response.status_code == 401:
-                    # Token expired, re-authenticate
-                    if self._authenticate():
-                        continue
-                    else:
-                        logger.error("Re-authentication failed")
-                        return None
+                    logger.error("Authentication failed - check username and password")
+                    return None
                 
                 if response.status_code in [200, 201, 204]:
                     if response.content:
@@ -285,3 +265,167 @@ class CablecastAPIClient:
         """Legacy method that redirects to SCC upload (backward compatibility)"""
         logger.warning("upload_srt_file is deprecated. Use upload_scc_file instead.")
         return self.upload_scc_file(vod_id, srt_path)
+    
+    # Additional methods for VOD management
+    def get_vod_status(self, vod_id: int) -> Optional[Dict]:
+        """Get status of a VOD."""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/status')
+            if response:
+                logger.debug(f"Retrieved VOD status for {vod_id}")
+                return response
+            return None
+        except Exception as e:
+            logger.error(f"Error getting VOD status for {vod_id}: {e}")
+            return None
+    
+    def get_vod_chapters(self, vod_id: int) -> List[Dict]:
+        """Get chapters for a VOD."""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/chapters')
+            if response:
+                chapters = response.get('chapters', [])
+                logger.debug(f"Retrieved {len(chapters)} chapters for VOD {vod_id}")
+                return chapters
+            return []
+        except Exception as e:
+            logger.error(f"Error getting VOD chapters for {vod_id}: {e}")
+            return []
+    
+    def create_vod_chapter(self, vod_id: int, chapter_data: Dict) -> Optional[Dict]:
+        """Create a new chapter for a VOD."""
+        try:
+            response = self._make_request('POST', f'/vods/{vod_id}/chapters', json=chapter_data)
+            if response:
+                logger.info(f"Created chapter for VOD {vod_id}")
+                return response
+            return None
+        except Exception as e:
+            logger.error(f"Error creating VOD chapter: {e}")
+            return None
+    
+    def update_vod_chapter(self, vod_id: int, chapter_id: int, chapter_data: Dict) -> bool:
+        """Update a VOD chapter."""
+        try:
+            response = self._make_request('PUT', f'/vods/{vod_id}/chapters/{chapter_id}', json=chapter_data)
+            if response is not None:
+                logger.info(f"Updated chapter {chapter_id} for VOD {vod_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error updating VOD chapter: {e}")
+            return False
+    
+    def delete_vod_chapter(self, vod_id: int, chapter_id: int) -> bool:
+        """Delete a VOD chapter."""
+        try:
+            response = self._make_request('DELETE', f'/vods/{vod_id}/chapters/{chapter_id}')
+            if response is not None:
+                logger.info(f"Deleted chapter {chapter_id} for VOD {vod_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting VOD chapter: {e}")
+            return False
+    
+    def get_locations(self) -> List[Dict]:
+        """Get all Cablecast locations."""
+        try:
+            response = self._make_request('GET', '/locations')
+            if response:
+                locations = response.get('locations', [])
+                logger.debug(f"Retrieved {len(locations)} locations")
+                return locations
+            return []
+        except Exception as e:
+            logger.error(f"Error getting locations: {e}")
+            return []
+    
+    def get_vod_qualities(self) -> List[Dict]:
+        """Get all VOD quality settings."""
+        try:
+            response = self._make_request('GET', '/qualities')
+            if response:
+                qualities = response.get('qualities', [])
+                logger.debug(f"Retrieved {len(qualities)} quality settings")
+                return qualities
+            return []
+        except Exception as e:
+            logger.error(f"Error getting VOD qualities: {e}")
+            return []
+    
+    def search_shows(self, query: str, location_id: Optional[int] = None) -> List[Dict]:
+        """Search shows by title or description."""
+        try:
+            params = {'search': query}
+            if location_id:
+                params['location_id'] = location_id
+            
+            response = self._make_request('GET', '/shows', params=params)
+            if response:
+                shows = response.get('shows', [])
+                logger.debug(f"Found {len(shows)} shows matching '{query}'")
+                return shows
+            return []
+        except Exception as e:
+            logger.error(f"Error searching shows: {e}")
+            return []
+    
+    def get_vod_embed_code(self, vod_id: int) -> Optional[str]:
+        """Get embed code for a VOD."""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/embed')
+            if response:
+                embed_code = response.get('embed_code')
+                logger.debug(f"Retrieved embed code for VOD {vod_id}")
+                return embed_code
+            return None
+        except Exception as e:
+            logger.error(f"Error getting VOD embed code for {vod_id}: {e}")
+            return None
+    
+    def get_vod_stream_url(self, vod_id: int) -> Optional[str]:
+        """Get streaming URL for a VOD."""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/stream')
+            if response:
+                stream_url = response.get('stream_url')
+                logger.debug(f"Retrieved stream URL for VOD {vod_id}")
+                return stream_url
+            return None
+        except Exception as e:
+            logger.error(f"Error getting VOD stream URL for {vod_id}: {e}")
+            return None
+    
+    def get_vod_analytics(self, vod_id: int) -> Optional[Dict]:
+        """Get analytics data for a VOD."""
+        try:
+            response = self._make_request('GET', f'/vods/{vod_id}/analytics')
+            if response:
+                logger.debug(f"Retrieved analytics for VOD {vod_id}")
+                return response
+            return None
+        except Exception as e:
+            logger.error(f"Error getting VOD analytics for {vod_id}: {e}")
+            return None
+    
+    def wait_for_vod_processing(self, vod_id: int, timeout: int = 1800) -> bool:
+        """Wait for VOD processing to complete."""
+        import time
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            status = self.get_vod_status(vod_id)
+            if status:
+                vod_state = status.get('vod_state', 'processing')
+                if vod_state == 'ready':
+                    logger.info(f"VOD {vod_id} processing completed")
+                    return True
+                elif vod_state == 'failed':
+                    logger.error(f"VOD {vod_id} processing failed")
+                    return False
+            
+            time.sleep(30)  # Check every 30 seconds
+        
+        logger.warning(f"VOD {vod_id} processing timeout after {timeout} seconds")
+        return False

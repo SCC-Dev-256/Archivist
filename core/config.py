@@ -108,7 +108,7 @@ POSTGRES_CONFIG = {
 } 
 
 # Cablecast configuration
-CABLECAST_BASE_URL = os.getenv("CABLECAST_BASE_URL", "https://api.cablecast.com")
+CABLECAST_BASE_URL = os.getenv("CABLECAST_BASE_URL", "https://rays-house.cablecast.net")
 CABLECAST_SERVER_URL = os.getenv("CABLECAST_SERVER_URL", CABLECAST_BASE_URL)  # Backward compatibility
 CABLECAST_API_KEY = os.getenv("CABLECAST_API_KEY", "your_api_key_here")
 CABLECAST_USER_ID = os.getenv("CABLECAST_USER_ID", "")
