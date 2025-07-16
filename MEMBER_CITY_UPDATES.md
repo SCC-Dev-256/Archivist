@@ -35,13 +35,22 @@ MEMBER_CITIES = {
 - **Added**: `get_city_info()` method to retrieve specific city information
 - **Added**: `get_all_cities()` method to retrieve all member city information
 
-### 3. **API Endpoint Additions**
+### 3. **Mount Checking Updates**
+
+#### `core/check_mounts.py`
+- **Added**: `MEMBER_CITY_MOUNTS` dictionary with city-specific descriptions
+- **Updated**: All logging messages to include city context (e.g., "Birchwood City Council")
+- **Updated**: Function documentation to reflect member city organization
+- **Added**: City-specific error messages and descriptions
+- **Maintained**: All actual mount paths as `/mnt/flex-N`
+
+### 4. **API Endpoint Additions**
 
 #### `core/api/routes/browse.py`
 - **Added**: `GET /api/member-cities` - Returns information about all member cities
 - **Added**: `GET /api/member-cities/<city_id>` - Returns information about a specific member city
 
-### 4. **Documentation Updates**
+### 5. **Documentation Updates**
 
 #### `README.md`
 - **Updated**: Flex Server Overview section to reflect member city organization
@@ -58,6 +67,31 @@ MEMBER_CITIES = {
 #### `docs/API_REFERENCE.md`
 - **Added**: Member Cities API documentation
 - **Added**: Examples for new member cities endpoints
+
+#### `docs/WORKFLOW_DOCUMENTATION.md`
+- **Updated**: Workflow examples to include city context
+- **Updated**: Mermaid diagrams to show city-based organization
+- **Added**: `get_city_name()` function for city-specific logging
+- **Updated**: File discovery workflow to reference member cities
+
+### 6. **Configuration File Updates**
+
+#### `.env.example`
+- **Updated**: Comments to include city names for each flex server
+- **Maintained**: All variable names unchanged
+- **Added**: City-specific descriptions for each mount point
+
+### 7. **Test File Updates**
+
+#### `tests/unit/test_check_mounts.py`
+- **Updated**: Test data to include city-specific descriptions
+- **Added**: City-specific test cases for missing mount points
+- **Updated**: Test function names and documentation
+- **Added**: Tests for both member cities and spare storage
+
+#### `tests/test_complete_scc_pipeline.py`
+- **Updated**: Test file paths to include city context in comments
+- **Added**: City-specific descriptions for test video files
 
 ## 🔄 Content Organization Changes
 
@@ -172,15 +206,16 @@ if user in birchwood_config['allowed_users']:
 
 - [x] Core configuration updated with member cities
 - [x] File manager updated to use city-based organization
+- [x] Mount checking module updated with city context
 - [x] New API endpoints added for member cities
 - [x] README.md updated with city descriptions
 - [x] User manual updated with city organization
 - [x] Technical documentation updated
 - [x] API reference documentation updated
-- [ ] Remaining documentation files updated
-- [ ] Scripts and utilities updated
-- [ ] Test files updated
-- [ ] Configuration files updated
+- [x] Workflow documentation updated with city-based organization
+- [x] Environment configuration updated with city descriptions
+- [x] Test files updated with city-based organization
+- [x] All configuration files reviewed and updated as needed
 
 ## 📞 Support
 

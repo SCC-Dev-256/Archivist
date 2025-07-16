@@ -24,10 +24,10 @@ logger.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss}</green> | <l
 
 def find_test_video():
     """Find a suitable test video file."""
-    # List of potential video files to test with
+    # List of potential video files to test with (member city content)
     potential_files = [
-        "/mnt/flex-5/14221-1-North St Paul City Council (20190402).mp4",
-        "/mnt/flex-2/10845-1-Birchwood City Council (20160614).mpeg",
+        "/mnt/flex-5/14221-1-North St Paul City Council (20190402).mp4",  # Spare Record Storage 1
+        "/mnt/flex-2/10845-1-Birchwood City Council (20160614).mpeg",     # Dellwood Grant Willernie
         "/mnt/nas/test_video.mp4"
     ]
     

@@ -8,7 +8,7 @@ Comprehensive guide for end-to-end workflows, automated processes, and best prac
 
 ```mermaid
 flowchart TD
-    A[Video File Available] --> B[Upload/Detect File]
+    A[Video File Available] --> B[Upload/Detect File from Member City]
     B --> C[File Validation]
     C --> D{Valid Format?}
     D -->|No| E[Error: Invalid Format]
@@ -18,13 +18,13 @@ flowchart TD
     H --> I[SCC Generation]
     I --> J[Summary Creation]
     J --> K[Metadata Processing]
-    K --> L[File Storage]
+    K --> L[Store in City-Specific Location]
     L --> M[Quality Validation]
     M --> N{QA Passed?}
     N -->|No| O[Flag for Review]
     N -->|Yes| P[Mark Complete]
-    P --> Q[Trigger VOD Publishing]
-    Q --> R[Notify Completion]
+    P --> Q[Trigger VOD Publishing for City]
+    Q --> R[Notify City Completion]
 ```
 
 #### Step-by-Step Process
@@ -168,15 +168,15 @@ def publish_to_vod(job_id):
 
 ```mermaid
 flowchart TD
-    A[Batch Request] --> B[File Discovery]
+    A[Batch Request] --> B[File Discovery from Member Cities]
     B --> C[Validate All Files]
-    C --> D[Create Job Queue]
-    D --> E[Parallel Processing]
+    C --> D[Create Job Queue by City]
+    D --> E[Parallel Processing per City]
     E --> F[Monitor Progress]
-    F --> G[Collect Results]
-    G --> H[Batch VOD Publishing]
-    H --> I[Generate Report]
-    I --> J[Notify Completion]
+    F --> G[Collect Results by City]
+    G --> H[Batch VOD Publishing per City]
+    H --> I[Generate City-Specific Report]
+    I --> J[Notify City Completion]
 ```
 
 #### Batch Processing Implementation
@@ -287,19 +287,41 @@ def setup_periodic_tasks(sender, **kwargs):
 # 2. Automated File Discovery
 @app.task
 def process_pending_files():
-    """Discover and process new files"""
-    flex_servers = ['/mnt/flex-1', '/mnt/flex-2', '/mnt/flex-3', '/mnt/flex-4', '/mnt/flex-5']
+    """Discover and process new files from member cities"""
+    # Member city storage locations
+    member_city_mounts = [
+        '/mnt/flex-1',  # Birchwood City Council
+        '/mnt/flex-2',  # Dellwood Grant Willernie
+        '/mnt/flex-3',  # Lake Elmo City Council
+        '/mnt/flex-4',  # Mahtomedi City Council
+        '/mnt/flex-5'   # Spare Record Storage 1
+    ]
     
-    for server in flex_servers:
+    for mount_path in member_city_mounts:
         # Find new video files
-        new_files = discover_new_files(server)
+        new_files = discover_new_files(mount_path)
         
         for file_path in new_files:
             # Check if already processed
             if not is_file_processed(file_path):
                 # Create transcription job
                 create_transcription_job(file_path, get_default_settings())
-                logger.info(f"Queued new file: {file_path}")
+                logger.info(f"Queued new file from {get_city_name(mount_path)}: {file_path}")
+
+def get_city_name(mount_path):
+    """Get city name from mount path"""
+    city_mapping = {
+        '/mnt/flex-1': 'Birchwood',
+        '/mnt/flex-2': 'Dellwood Grant Willernie',
+        '/mnt/flex-3': 'Lake Elmo',
+        '/mnt/flex-4': 'Mahtomedi',
+        '/mnt/flex-5': 'Spare Record Storage 1',
+        '/mnt/flex-6': 'Spare Record Storage 2',
+        '/mnt/flex-7': 'Oakdale',
+        '/mnt/flex-8': 'White Bear Lake',
+        '/mnt/flex-9': 'White Bear Township'
+    }
+    return city_mapping.get(mount_path, 'Unknown City')
 
 # 3. Automated Publishing
 @app.task
@@ -575,12 +597,12 @@ def cleanup_disk_space(job_id):
 def age_content():
     """Move content through lifecycle stages"""
     
-    # Move from FLEX-1 to FLEX-2 (30 days)
+    # Move from Birchwood to Dellwood Grant Willernie (30 days)
     aging_files = find_files_older_than('/mnt/flex-1', days=30)
     for file_path in aging_files:
         move_to_secondary_storage(file_path)
     
-    # Move from FLEX-2 to FLEX-3 (90 days)
+    # Move from Dellwood Grant Willernie to Lake Elmo (90 days)
     archival_files = find_files_older_than('/mnt/flex-2', days=90)
     for file_path in archival_files:
         move_to_archive_storage(file_path)

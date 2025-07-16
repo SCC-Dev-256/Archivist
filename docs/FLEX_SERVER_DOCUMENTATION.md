@@ -72,9 +72,9 @@ server3:/volume1/flex-5 /mnt/flex-5 nfs defaults,_netdev 0 0
 
 ## 📁 Flex Server Specifications
 
-### FLEX-1: Primary Content Storage
+### FLEX-1: Birchwood City Council Storage
 
-**Purpose**: Primary active content storage for current operations
+**Purpose**: Birchwood City Council and community content storage
 
 **Capacity**: High-capacity, high-performance storage
 **Performance**: Optimized for frequent read/write operations
@@ -143,9 +143,9 @@ server3:/volume1/flex-5 /mnt/flex-5 nfs defaults,_netdev 0 0
 - Network throughput: > 1GB/s for large file transfers
 - Availability: 99.9% uptime target
 
-### FLEX-2: Secondary/Backup Storage
+### FLEX-2: Dellwood Grant Willernie Storage
 
-**Purpose**: Secondary storage for overflow and backup operations
+**Purpose**: Dellwood, Grant, and Willernie combined storage
 
 **Capacity**: Medium-capacity, good performance
 **Performance**: Optimized for bulk operations and backups
@@ -207,9 +207,9 @@ server3:/volume1/flex-5 /mnt/flex-5 nfs defaults,_netdev 0 0
 - Recovery time objective: < 2 hours
 - Network efficiency: > 500MB/s for backups
 
-### FLEX-3: Archive Storage
+### FLEX-3: Lake Elmo City Council Storage
 
-**Purpose**: Long-term archival storage for historical content
+**Purpose**: Lake Elmo City Council and community content storage
 
 **Capacity**: Very high capacity, cost-optimized
 **Performance**: Optimized for long-term storage and retrieval
