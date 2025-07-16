@@ -33,9 +33,58 @@ DEFAULT_MOUNT_POINTS = {
     'nas': '/mnt/nas',  # Default NAS mount
 }
 
-# Add default Flex server mounts (1-9)
-for i in range(1, 10):
-    DEFAULT_MOUNT_POINTS[f'flex{i}'] = f'/mnt/flex{i}'
+# Member City Flex Server Configuration
+MEMBER_CITIES = {
+    'flex1': {
+        'name': 'Birchwood',
+        'mount_path': '/mnt/flex-1',
+        'description': 'Birchwood City Council and community content'
+    },
+    'flex2': {
+        'name': 'Dellwood Grant Willernie',
+        'mount_path': '/mnt/flex-2', 
+        'description': 'Dellwood, Grant, and Willernie combined storage'
+    },
+    'flex3': {
+        'name': 'Lake Elmo',
+        'mount_path': '/mnt/flex-3',
+        'description': 'Lake Elmo City Council and community content'
+    },
+    'flex4': {
+        'name': 'Mahtomedi',
+        'mount_path': '/mnt/flex-4',
+        'description': 'Mahtomedi City Council and community content'
+    },
+    'flex5': {
+        'name': 'Spare Record Storage 1',
+        'mount_path': '/mnt/flex-5',
+        'description': 'Spare storage for overflow and additional cities'
+    },
+    'flex6': {
+        'name': 'Spare Record Storage 2', 
+        'mount_path': '/mnt/flex-6',
+        'description': 'Spare storage for overflow and additional cities'
+    },
+    'flex7': {
+        'name': 'Oakdale',
+        'mount_path': '/mnt/flex-7',
+        'description': 'Oakdale City Council and community content'
+    },
+    'flex8': {
+        'name': 'White Bear Lake',
+        'mount_path': '/mnt/flex-8',
+        'description': 'White Bear Lake City Council and community content'
+    },
+    'flex9': {
+        'name': 'White Bear Township',
+        'mount_path': '/mnt/flex-9',
+        'description': 'White Bear Township Council and community content'
+    }
+}
+
+# Add flex server mounts to default mount points
+for city_id, city_config in MEMBER_CITIES.items():
+    DEFAULT_MOUNT_POINTS[city_id] = city_config['mount_path']
 
 # Get mount points from environment or use defaults
 MOUNT_POINTS = {}
@@ -46,15 +95,50 @@ for mount_name, default_path in DEFAULT_MOUNT_POINTS.items():
 # For backward compatibility
 NAS_PATH = MOUNT_POINTS['nas']
 
-# Get all Flex server paths
+# Get all Flex server paths (member cities)
 FLEX_PATHS = {k: v for k, v in MOUNT_POINTS.items() if k.startswith('flex')}
 
-# Location and User Configuration
+# Location and User Configuration - Updated for member cities
 LOCATIONS = {
     'default': {
         'name': 'Default Location',
-        'flex_servers': list(FLEX_PATHS.keys()),  # All Flex servers by default
+        'member_cities': list(FLEX_PATHS.keys()),  # All member cities by default
         'allowed_users': ['*']  # All users by default
+    },
+    'birchwood': {
+        'name': 'Birchwood',
+        'member_cities': ['flex1'],
+        'allowed_users': ['*']
+    },
+    'dellwood_grant_willernie': {
+        'name': 'Dellwood Grant Willernie',
+        'member_cities': ['flex2'],
+        'allowed_users': ['*']
+    },
+    'lake_elmo': {
+        'name': 'Lake Elmo',
+        'member_cities': ['flex3'],
+        'allowed_users': ['*']
+    },
+    'mahtomedi': {
+        'name': 'Mahtomedi',
+        'member_cities': ['flex4'],
+        'allowed_users': ['*']
+    },
+    'oakdale': {
+        'name': 'Oakdale',
+        'member_cities': ['flex7'],
+        'allowed_users': ['*']
+    },
+    'white_bear_lake': {
+        'name': 'White Bear Lake',
+        'member_cities': ['flex8'],
+        'allowed_users': ['*']
+    },
+    'white_bear_township': {
+        'name': 'White Bear Township',
+        'member_cities': ['flex9'],
+        'allowed_users': ['*']
     }
 }
 

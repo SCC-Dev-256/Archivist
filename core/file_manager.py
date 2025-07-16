@@ -62,14 +62,24 @@ class FileManager:
             return self.mount_points
             
         location_config = LOCATIONS.get(self.location, {})
-        allowed_servers = location_config.get('flex_servers', [])
+        allowed_cities = location_config.get('member_cities', [])
         
         accessible_mounts = {'nas': self.mount_points['nas']}
-        for server in allowed_servers:
-            if server in self.mount_points:
-                accessible_mounts[server] = self.mount_points[server]
+        for city in allowed_cities:
+            if city in self.mount_points:
+                accessible_mounts[city] = self.mount_points[city]
                 
         return accessible_mounts
+
+    def get_city_info(self, city_id):
+        """Get information about a specific member city."""
+        from core.config import MEMBER_CITIES
+        return MEMBER_CITIES.get(city_id, {})
+
+    def get_all_cities(self):
+        """Get information about all member cities."""
+        from core.config import MEMBER_CITIES
+        return MEMBER_CITIES
 
     def get_file_details(self, path):
         """Get detailed information about a file."""

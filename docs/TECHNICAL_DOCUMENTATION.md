@@ -96,6 +96,19 @@ DEFAULT_OUTPUT_PATH=/mnt/flex-1/transcriptions
 TEMP_DIRECTORY=/tmp/archivist
 MAX_FILE_SIZE=10737418240  # 10GB
 
+# Member City Configuration
+MEMBER_CITIES = {
+    'flex1': {'name': 'Birchwood', 'mount_path': '/mnt/flex-1'},
+    'flex2': {'name': 'Dellwood Grant Willernie', 'mount_path': '/mnt/flex-2'},
+    'flex3': {'name': 'Lake Elmo', 'mount_path': '/mnt/flex-3'},
+    'flex4': {'name': 'Mahtomedi', 'mount_path': '/mnt/flex-4'},
+    'flex5': {'name': 'Spare Record Storage 1', 'mount_path': '/mnt/flex-5'},
+    'flex6': {'name': 'Spare Record Storage 2', 'mount_path': '/mnt/flex-6'},
+    'flex7': {'name': 'Oakdale', 'mount_path': '/mnt/flex-7'},
+    'flex8': {'name': 'White Bear Lake', 'mount_path': '/mnt/flex-8'},
+    'flex9': {'name': 'White Bear Township', 'mount_path': '/mnt/flex-9'}
+}
+
 # Queue Configuration
 CELERY_BROKER_URL=redis://localhost:6379/1
 CELERY_RESULT_BACKEND=redis://localhost:6379/1
@@ -161,6 +174,19 @@ class Config:
     DEFAULT_OUTPUT_PATH = os.environ.get('DEFAULT_OUTPUT_PATH', '/mnt/flex-1/transcriptions')
     TEMP_DIRECTORY = os.environ.get('TEMP_DIRECTORY', '/tmp/archivist')
     MAX_FILE_SIZE = int(os.environ.get('MAX_FILE_SIZE', 10737418240))
+    
+    # Member City Configuration
+    MEMBER_CITIES = {
+        'flex1': {'name': 'Birchwood', 'mount_path': '/mnt/flex-1'},
+        'flex2': {'name': 'Dellwood Grant Willernie', 'mount_path': '/mnt/flex-2'},
+        'flex3': {'name': 'Lake Elmo', 'mount_path': '/mnt/flex-3'},
+        'flex4': {'name': 'Mahtomedi', 'mount_path': '/mnt/flex-4'},
+        'flex5': {'name': 'Spare Record Storage 1', 'mount_path': '/mnt/flex-5'},
+        'flex6': {'name': 'Spare Record Storage 2', 'mount_path': '/mnt/flex-6'},
+        'flex7': {'name': 'Oakdale', 'mount_path': '/mnt/flex-7'},
+        'flex8': {'name': 'White Bear Lake', 'mount_path': '/mnt/flex-8'},
+        'flex9': {'name': 'White Bear Township', 'mount_path': '/mnt/flex-9'}
+    }
     
     # Queue settings
     CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/1')

@@ -330,14 +330,17 @@ sudo systemctl status archivist
 
 ### Flex Server Overview
 
-The Archivist system supports up to 9 flex servers (/mnt/flex-1 through /mnt/flex-9) for distributed content storage:
+The Archivist system supports up to 9 flex servers (/mnt/flex-1 through /mnt/flex-9) for member city content storage:
 
-- **flex-1**: Primary video storage and active content
-- **flex-2**: Secondary storage and backup content  
-- **flex-3**: Archive storage for older content
-- **flex-4**: Special projects and custom content
-- **flex-5**: Test and development content
-- **flex-6-9**: Additional storage as needed
+- **flex-1**: Birchwood City Council and community content
+- **flex-2**: Dellwood, Grant, and Willernie combined storage  
+- **flex-3**: Lake Elmo City Council and community content
+- **flex-4**: Mahtomedi City Council and community content
+- **flex-5**: Spare Record Storage 1 (overflow and additional cities)
+- **flex-6**: Spare Record Storage 2 (overflow and additional cities)
+- **flex-7**: Oakdale City Council and community content
+- **flex-8**: White Bear Lake City Council and community content
+- **flex-9**: White Bear Township Council and community content
 
 ### Content Organization
 

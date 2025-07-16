@@ -18,35 +18,42 @@ The Archivist system utilizes a distributed storage architecture with multiple "
 │                                                                 │
 │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐          │
 │  │   FLEX-1    │   │   FLEX-2    │   │   FLEX-3    │          │
-│  │  Primary    │   │  Secondary  │   │  Archives   │          │
-│  │  Storage    │   │  Storage    │   │  Storage    │          │
-│  │             │   │             │   │             │          │
-│  │ • Active    │   │ • Backup    │   │ • Long-term │          │
-│  │ • Live      │   │ • Overflow  │   │ • Cold      │          │
-│  │ • Current   │   │ • Mirror    │   │ • Historic  │          │
+│  │  Birchwood  │   │  Dellwood   │   │  Lake Elmo  │          │
+│  │  Storage    │   │  Grant      │   │  Storage    │          │
+│  |             |   |  Willernie  |   |             |             │
+│  |             |   |  Storage    |   |             |          │
 │  └─────────────┘   └─────────────┘   └─────────────┘          │
-│                                                                 │
+
 │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐          │
-│  │   FLEX-4    │   │   FLEX-5    │   │  FLEX-6-9   │          │
-│  │  Projects   │   │  Dev/Test   │   │  Reserved   │          │
-│  │  Storage    │   │  Storage    │   │  Storage    │          │
+│  │   FLEX-4    │   │   FLEX-5    │   │  FLEX-6     │          │
+│  │  Mahtomedi  │   │  Spare      │   │  Spare      │          │
+│  │  Storage    │   │  Record     │   │  Record     │          │
+│  │             │   │  Storage 1  |   │  Storage 2  │          │
 │  │             │   │             │   │             │          │
-│  │ • Special   │   │ • Testing   │   │ • Future    │          │
-│  │ • Custom    │   │ • Staging   │   │ • Expansion │          │
-│  │ • Temp      │   │ • Debug     │   │ • Specialty │          │
-│  └─────────────┘   └─────────────┘   └─────────────┘          │
+│  │             │   │             │   │             │          │
+│  │             │   │             │   │             │          │
+│  └─────────────┘   └─────────────┘   └─────────────┘    
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐          │
+│  │   FLEX-7    │   │   FLEX-8    │   │  FLEX-9     │          │
+│  │  Oakdale    │   │  White Bear │   │  White Bear │          │
+│  │  Storage    │   │  Lake       │   │  Township   │          │
+│  │             │   │  Storage    |   │   Storage   │          │
+│  │             │   │             │   │             │          │
+│  │             │   │             │   │             │          │
+│  │             │   │             │   │             │          │
+│  └─────────────┘   └─────────────┘   └─────────────┘        │
 │                                                                 │
 │                           │                                     │
 │                           ▼                                     │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │           ARCHIVIST SYSTEM INTEGRATION              │   │
-│  │                                                     │   │
-│  │  • Unified access via /mnt/flex-N paths           │   │
-│  │  • Automated mount point management                │   │
-│  │  • Content classification and routing              │   │
-│  │  • Storage health monitoring                       │   │
-│  │  • Backup and archival policies                    │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │           ARCHIVIST SYSTEM INTEGRATION                  │    │
+│  │                                                         │    │
+│  │  • Unified access via /mnt/flex-N paths                 |    │
+│  │  • Automated mount point management                     │    │
+│  │  • Content classification and routing                   │    │
+│  │  • Storage health monitoring                            │    │
+│  │  • Backup and archival policies                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

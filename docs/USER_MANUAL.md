@@ -65,11 +65,15 @@ The main dashboard provides:
 The system provides access to multiple flex servers:
 
 ```
-/mnt/flex-1/    # Primary content storage
-/mnt/flex-2/    # Secondary/backup storage
-/mnt/flex-3/    # Archive storage
-/mnt/flex-4/    # Special projects
-/mnt/flex-5/    # Test/development content
+/mnt/flex-1/    # Birchwood City Council and community content
+/mnt/flex-2/    # Dellwood, Grant, and Willernie combined storage
+/mnt/flex-3/    # Lake Elmo City Council and community content
+/mnt/flex-4/    # Mahtomedi City Council and community content
+/mnt/flex-5/    # Spare Record Storage 1 (overflow and additional cities)
+/mnt/flex-6/    # Spare Record Storage 2 (overflow and additional cities)
+/mnt/flex-7/    # Oakdale City Council and community content
+/mnt/flex-8/    # White Bear Lake City Council and community content
+/mnt/flex-9/    # White Bear Township Council and community content
 ```
 
 ### Browsing Files

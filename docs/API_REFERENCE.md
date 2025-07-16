@@ -128,6 +128,48 @@ GET /api/mount-points
 }
 ```
 
+### Member Cities
+
+Get information about member cities and their storage locations:
+
+```bash
+# Get all member cities
+GET /api/member-cities
+
+# Response
+{
+  "success": true,
+  "data": {
+    "member_cities": {
+      "flex1": {
+        "name": "Birchwood",
+        "mount_path": "/mnt/flex-1",
+        "description": "Birchwood City Council and community content"
+      },
+      "flex2": {
+        "name": "Dellwood Grant Willernie",
+        "mount_path": "/mnt/flex-2",
+        "description": "Dellwood, Grant, and Willernie combined storage"
+      }
+    },
+    "total_cities": 9
+  }
+}
+
+# Get specific member city
+GET /api/member-cities/flex1
+
+# Response
+{
+  "success": true,
+  "data": {
+    "name": "Birchwood",
+    "mount_path": "/mnt/flex-1",
+    "description": "Birchwood City Council and community content"
+  }
+}
+```
+
 ## 🎯 Transcription API
 
 ### Start Transcription

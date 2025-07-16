@@ -166,6 +166,42 @@ def create_browse_blueprint(limiter):
             logger.error(f"Error downloading file: {e}")
             return jsonify({'error': 'Internal server error'}), 500
 
+    @bp.route('/member-cities')
+    @limiter.limit(BROWSE_RATE_LIMIT)
+    def get_member_cities():
+        """Get information about all member cities and their storage locations."""
+        try:
+            from core.config import MEMBER_CITIES
+            return jsonify({
+                'success': True,
+                'data': {
+                    'member_cities': MEMBER_CITIES,
+                    'total_cities': len(MEMBER_CITIES)
+                }
+            })
+        except Exception as e:
+            logger.error(f"Error getting member cities: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
+
+    @bp.route('/member-cities/<city_id>')
+    @limiter.limit(BROWSE_RATE_LIMIT)
+    def get_member_city_info(city_id):
+        """Get information about a specific member city."""
+        try:
+            from core.config import MEMBER_CITIES
+            city_info = MEMBER_CITIES.get(city_id)
+            
+            if not city_info:
+                return jsonify({'error': 'City not found'}), 404
+                
+            return jsonify({
+                'success': True,
+                'data': city_info
+            })
+        except Exception as e:
+            logger.error(f"Error getting city info for {city_id}: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
+
     # Swagger model definitions
     browse_request = ns.model('BrowseRequest', {
         'path': fields.String(description='Path to browse, relative to NAS_PATH', default='')
