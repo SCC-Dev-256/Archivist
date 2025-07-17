@@ -123,6 +123,9 @@ git clone <repository-url> .
 # Production installation
 pip install -r requirements/prod.txt
 
+# Ensure core dependencies are present
+pip install -r requirements.txt
+
 # Development installation (includes testing tools)
 pip install -r requirements/dev.txt
 ```

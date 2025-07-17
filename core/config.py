@@ -20,10 +20,15 @@ Example:
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    import logging
+    logging.getLogger(__name__).warning(
+        "python-dotenv not installed; skipping .env loading"
+    )
 
 # Base paths
 BASE_DIR = Path(__file__).parent

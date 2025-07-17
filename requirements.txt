@@ -96,19 +96,22 @@ Flask-Limiter==3.5.0
 #pyannote.pipeline==3.0.1
 #pyaudio==0.2.13
 #pycparser==2.22
-#pydantic==2.11.3
-#pydantic_core==2.33.1
+# Core dependencies
+pydantic==2.11.3
+
 #Pygments==2.19.1
 #pyparsing==3.2.3
 #pytest==8.3.5
 #python-dateutil==2.9.0.post0
-#python-dotenv==1.1.0
+# Environment variable management
+python-dotenv==1.1.0
 #python-multipart==0.0.20
 #pytorch-lightning==2.5.1
 #pytorch-metric-learning==2.8.1
 #pytz==2025.2
 #PyYAML==6.0.2
-#redis==5.0.1
+# Redis client for Celery and caching
+redis==5.0.1
 #regex==2024.11.6
 #requests==2.31.0
 #rich>=12,<14

@@ -1,14 +1,17 @@
+
 import os
 import sys
 from pathlib import Path
 import pytest
 from unittest.mock import MagicMock, patch
+
+# Ensure project root is on the Python path **before** importing application modules
+project_root = str(Path(__file__).parent.parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from core.app import create_app
 from core.logging_config import setup_logging
-
-# Add the project root directory to Python path
-project_root = str(Path(__file__).parent.parent)
-sys.path.insert(0, project_root)
 
 # Set test environment variables
 os.environ["TESTING"] = "true"
@@ -64,12 +67,15 @@ def mock_transformers(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def mock_redis(monkeypatch):
-    """Mock Redis connection for tests"""
-    mock_redis = MagicMock()
-    mock_redis.ping.return_value = True
-    
-    # Mock redis.from_url
-    monkeypatch.setattr("redis.from_url", MagicMock(return_value=mock_redis))
+    """Provide a fake Redis module so tests run without the real dependency."""
+    mock_instance = MagicMock()
+    mock_instance.ping.return_value = True
+
+    import types, sys
+
+    fake_redis = types.ModuleType("redis")
+    fake_redis.from_url = MagicMock(return_value=mock_instance)
+    monkeypatch.setitem(sys.modules, "redis", fake_redis)
     
     # Mock RQ Queue
     mock_queue = MagicMock()

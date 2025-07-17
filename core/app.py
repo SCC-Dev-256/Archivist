@@ -1,5 +1,11 @@
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:  # Module may not be installed in minimal environments
+    import logging
+    logging.getLogger(__name__).warning(
+        "python-dotenv not installed; skipping .env loading"
+    )
 
 # Debug prints - REMOVED for security (leaked sensitive configuration)
 # import os
