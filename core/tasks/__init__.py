@@ -25,6 +25,7 @@ celery_app = Celery(
     include=[
         "core.tasks.caption_checks",
         "core.tasks.vod_processing",
+        "core.tasks.transcription",
     ],
 )
 
@@ -40,4 +41,29 @@ celery_app.conf.update(
 logger.info(f"Celery app initialised with broker {REDIS_URL}")
 
 # Import scheduler after app creation
-import core.tasks.scheduler  # noqa: E402,F401 
+import core.tasks.scheduler  # noqa: E402,F401
+
+# Ensure VOD processing tasks are imported and registered
+try:
+    import core.tasks.vod_processing  # noqa: E402,F401
+    logger.info("VOD processing tasks imported successfully")
+except Exception as e:
+    logger.error(f"Failed to import VOD processing tasks: {e}")
+
+# Ensure transcription tasks are imported and registered
+try:
+    import core.tasks.transcription  # noqa: E402,F401
+    logger.info("Transcription tasks imported successfully")
+except Exception as e:
+    logger.error(f"Failed to import transcription tasks: {e}")
+
+# Verify task registration
+registered_tasks = celery_app.tasks.keys()
+vod_tasks = [task for task in registered_tasks if 'vod_processing' in task]
+transcription_tasks = [task for task in registered_tasks if 'transcription' in task]
+logger.info(f"Registered VOD processing tasks: {len(vod_tasks)}")
+logger.info(f"Registered transcription tasks: {len(transcription_tasks)}")
+for task in vod_tasks:
+    logger.debug(f"  - {task}")
+for task in transcription_tasks:
+    logger.debug(f"  - {task}") 

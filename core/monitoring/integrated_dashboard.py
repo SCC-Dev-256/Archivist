@@ -198,10 +198,148 @@ class IntegratedDashboard:
                         'progress': job.get('progress', 0),
                         'created_at': job.get('created_at'),
                         'started_at': job.get('started_at'),
-                        'ended_at': job.get('ended_at'),
                         'video_path': job.get('video_path', ''),
-                        'worker': 'RQ Worker'
+                        'position': job.get('position', 0)
                     })
+                
+                # Add Celery tasks
+                for worker, tasks in celery_active.items():
+                    for task in tasks:
+                        unified_tasks.append({
+                            'id': task['id'],
+                            'type': 'celery',
+                            'name': task['name'],
+                            'status': 'active',
+                            'progress': 0,  # Celery doesn't provide progress
+                            'created_at': task.get('time_start'),
+                            'started_at': task.get('time_start'),
+                            'worker': worker,
+                            'args': task.get('args', [])
+                        })
+                
+                # Add reserved Celery tasks
+                for worker, tasks in celery_reserved.items():
+                    for task in tasks:
+                        unified_tasks.append({
+                            'id': task['id'],
+                            'type': 'celery',
+                            'name': task['name'],
+                            'status': 'reserved',
+                            'progress': 0,
+                            'created_at': task.get('time_start'),
+                            'started_at': None,
+                            'worker': worker,
+                            'args': task.get('args', [])
+                        })
+                
+                return jsonify({
+                    'tasks': unified_tasks,
+                    'total': len(unified_tasks),
+                    'rq_count': len(rq_jobs),
+                    'celery_active_count': sum(len(tasks) for tasks in celery_active.values()),
+                    'celery_reserved_count': sum(len(tasks) for tasks in celery_reserved.values())
+                })
+            except Exception as e:
+                logger.error(f"Error getting unified tasks: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/vod/sync-status')
+        def api_vod_sync_status():
+            """Get VOD sync monitor status."""
+            try:
+                from scripts.monitoring.vod_sync_monitor import VODSyncMonitor
+                monitor = VODSyncMonitor()
+                if monitor.initialize_components():
+                    health_report = monitor.generate_health_report()
+                    return jsonify(health_report)
+                else:
+                    return jsonify({'error': 'VOD sync monitor not initialized'}), 500
+            except Exception as e:
+                logger.error(f"Error getting VOD sync status: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/vod/automation/status')
+        def api_vod_automation_status():
+            """Get VOD automation status."""
+            try:
+                from core.vod_automation import get_transcription_link_status
+                
+                # Get recent transcriptions and their link status
+                from core.models import TranscriptionResultORM
+                recent_transcriptions = TranscriptionResultORM.query.order_by(
+                    TranscriptionResultORM.completed_at.desc()
+                ).limit(20).all()
+                
+                automation_status = {
+                    'recent_transcriptions': [],
+                    'linked_count': 0,
+                    'unlinked_count': 0
+                }
+                
+                for transcription in recent_transcriptions:
+                    link_status = get_transcription_link_status(transcription.id)
+                    automation_status['recent_transcriptions'].append({
+                        'id': transcription.id,
+                        'video_path': transcription.video_path,
+                        'completed_at': transcription.completed_at.isoformat(),
+                        'linked': link_status.get('linked', False),
+                        'show_id': link_status.get('show_id'),
+                        'show_title': link_status.get('show_title')
+                    })
+                    
+                    if link_status.get('linked'):
+                        automation_status['linked_count'] += 1
+                    else:
+                        automation_status['unlinked_count'] += 1
+                
+                return jsonify(automation_status)
+            except Exception as e:
+                logger.error(f"Error getting VOD automation status: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/vod/automation/link/<transcription_id>', methods=['POST'])
+        def api_vod_automation_link(transcription_id):
+            """Link transcription to show."""
+            try:
+                from core.vod_automation import auto_link_transcription_to_show
+                result = auto_link_transcription_to_show(transcription_id)
+                return jsonify(result)
+            except Exception as e:
+                logger.error(f"Error linking transcription {transcription_id}: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/vod/automation/manual-link/<transcription_id>/<int:show_id>', methods=['POST'])
+        def api_vod_automation_manual_link(transcription_id, show_id):
+            """Manually link transcription to show."""
+            try:
+                from core.vod_automation import manual_link_transcription_to_show
+                result = manual_link_transcription_to_show(transcription_id, show_id)
+                return jsonify(result)
+            except Exception as e:
+                logger.error(f"Error manually linking transcription {transcription_id} to show {show_id}: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/vod/automation/suggestions/<transcription_id>')
+        def api_vod_automation_suggestions(transcription_id):
+            """Get show suggestions for transcription."""
+            try:
+                from core.vod_automation import get_show_suggestions
+                result = get_show_suggestions(transcription_id)
+                return jsonify(result)
+            except Exception as e:
+                logger.error(f"Error getting suggestions for transcription {transcription_id}: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/vod/automation/process-queue', methods=['POST'])
+        def api_vod_automation_process_queue():
+            """Process transcription linking queue."""
+            try:
+                from core.vod_automation import process_transcription_queue
+                result = process_transcription_queue()
+                return jsonify(result)
+            except Exception as e:
+                logger.error(f"Error processing transcription queue: {e}")
+                return jsonify({'error': str(e)}), 500
                 
                 # Add Celery tasks
                 for worker, tasks in celery_active.items():

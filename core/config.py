@@ -189,7 +189,10 @@ POSTGRES_CONFIG = {
     "max_worker_processes": 4,         # Reduced for CPU-only system
     "max_parallel_workers": 4,
     "max_parallel_workers_per_gather": 2
-} 
+}
+
+# Database URL configuration
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://archivist:archivist_password@localhost:5432/archivist")
 
 # Cablecast configuration
 CABLECAST_BASE_URL = os.getenv("CABLECAST_BASE_URL", "https://rays-house.cablecast.net")

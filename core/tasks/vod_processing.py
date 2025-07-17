@@ -253,8 +253,8 @@ def process_recent_vods() -> Dict[str, Any]:
     """Process most recent VOD content for each member city.
     
     This task:
-    1. Discovers recent VODs for each member city
-    2. Downloads VOD content from direct URLs
+    1. Discovers recent VODs for each member city from flex servers
+    2. Downloads VOD content from direct URLs or flex server files
     3. Generates captions for uncaptioned VODs
     4. Retranscodes videos with embedded captions
     5. Validates quality and stores results
@@ -268,17 +268,32 @@ def process_recent_vods() -> Dict[str, Any]:
     transcription_service = TranscriptionService()
     results = {}
     
+    # Import Celery transcription task for integration
+    from core.tasks.transcription import run_whisper_transcription
+    
     for city_id, city_config in MEMBER_CITIES.items():
         city_name = city_config['name']
-        logger.info(f"Processing VODs for {city_name} ({city_id})")
+        mount_path = city_config['mount_path']
+        logger.info(f"Processing VODs for {city_name} ({city_id}) from {mount_path}")
         
         try:
-            # Get recent VODs for this city
-            recent_vods = client.get_recent_vods(city_id, limit=5)
+            # Check if flex server mount is accessible
+            if not os.path.ismount(mount_path):
+                logger.warning(f"Flex server {city_id} not mounted at {mount_path}")
+                results[city_id] = {'processed': 0, 'errors': ['Flex server not mounted'], 'message': 'Mount not available'}
+                continue
+            
+            if not os.access(mount_path, os.R_OK):
+                logger.warning(f"Flex server {city_id} not readable at {mount_path}")
+                results[city_id] = {'processed': 0, 'errors': ['Flex server not readable'], 'message': 'Mount not accessible'}
+                continue
+            
+            # Get recent VODs from flex server (direct file access)
+            recent_vods = get_recent_vods_from_flex_server(mount_path, city_id, limit=5)
             
             if not recent_vods:
-                logger.info(f"No recent VODs found for {city_name}")
-                results[city_id] = {'processed': 0, 'errors': [], 'message': 'No VODs found'}
+                logger.info(f"No recent VODs found for {city_name} on {mount_path}")
+                results[city_id] = {'processed': 0, 'errors': [], 'message': 'No VODs found on flex server'}
                 continue
             
             # Filter VODs by city-specific patterns
@@ -289,7 +304,7 @@ def process_recent_vods() -> Dict[str, Any]:
                 vod_title = vod.get('title', '').lower()
                 if any(pattern in vod_title for pattern in city_patterns):
                     filtered_vods.append(vod)
-                    logger.info(f"Found city-specific VOD: {vod.get('title')} (ID: {vod.get('id')})")
+                    logger.info(f"Found city-specific VOD: {vod.get('title')} (Path: {vod.get('file_path')})")
             
             if not filtered_vods:
                 logger.info(f"No city-specific VODs found for {city_name}")
@@ -302,25 +317,43 @@ def process_recent_vods() -> Dict[str, Any]:
                 'vods_processed': []
             }
             
-            for vod in filtered_vods:
+            # Process videos one at a time (sequential processing)
+            for i, vod in enumerate(filtered_vods[:5]):
                 try:
-                    # Process individual VOD
-                    vod_result = process_single_vod.delay(vod['id'], city_id)
+                    # Add to task queue for sequential processing
+                    vod_id = vod.get('id', f"flex_{city_id}_{i}")
+                    vod_title = vod.get('title', 'Unknown')
+                    vod_path = vod.get('file_path', '')
+                    
+                    # Create a unique job name for the VOD
+                    job_name = f"VOD_{vod_id}_{city_id}"
+                    
+                    # Submit transcription task via Celery (sequential position)
+                    transcription_task = run_whisper_transcription.delay(vod_path)
+                    
+                    # Process individual VOD with Celery (one at a time)
+                    vod_result = process_single_vod.delay(vod_id, city_id, vod_path)
+                    
                     city_results['vods_processed'].append({
-                        'vod_id': vod['id'],
-                        'title': vod.get('title', 'Unknown'),
+                        'vod_id': vod_id,
+                        'title': vod_title,
+                        'file_path': vod_path,
                         'task_id': vod_result.id,
-                        'status': 'queued'
+                        'transcription_task_id': transcription_task.id,
+                        'status': 'queued',
+                        'position': i + 1
                     })
                     city_results['processed'] += 1
                     
+                    logger.info(f"Queued VOD {vod_id} ({vod_title}) for sequential processing")
+                    
                 except Exception as e:
-                    error_msg = f"Failed to queue VOD {vod['id']}: {e}"
+                    error_msg = f"Failed to queue VOD {vod.get('id', 'unknown')}: {e}"
                     logger.error(error_msg)
                     city_results['errors'].append(error_msg)
             
             results[city_id] = city_results
-            logger.info(f"Queued {city_results['processed']} VODs for {city_name}")
+            logger.info(f"Queued {city_results['processed']} VODs for {city_name} (sequential processing)")
             
         except Exception as e:
             error_msg = f"Error processing VODs for {city_name}: {e}"
@@ -332,52 +365,154 @@ def process_recent_vods() -> Dict[str, Any]:
     total_errors = sum(len(r.get('errors', [])) for r in results.values())
     
     if total_processed > 0:
-        send_alert("info", f"VOD processing completed: {total_processed} VODs queued, {total_errors} errors")
+        send_alert("info", f"VOD processing completed: {total_processed} VODs queued for sequential processing, {total_errors} errors")
     
-    logger.info(f"VOD processing completed: {total_processed} VODs queued across all cities")
+    logger.info(f"VOD processing completed: {total_processed} VODs queued across all cities (sequential processing)")
     return results
+
+def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int = 5) -> List[Dict]:
+    """Get recent VOD files from flex server mount point.
+    
+    Args:
+        mount_path: Path to flex server mount
+        city_id: Member city ID
+        limit: Maximum number of VODs to return
+        
+    Returns:
+        List of VOD dictionaries with file information
+    """
+    logger.info(f"Scanning flex server {city_id} at {mount_path} for recent VODs")
+    
+    vod_files = []
+    
+    try:
+        # Look for video files in common directories
+        video_dirs = [
+            os.path.join(mount_path, 'videos'),
+            os.path.join(mount_path, 'vod_content'),
+            os.path.join(mount_path, 'city_council'),
+            os.path.join(mount_path, 'meetings'),
+            mount_path  # Root directory
+        ]
+        
+        for video_dir in video_dirs:
+            if os.path.exists(video_dir):
+                logger.info(f"Scanning directory: {video_dir}")
+                
+                # Find video files (recursive search)
+                for root, dirs, files in os.walk(video_dir):
+                    for file in files:
+                        if file.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.m4v')):
+                            file_path = os.path.join(root, file)
+                            
+                            # Get file stats
+                            try:
+                                stat = os.stat(file_path)
+                                file_size = stat.st_size
+                                mod_time = stat.st_mtime
+                                
+                                # Create VOD entry
+                                vod_entry = {
+                                    'id': f"flex_{city_id}_{len(vod_files)}",
+                                    'title': os.path.splitext(file)[0],
+                                    'file_path': file_path,
+                                    'file_size': file_size,
+                                    'modified_time': mod_time,
+                                    'source': 'flex_server',
+                                    'city_id': city_id
+                                }
+                                
+                                vod_files.append(vod_entry)
+                                
+                                if len(vod_files) >= limit * 2:  # Get more than needed for filtering
+                                    break
+                                    
+                            except OSError as e:
+                                logger.warning(f"Error accessing file {file_path}: {e}")
+                                continue
+                    
+                    if len(vod_files) >= limit * 2:
+                        break
+                        
+                if len(vod_files) >= limit * 2:
+                    break
+        
+        # Sort by modification time (most recent first)
+        vod_files.sort(key=lambda x: x['modified_time'], reverse=True)
+        
+        # Return the most recent files
+        recent_vods = vod_files[:limit]
+        
+        logger.info(f"Found {len(recent_vods)} recent VOD files on flex server {city_id}")
+        for vod in recent_vods:
+            logger.debug(f"  - {vod['title']} ({vod['file_path']})")
+        
+        return recent_vods
+        
+    except Exception as e:
+        logger.error(f"Error scanning flex server {city_id}: {e}")
+        return []
 
 @celery_app.task(name="vod_processing.process_single_vod")
 @track_vod_processing
-def process_single_vod(vod_id: int, city_id: str) -> Dict[str, Any]:
+def process_single_vod(vod_id: int, city_id: str, video_path: str = None) -> Dict[str, Any]:
     """Process a single VOD: download, caption, retranscode, and validate."""
     logger.info(f"Processing VOD {vod_id} for city {city_id}")
+    if video_path:
+        logger.info(f"Using direct file path: {video_path}")
+    
     client = CablecastAPIClient()
     transcription_service = TranscriptionService()
     try:
-        # Get VOD details with API fallback
-        try:
-            vod_data = client.get_vod(vod_id)
-        except Exception as api_exc:
-            logger.error(f"Cablecast API error: {api_exc}")
-            send_alert("error", f"Cablecast API error: {api_exc}", vod_id=vod_id, city_id=city_id)
-            return {
-                'vod_id': vod_id,
-                'city_id': city_id,
-                'status': 'deferred',
-                'error': str(api_exc),
-                'message': 'Cablecast API unavailable, task deferred'
-            }
-        if not vod_data:
-            raise Exception(f"VOD {vod_id} not found")
-        # Get video file path (download if needed)
-        video_path = get_vod_file_path(vod_data)
-        if not video_path:
-            raise Exception(f"No video file found for VOD {vod_id}")
+        # If we have a direct file path, use it; otherwise try to get VOD details from API
+        if video_path and os.path.exists(video_path):
+            logger.info(f"Processing local file: {video_path}")
+            # Use the local file directly
+            local_video_path = video_path
+        else:
+            logger.info(f"No direct file path, attempting to get VOD {vod_id} from Cablecast API")
+            # Get VOD details with API fallback
+            try:
+                vod_data = client.get_vod(vod_id)
+            except Exception as api_exc:
+                logger.error(f"Cablecast API error: {api_exc}")
+                send_alert("error", f"Cablecast API error: {api_exc}", vod_id=vod_id, city_id=city_id)
+                return {
+                    'vod_id': vod_id,
+                    'city_id': city_id,
+                    'status': 'deferred',
+                    'error': str(api_exc),
+                    'message': 'Cablecast API unavailable, task deferred'
+                }
+            
+            if not vod_data:
+                raise Exception(f"VOD {vod_id} not found")
+            
+            # Get video file path (download if needed)
+            local_video_path = get_vod_file_path(vod_data)
+            if not local_video_path:
+                raise Exception(f"No video file found for VOD {vod_id}")
+        
         # Validate video file
-        if not validate_video_file(video_path):
-            raise Exception(f"Video file validation failed for {video_path}")
-        # Check if VOD already has captions
-        existing_captions = client.get_vod_captions(vod_id)
-        if existing_captions:
-            logger.info(f"VOD {vod_id} already has captions, skipping captioning")
-            return {
-                'vod_id': vod_id,
-                'city_id': city_id,
-                'status': 'skipped',
-                'reason': 'captions_exist',
-                'message': 'VOD already has captions'
-            }
+        if not validate_video_file(local_video_path):
+            raise Exception(f"Video file validation failed for {local_video_path}")
+        
+        # Check if VOD already has captions (only if we have VOD ID from API)
+        if vod_id and not vod_id.startswith('flex_'):
+            try:
+                existing_captions = client.get_vod_captions(vod_id)
+                if existing_captions:
+                    logger.info(f"VOD {vod_id} already has captions, skipping captioning")
+                    return {
+                        'vod_id': vod_id,
+                        'city_id': city_id,
+                        'status': 'skipped',
+                        'reason': 'captions_exist',
+                        'message': 'VOD already has captions'
+                    }
+            except Exception as e:
+                logger.warning(f"Could not check for existing captions: {e}")
+        
         # --- Storage check before generating captions ---
         city_storage_path = get_city_vod_storage_path(city_id)
         storage_mount = os.path.dirname(city_storage_path)
@@ -401,28 +536,38 @@ def process_single_vod(vod_id: int, city_id: str) -> Dict[str, Any]:
                 'error': 'Storage not writable',
                 'message': f'Storage not writable: {storage_mount}'
             }
-        # Generate captions
-        caption_result = generate_vod_captions.delay(vod_id, video_path, city_id)
-        caption_data = caption_result.get(timeout=1800)  # 30 minute timeout
-        if not caption_data.get('success'):
-            raise Exception(f"Caption generation failed: {caption_data.get('error')}")
-        scc_path = caption_data['scc_path']
+        
+        # Generate captions using Celery transcription task
+        transcription_result = run_whisper_transcription.delay(local_video_path)
+        transcription_data = transcription_result.get(timeout=1800)  # 30 minute timeout
+        
+        if transcription_data.get('status') != 'completed':
+            raise Exception(f"Transcription failed: {transcription_data.get('error', 'Unknown error')}")
+        
+        scc_path = transcription_data['output_path']
+        
         # Retranscode video with captions
         retranscode_result = retranscode_vod_with_captions.delay(
-            vod_id, video_path, scc_path, city_id
+            vod_id, local_video_path, scc_path, city_id
         )
         retranscode_data = retranscode_result.get(timeout=3600)  # 1 hour timeout
         if not retranscode_data.get('success'):
             raise Exception(f"Video retranscoding failed: {retranscode_data.get('error')}")
         captioned_video_path = retranscode_data['output_path']
-        # Upload captioned video back to Cablecast
-        upload_result = upload_captioned_vod.delay(vod_id, captioned_video_path, scc_path)
-        upload_data = upload_result.get(timeout=600)  # 10 minute timeout
-        if not upload_data.get('success'):
-            raise Exception(f"Upload failed: {upload_data.get('error')}")
+        
+        # Upload captioned video back to Cablecast (only if we have a real VOD ID)
+        if vod_id and not vod_id.startswith('flex_'):
+            upload_result = upload_captioned_vod.delay(vod_id, captioned_video_path, scc_path)
+            upload_data = upload_result.get(timeout=600)  # 10 minute timeout
+            if not upload_data.get('success'):
+                raise Exception(f"Upload failed: {upload_data.get('error')}")
+        else:
+            logger.info(f"Skipping upload for flex server VOD {vod_id}")
+        
         # Validate final quality
         validation_result = validate_vod_quality.delay(vod_id, captioned_video_path)
         validation_data = validation_result.get(timeout=300)  # 5 minute timeout
+        
         return {
             'vod_id': vod_id,
             'city_id': city_id,
