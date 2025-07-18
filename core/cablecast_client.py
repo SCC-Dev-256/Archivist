@@ -44,11 +44,11 @@ class CablecastAPIClient:
             # Create Basic Auth header
             credentials = f"{self.username}:{self.password}"
             encoded_credentials = base64.b64encode(credentials.encode()).decode()
-            self.session.headers.update({
+            self.session.headers = {
                 'Authorization': f'Basic {encoded_credentials}',
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            })
+            }
             logger.info("HTTP Basic Authentication configured")
         else:
             logger.warning("Cablecast credentials not provided - authentication may fail")
