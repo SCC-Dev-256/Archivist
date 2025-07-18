@@ -35,8 +35,15 @@ def run_whisper_transcription(*args, **kwargs):
 
     try:
         # If we already run inside a Celery worker, run the service directly to
-        # prevent spawning a nested task.
-        if current_task and getattr(current_task, "request", None):
+        # prevent spawning a nested task.  The stubbed Celery implementation
+        # used during testing sets ``current_task.request.id`` to ``'dummy'``
+        # outside of a worker, so check for a non-dummy ID to detect a real
+        # worker environment.
+        if (
+            current_task
+            and getattr(current_task, "request", None)
+            and getattr(current_task.request, "id", "dummy") != "dummy"
+        ):
             from core.services.transcription import TranscriptionService
 
             logger.debug(
