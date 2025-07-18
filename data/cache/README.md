@@ -1,0 +1,3 @@
+# Cache
+
+Application cache

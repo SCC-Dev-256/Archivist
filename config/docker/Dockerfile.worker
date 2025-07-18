@@ -1,0 +1,30 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements/base.txt requirements/prod.txt requirements/ml.txt /app/requirements/
+
+# Install Python dependencies
+RUN pip install -r requirements/base.txt -r requirements/prod.txt -r requirements/ml.txt
+
+# Copy application code
+COPY . .
+
+# Set environment variables
+ENV FLASK_APP=core.web_app
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app
+ENV USE_GPU=false
+ENV COMPUTE_TYPE=int8
+ENV BATCH_SIZE=4
+ENV NUM_WORKERS=2
+
+# Run the worker
+CMD ["python", "-m", "core.task_queue"] 

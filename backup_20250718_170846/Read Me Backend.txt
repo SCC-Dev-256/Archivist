@@ -1,0 +1,57 @@
+# FastAPI Video Transcription Backend
+
+## Description
+This backend service powers a video-to-caption and meeting-minutes summarization workflow using WhisperX and local LLaMA models.
+
+- Lists `.mp4` files on a NAS mount
+- Transcribes via WhisperX
+- Summarizes via local model
+- REST endpoints power a web UI
+
+## Prerequisites
+- Python 3.10+
+- WhisperX installed (via pip or from source)
+- CUDA (optional for GPU inference)
+- NAS mount at `/mnt/nas` with test `.mp4` files
+
+## Setup
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Running the Server
+```bash
+uvicorn main_fastapi_server:app --reload
+```
+
+## Endpoints
+| Method | Path               | Description                     |
+|--------|--------------------|---------------------------------|
+| GET    | `/files`           | List available video files      |
+| POST   | `/transcribe`      | Begin transcription of a video |
+| GET    | `/status/{job_id}` | Check job status               |
+| GET    | `/summary/{file}`  | Download summary JSON file     |
+
+## Testing
+```bash
+pytest tests/
+```
+
+## Directory Structure
+```
+.
+├── main_fastapi_server.py
+├── core/
+│   ├── transcription.py
+│   └── summarizer.py
+├── tests/
+│   ├── test_main.py
+│   └── test_transcription.py
+└── README.md
+```
+
+## License
+
+MIT

@@ -1,125 +1,82 @@
-# Archivist Deployment Guide
+# Scripts Directory
 
-This guide provides instructions for deploying the Archivist application on a Proxmox server.
+This directory contains all scripts for the Archivist system, organized by category.
 
-## Prerequisites
+## Directory Structure
 
-- Proxmox server with Debian
-- Root access or sudo privileges
-- Domain name (for SSL)
-- Git installed
-
-## Deployment Steps
-
-1. Clone the repository:
-```bash
-git clone https://github.com/your-username/archivist.git /opt/archivist
+```
+scripts/
+├── deployment/          # Deployment and system startup scripts
+├── development/         # Development and testing scripts
+├── maintenance/         # System maintenance and code organization
+├── monitoring/          # Monitoring and health check scripts
+├── security/           # Security scanning and configuration
+├── setup/              # Initial setup and configuration scripts
+├── utils/              # Utility scripts
+└── logs/               # Script logs and reports
 ```
 
-2. Make the deployment script executable:
+## Categories
+
+### Deployment Scripts (`deployment/`)
+Scripts for deploying and running the Archivist system:
+- System startup/shutdown scripts
+- Web and worker process management
+- Deployment automation
+- Certificate and monitoring setup
+
+### Development Scripts (`development/`)
+Scripts for development and testing:
+- Test runners
+- Development utilities
+- Documentation updates
+- Database setup
+
+### Maintenance Scripts (`maintenance/`)
+Scripts for system maintenance:
+- Dependency management
+- Code reorganization
+- System cleanup
+
+### Monitoring Scripts (`monitoring/`)
+Scripts for monitoring and health checks:
+- System monitoring
+- VOD synchronization monitoring
+- Debug log viewing
+- System status checking
+
+### Security Scripts (`security/`)
+Scripts for security:
+- Security scanning
+- GitHub Actions management
+
+### Setup Scripts (`setup/`)
+Scripts for initial setup:
+- Cablecast integration setup
+- Credential creation
+- Mount configuration
+- System initialization
+
+### Utility Scripts (`utils/`)
+General utility scripts:
+- File processing
+- System customization
+- Various utilities
+
+## Usage
+
+Each subdirectory contains a README with specific usage instructions for the scripts in that category.
+
+## Running Scripts
+
+Most scripts can be run directly from their respective directories. For example:
 ```bash
-chmod +x /opt/archivist/scripts/deploy.sh
-```
+# Run deployment script
+./scripts/deployment/start_archivist.sh
 
-3. Run the deployment script:
-```bash
-cd /opt/archivist/scripts
-./deploy.sh
-```
+# Run development test
+python3 scripts/development/run_tests.sh
 
-4. Update the domain name and email in the Nginx configuration:
-```bash
-sudo nano /etc/nginx/sites-available/archivist
-```
-
-5. Run certbot again with your domain:
-```bash
-sudo certbot --nginx -d your-domain.com --non-interactive --agree-tos --email your-email@example.com
-```
-
-## Configuration Details
-
-### PostgreSQL Optimization
-The PostgreSQL configuration is optimized for video processing with:
-- 17GB shared buffers (25% of RAM)
-- 53GB effective cache size (75% of RAM)
-- 2GB maintenance work memory
-- Parallel query processing enabled
-- Comprehensive logging and monitoring
-
-### Monitoring Setup
-The deployment includes:
-- Prometheus for metrics collection
-- Grafana for visualization
-- Node Exporter for system metrics
-- Redis and PostgreSQL exporters
-
-### Backup Strategy
-Daily backups are configured for:
-- PostgreSQL database
-- Redis data
-- Configuration files
-- 7-day retention policy
-
-## Accessing Services
-
-- Grafana: http://your-domain.com/grafana
-  - Default credentials: admin/[generated-password]
-- Prometheus: http://your-domain.com/prometheus
-- API: http://your-domain.com/api
-
-## Maintenance
-
-### Backup
-Run the backup script manually:
-```bash
-/opt/archivist/scripts/backup.sh
-```
-
-### Monitoring
-Check system health:
-```bash
-/opt/archivist/scripts/monitor.sh
-```
-
-### Updates
-To update the application:
-```bash
-cd /opt/archivist
-git pull
-docker-compose -f docker/docker-compose.yml up -d --build
-```
-
-## Security Considerations
-
-1. All services are containerized and isolated
-2. SSL is enforced using Let's Encrypt
-3. Strong random passwords are generated for all services
-4. Network access is restricted to necessary ports
-5. Regular security updates are applied
-
-## Troubleshooting
-
-1. Check service logs:
-```bash
-docker-compose -f docker/docker-compose.yml logs
-```
-
-2. Verify Nginx configuration:
-```bash
-sudo nginx -t
-```
-
-3. Check system resources:
-```bash
-htop
-```
-
-4. Monitor disk usage:
-```bash
-df -h
-```
-
-## Support
-
-For issues or questions, please open an issue on the GitHub repository. 
+# Run monitoring script
+python3 scripts/monitoring/monitor.py
+``` 

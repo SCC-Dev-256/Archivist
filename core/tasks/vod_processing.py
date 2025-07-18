@@ -313,13 +313,13 @@ def get_city_vod_storage_path(city_id: str) -> str:
 def map_city_to_vod_pattern(city_id: str) -> List[str]:
     """Map city ID to VOD title patterns for filtering."""
     city_patterns = {
-        'flex1': ['birchwood', 'birch wood', 'birchwood city'],
-        'flex2': ['dellwood', 'grant', 'willernie', 'dellwood grant willernie'],
-        'flex3': ['lake elmo', 'lakeelmo'],
-        'flex4': ['mahtomedi'],
-        'flex7': ['oakdale'],
-        'flex8': ['white bear lake', 'whitebearlake', 'wbl'],
-        'flex9': ['white bear township', 'whitebeartownship', 'wbt']
+        'flex1': ['birchwood', 'birch wood', 'birchwood city', 'birchwood city council'],
+        'flex2': ['dellwood', 'grant', 'willernie', 'dellwood grant willernie', 'dellwood city council', 'grant city council'],
+        'flex3': ['lake elmo', 'lakeelmo', 'lake elmo city council'],
+        'flex4': ['mahtomedi', 'mahtomedi city council'],
+        'flex7': ['oakdale', 'oakdale city council'],
+        'flex8': ['white bear lake', 'whitebearlake', 'wbl', 'white bear lake school', 'white bear lake city council', 'white bear'],
+        'flex9': ['white bear township', 'whitebeartownship', 'wbt', 'white bear township council']
     }
     
     return city_patterns.get(city_id, [])
