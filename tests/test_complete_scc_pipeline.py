@@ -14,7 +14,6 @@ import sys
 import time
 from datetime import datetime
 from loguru import logger
-from core.transcription import run_whisper_transcription
 from core.scc_summarizer import summarize_scc, parse_scc
 from core.services.transcription import TranscriptionService
 

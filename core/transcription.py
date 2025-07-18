@@ -2,6 +2,7 @@
 
 from loguru import logger
 from celery import current_task
+from .whisperx_helper import save_scc_file
 
 
 def run_whisper_transcription(*args, **kwargs):
