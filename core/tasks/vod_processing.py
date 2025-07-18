@@ -328,9 +328,6 @@ def process_recent_vods() -> Dict[str, Any]:
                     # Create a unique job name for the VOD
                     job_name = f"VOD_{vod_id}_{city_id}"
                     
-                    # Submit transcription task via Celery (sequential position)
-                    transcription_task = run_whisper_transcription.delay(vod_path)
-                    
                     # Process individual VOD with Celery (one at a time)
                     vod_result = process_single_vod.delay(vod_id, city_id, vod_path)
                     
@@ -339,7 +336,6 @@ def process_recent_vods() -> Dict[str, Any]:
                         'title': vod_title,
                         'file_path': vod_path,
                         'task_id': vod_result.id,
-                        'transcription_task_id': transcription_task.id,
                         'status': 'queued',
                         'position': i + 1
                     })
