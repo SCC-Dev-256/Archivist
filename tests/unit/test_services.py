@@ -138,7 +138,7 @@ class TestQueueService:
         assert hasattr(service, 'queue_manager')
     
     @patch('os.path.exists')
-    @patch('core.task_queue.queue_manager.enqueue_transcription')
+    @patch('core.tasks.transcription.enqueue_transcription')
     def test_enqueue_transcription_success(self, mock_enqueue, mock_exists):
         """Test successful job enqueue."""
         mock_exists.return_value = True
@@ -162,16 +162,16 @@ class TestQueueService:
         
         assert "Video file not found" in str(exc_info.value)
     
-    @patch('core.task_queue.queue_manager.get_all_jobs')
-    def test_get_queue_status_success(self, mock_get_jobs):
+    @patch('core.services.queue.celery_app.control.inspect')
+    def test_get_queue_status_success(self, mock_inspect):
         """Test successful queue status retrieval."""
-        mock_get_jobs.return_value = [
-            {'id': 'job1', 'status': 'running'},
-            {'id': 'job2', 'status': 'running'},
-            {'id': 'job3', 'status': 'queued'},
-            {'id': 'job4', 'status': 'queued'},
-            {'id': 'job5', 'status': 'queued'}
-        ]
+        mock_inspect.return_value.active.return_value = {
+            'worker1': [{}, {}]
+        }
+        mock_inspect.return_value.reserved.return_value = {
+            'worker1': [{}, {}, {}]
+        }
+        mock_inspect.return_value.scheduled.return_value = {}
         
         service = QueueService()
         status = service.get_queue_status()
@@ -179,7 +179,7 @@ class TestQueueService:
         assert status['total_jobs'] == 5
         assert status['running_jobs'] == 2
         assert status['queued_jobs'] == 3
-        mock_get_jobs.assert_called_once()
+        mock_inspect.assert_called_once()
 
 class TestServiceIntegration:
     """Test service integration."""

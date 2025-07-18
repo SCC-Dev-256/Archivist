@@ -53,9 +53,12 @@ class CablecastAPIClient:
         else:
             logger.warning("Cablecast credentials not provided - authentication may fail")
         
-        # Test connection on initialization
-        if not self.test_connection():
-            logger.error("Failed to connect to Cablecast API - check credentials and server URL")
+        # Test connection on initialization (skip during tests)
+        if os.getenv("TESTING") != "true":
+            if not self.test_connection():
+                logger.error(
+                    "Failed to connect to Cablecast API - check credentials and server URL"
+                )
     
     def test_connection(self) -> bool:
         """Test connection to Cablecast API.

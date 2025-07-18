@@ -20,13 +20,16 @@ import os
 from typing import Dict, Optional, List
 from loguru import logger
 from core.exceptions import QueueError
-from core.task_queue import queue_manager
+from celery.result import AsyncResult
+from core.tasks import celery_app
+from core.tasks import transcription as transcription_tasks
 
 class QueueService:
     """Service for handling queue operations."""
     
     def __init__(self):
-        self.queue_manager = queue_manager
+        """Initialise the queue service with Celery."""
+        self.queue_manager = celery_app
     
     def enqueue_transcription(self, video_path: str, position: Optional[int] = None) -> str:
         """Enqueue a transcription job.
@@ -41,8 +44,8 @@ class QueueService:
         try:
             if not os.path.exists(video_path):
                 raise QueueError(f"Video file not found: {video_path}")
-            
-            job_id = self.queue_manager.enqueue_transcription(video_path, position)
+
+            job_id = transcription_tasks.enqueue_transcription(video_path, position)
             logger.info(f"Enqueued transcription job {job_id} for {video_path}")
             return job_id
             
@@ -60,9 +63,23 @@ class QueueService:
             Dictionary containing job status
         """
         try:
-            status = self.queue_manager.get_job_status(job_id)
+            result = AsyncResult(job_id, app=self.queue_manager)
+            info = result.info if isinstance(result.info, dict) else {}
+
+            status = info.get('status', result.status.lower())
+            response = {
+                'status': status,
+                'progress': info.get('progress', 0),
+                'status_message': info.get('status_message', ''),
+            }
+
+            if result.failed():
+                response['error'] = str(result.info)
+            elif result.successful() and isinstance(result.result, dict):
+                response.update(result.result)
+
             logger.debug(f"Retrieved status for job {job_id}")
-            return status
+            return response
             
         except Exception as e:
             logger.error(f"Failed to get job status for {job_id}: {e}")
@@ -75,23 +92,26 @@ class QueueService:
             Dictionary containing queue status
         """
         try:
-            # Get all jobs and calculate status
-            all_jobs = self.queue_manager.get_all_jobs()
-            
-            total_jobs = len(all_jobs)
-            running_jobs = sum(1 for job in all_jobs if job.get('status') == 'running')
-            queued_jobs = sum(1 for job in all_jobs if job.get('status') == 'queued')
-            failed_jobs = sum(1 for job in all_jobs if job.get('status') == 'failed')
-            completed_jobs = sum(1 for job in all_jobs if job.get('status') == 'completed')
-            
+            inspect = self.queue_manager.control.inspect()
+            active = inspect.active() or {}
+            reserved = inspect.reserved() or {}
+            scheduled = inspect.scheduled() or {}
+
+            running_jobs = sum(len(tasks) for tasks in active.values())
+            queued_jobs = (
+                sum(len(tasks) for tasks in reserved.values()) +
+                sum(len(tasks) for tasks in scheduled.values())
+            )
+            total_jobs = running_jobs + queued_jobs
+
             status = {
                 'total_jobs': total_jobs,
                 'running_jobs': running_jobs,
                 'queued_jobs': queued_jobs,
-                'failed_jobs': failed_jobs,
-                'completed_jobs': completed_jobs
+                'failed_jobs': 0,
+                'completed_jobs': 0
             }
-            
+
             logger.info(f"Retrieved queue status: {total_jobs} total jobs")
             return status
             
@@ -109,17 +129,8 @@ class QueueService:
         Returns:
             True if reorder was successful
         """
-        try:
-            success = self.queue_manager.reorder_job(job_id, new_position)
-            if success:
-                logger.info(f"Reordered job {job_id} to position {new_position}")
-            else:
-                logger.warning(f"Failed to reorder job {job_id}")
-            return success
-            
-        except Exception as e:
-            logger.error(f"Failed to reorder job {job_id}: {e}")
-            raise QueueError(f"Job reorder failed: {str(e)}")
+        logger.warning("Celery does not support reordering tasks")
+        return False
     
     def pause_job(self, job_id: str) -> bool:
         """Pause a job.
@@ -130,17 +141,8 @@ class QueueService:
         Returns:
             True if pause was successful
         """
-        try:
-            success = self.queue_manager.pause_job(job_id)
-            if success:
-                logger.info(f"Paused job {job_id}")
-            else:
-                logger.warning(f"Failed to pause job {job_id}")
-            return success
-            
-        except Exception as e:
-            logger.error(f"Failed to pause job {job_id}: {e}")
-            raise QueueError(f"Job pause failed: {str(e)}")
+        logger.warning("Celery does not support pausing tasks")
+        return False
     
     def resume_job(self, job_id: str) -> bool:
         """Resume a paused job.
@@ -151,17 +153,8 @@ class QueueService:
         Returns:
             True if resume was successful
         """
-        try:
-            success = self.queue_manager.resume_job(job_id)
-            if success:
-                logger.info(f"Resumed job {job_id}")
-            else:
-                logger.warning(f"Failed to resume job {job_id}")
-            return success
-            
-        except Exception as e:
-            logger.error(f"Failed to resume job {job_id}: {e}")
-            raise QueueError(f"Job resume failed: {str(e)}")
+        logger.warning("Celery does not support resuming tasks")
+        return False
     
     def cancel_job(self, job_id: str) -> bool:
         """Cancel a job.
@@ -173,13 +166,10 @@ class QueueService:
             True if cancel was successful
         """
         try:
-            success = self.queue_manager.cancel_job(job_id)
-            if success:
-                logger.info(f"Cancelled job {job_id}")
-            else:
-                logger.warning(f"Failed to cancel job {job_id}")
-            return success
-            
+            self.queue_manager.control.revoke(job_id, terminate=True)
+            logger.info(f"Cancelled job {job_id}")
+            return True
+
         except Exception as e:
             logger.error(f"Failed to cancel job {job_id}: {e}")
             raise QueueError(f"Job cancellation failed: {str(e)}")
@@ -190,14 +180,8 @@ class QueueService:
         Returns:
             List of failed job dictionaries
         """
-        try:
-            failed_jobs = self.queue_manager.get_failed_jobs()
-            logger.info(f"Retrieved {len(failed_jobs)} failed jobs")
-            return failed_jobs
-            
-        except Exception as e:
-            logger.error(f"Failed to get failed jobs: {e}")
-            raise QueueError(f"Failed jobs retrieval failed: {str(e)}")
+        logger.warning("Retrieving failed jobs is not supported with Celery")
+        return []
     
     def get_job_progress(self, job_id: str) -> Dict:
         """Get the progress of a job.
@@ -209,10 +193,18 @@ class QueueService:
             Dictionary containing job progress
         """
         try:
-            progress = self.queue_manager.get_job_progress(job_id)
+            result = AsyncResult(job_id, app=self.queue_manager)
+            info = result.info if isinstance(result.info, dict) else {}
+
+            progress = {
+                'progress': info.get('progress', 0),
+                'status_message': info.get('status_message', ''),
+                'status': info.get('status', result.status.lower())
+            }
+
             logger.debug(f"Retrieved progress for job {job_id}")
             return progress
-            
+
         except Exception as e:
             logger.error(f"Failed to get job progress for {job_id}: {e}")
             raise QueueError(f"Progress retrieval failed: {str(e)}")
@@ -224,10 +216,11 @@ class QueueService:
             Dictionary containing queue statistics
         """
         try:
-            stats = self.queue_manager.get_queue_statistics()
+            inspect = self.queue_manager.control.inspect()
+            stats = inspect.stats() or {}
             logger.info("Retrieved queue statistics")
             return stats
-            
+
         except Exception as e:
             logger.error(f"Failed to get queue statistics: {e}")
             raise QueueError(f"Statistics retrieval failed: {str(e)}")
@@ -239,13 +232,10 @@ class QueueService:
             True if queue was cleared successfully
         """
         try:
-            success = self.queue_manager.clear_queue()
-            if success:
-                logger.info("Cleared all jobs from queue")
-            else:
-                logger.warning("Failed to clear queue")
-            return success
-            
+            self.queue_manager.control.purge()
+            logger.info("Cleared all jobs from queue")
+            return True
+
         except Exception as e:
             logger.error(f"Failed to clear queue: {e}")
             raise QueueError(f"Queue clear failed: {str(e)}")
@@ -257,10 +247,19 @@ class QueueService:
             Dictionary containing worker status
         """
         try:
-            worker_status = self.queue_manager.get_worker_status()
+            inspect = self.queue_manager.control.inspect()
+            stats = inspect.stats() or {}
+            ping = inspect.ping() or {}
+            worker_status = {
+                worker: {
+                    'online': worker in ping,
+                    'stats': data
+                }
+                for worker, data in stats.items()
+            }
             logger.info("Retrieved worker status")
             return worker_status
-            
+
         except Exception as e:
             logger.error(f"Failed to get worker status: {e}")
             raise QueueError(f"Worker status retrieval failed: {str(e)}")
@@ -271,14 +270,5 @@ class QueueService:
         Returns:
             True if workers were restarted successfully
         """
-        try:
-            success = self.queue_manager.restart_workers()
-            if success:
-                logger.info("Restarted queue workers")
-            else:
-                logger.warning("Failed to restart workers")
-            return success
-            
-        except Exception as e:
-            logger.error(f"Failed to restart workers: {e}")
-            raise QueueError(f"Worker restart failed: {str(e)}") 
+        logger.warning("Restarting workers is not supported via QueueService")
+        return False

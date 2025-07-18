@@ -45,52 +45,15 @@ class TranscriptionService:
             raise TranscriptionError(f"File not found: {file_path}")
         logger.info(f"Starting transcription of {file_path}")
         try:
-            # Use direct WhisperX implementation for SCC output
-            from faster_whisper import WhisperModel
-            
-            # Initialize Whisper model
-            model = WhisperModel(self.model, device="cuda" if self.use_gpu else "cpu", compute_type="float16" if self.use_gpu else "int8")
-            
-            # Transcribe the file
-            segments, info = model.transcribe(file_path, language=self.language, beam_size=5)
-            
-            # Get video directory and filename for SCC output
-            video_dir = os.path.dirname(file_path)
-            video_name = os.path.basename(file_path)
-            scc_name = f"{os.path.splitext(video_name)[0]}.scc"
-            
-            # Primary output path in central directory
-            output_dir = os.environ.get('OUTPUT_DIR', '/tmp/archivist-output')
-            output_path = os.path.join(output_dir, scc_name)
-            
-            # Also try to save next to original video if possible
-            local_scc_path = os.path.join(video_dir, scc_name)
-            
-            # Convert segments to SCC format and save to central directory
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write("Scenarist_SCC V1.0\n\n")
-                for segment in segments:
-                    start_time = int(segment.start * 1000)  # Convert to milliseconds
-                    end_time = int(segment.end * 1000)
-                    text = segment.text.strip()
-                    if text:
-                        # Convert to SCC format (simplified)
-                        f.write(f"{start_time:08d}\n{text}\n\n")
-            
-            # Try to copy to local directory next to original video
-            try:
-                import shutil
-                shutil.copy2(output_path, local_scc_path)
-                logger.info(f"Copied SCC file to local directory: {local_scc_path}")
-            except Exception as e:
-                logger.warning(f"Could not copy SCC file to local directory: {e}")
-            
-            logger.info(f"Transcription completed: {output_path}")
+            from core.transcription import run_whisper_transcription
+
+            result = run_whisper_transcription(video_path=file_path)
+            output_path = result.get('srt_path') or result.get('output_path', '')
             return {
                 'output_path': output_path,
                 'status': 'completed',
-                'segments': len(list(segments)),
-                'duration': info.duration if hasattr(info, 'duration') else 0
+                'segments': result.get('segments', 0),
+                'duration': result.get('duration', 0)
             }
         except Exception as e:
             logger.error(f"Transcription failed for {file_path}: {e}")
