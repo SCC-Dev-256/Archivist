@@ -14,8 +14,16 @@ except Exception:  # pragma: no cover - fallback for missing deps
 try:
     from core.logging_config import setup_logging
 except Exception:
+    import logging
+
     def setup_logging(*args, **kwargs):
-        pass
+        """Fallback logging configuration for tests."""
+        level = logging.DEBUG if kwargs.get("log_level") == "DEBUG" or kwargs.get("testing") else logging.INFO
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s | %(levelname)s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
+            stream=sys.stdout,
+        )
 
 # Add the project root directory to Python path
 project_root = str(Path(__file__).parent.parent)
