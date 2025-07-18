@@ -17,7 +17,7 @@ import os
 import time
 
 from core.tasks import celery_app
-from core.services.transcription import TranscriptionService
+from core.transcription import run_whisper_transcription as sync_transcribe
 
 
 @celery_app.task(name="transcription.run_whisper", bind=True)
@@ -71,9 +71,6 @@ def run_whisper_transcription(self, video_path: str) -> Dict:
             }
         )
         
-        # Initialize transcription service
-        transcription_service = TranscriptionService()
-        
         # Update progress
         self.update_state(
             state='PROGRESS',
@@ -85,9 +82,9 @@ def run_whisper_transcription(self, video_path: str) -> Dict:
             }
         )
         
-        # Perform transcription
+        # Perform transcription using synchronous helper
         logger.info(f"Task {task_id}: Starting transcription of {video_path}")
-        result = transcription_service.transcribe_file(video_path)
+        result = sync_transcribe(video_path=video_path)
         
         # Update progress to completion
         self.update_state(
