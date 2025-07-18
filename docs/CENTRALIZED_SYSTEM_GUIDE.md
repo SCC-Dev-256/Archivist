@@ -37,19 +37,18 @@ python3 start_archivist_centralized.py
 - **Admin UI** (Port 8080): Main administration interface
 - **Monitoring Dashboard** (Port 5051): Real-time monitoring and task management
 - **Cross-linking**: Both GUIs can communicate and link to each other
-- **Unified Task Management**: Single interface for RQ and Celery tasks
+- **Unified Task Management**: Single interface for Celery tasks
 
 ## 🔗 GUI Connectivity Features
 
 ### Admin UI ↔ Monitoring Dashboard Integration
 - **Cross-linking**: Click links in Admin UI to open monitoring dashboard
 - **Shared APIs**: Both GUIs access the same backend APIs
-- **Unified Task Queue**: Manage both RQ transcription jobs and Celery VOD tasks
+- **Unified Task Queue**: Manage all Celery tasks
 - **Real-time Updates**: Live status updates across both interfaces
 
 ### Unified Task Management
-- **RQ Jobs**: Transcription queue management
-- **Celery Tasks**: VOD processing tasks
+- **Celery Tasks**: VOD processing and transcription tasks
 - **Combined View**: Single interface showing all task types
 - **Task Control**: Start, stop, pause, resume, and reorder tasks
 
@@ -80,7 +79,7 @@ Redis → PostgreSQL → Celery Worker → Celery Beat → VOD Sync Monitor → 
 ### Real-time Monitoring
 - **System Metrics**: CPU, memory, disk usage
 - **Service Status**: All service health indicators
-- **Task Queues**: RQ and Celery task status
+- **Task Queues**: Celery task status
 - **Performance Metrics**: Response times and throughput
 
 ### VOD Integration
@@ -90,7 +89,7 @@ Redis → PostgreSQL → Celery Worker → Celery Beat → VOD Sync Monitor → 
 - **Manual Linking**: Link transcriptions to specific shows
 
 ### Task Management
-- **Unified Queue View**: Combined RQ and Celery tasks
+- **Unified Queue View**: Celery tasks
 - **Task Control**: Start, stop, pause, resume tasks
 - **Queue Reordering**: Change task execution order
 - **Progress Tracking**: Real-time task progress updates
@@ -161,10 +160,9 @@ RESTART_DELAY=10
 ### Monitoring Dashboard APIs
 - `GET /api/metrics` - System metrics
 - `GET /api/health` - Health check data
-- `GET /api/queue/jobs` - RQ queue jobs
 - `GET /api/celery/tasks` - Celery task statistics
 - `GET /api/celery/workers` - Celery worker status
-- `GET /api/unified/tasks` - Combined RQ + Celery tasks
+- `GET /api/unified/tasks` - Celery task list
 
 ### VOD Integration APIs
 - `GET /api/vod/sync-status` - VOD sync monitor status
@@ -175,11 +173,10 @@ RESTART_DELAY=10
 - `POST /api/vod/automation/process-queue` - Process linking queue
 
 ### Task Management APIs
-- `POST /api/queue/jobs/<id>/stop` - Stop RQ job
-- `POST /api/queue/jobs/<id>/pause` - Pause RQ job
-- `POST /api/queue/jobs/<id>/resume` - Resume RQ job
-- `POST /api/queue/jobs/<id>/reorder` - Reorder RQ job
-- `DELETE /api/queue/jobs/<id>/remove` - Remove RQ job
+- `POST /api/unified-queue/tasks/<id>/stop` - Stop Celery task
+- `POST /api/unified-queue/tasks/<id>/pause` - Pause Celery task
+- `POST /api/unified-queue/tasks/<id>/resume` - Resume Celery task
+- `DELETE /api/unified-queue/tasks/<id>/remove` - Remove Celery task
 
 ## 🛠️ Troubleshooting
 
@@ -198,7 +195,7 @@ RESTART_DELAY=10
 #### Task Queue Issues
 1. Check Redis: `redis-cli ping`
 2. Check Celery workers: `celery -A core.tasks inspect active`
-3. Check RQ queue: Access via Admin UI or monitoring dashboard
+3. Check Celery queue: Access via monitoring dashboard
 
 #### VOD Processing Issues
 1. Check VOD sync monitor: `tail -f logs/vod_sync_monitor.log`

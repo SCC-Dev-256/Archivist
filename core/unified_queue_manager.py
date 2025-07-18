@@ -1,24 +1,22 @@
-"""
-Unified Queue Management System
+"""Unified Queue Management System
 
-This module provides a unified interface for managing both RQ (Redis Queue) and Celery tasks,
-offering a single point of control for all asynchronous job processing in the VOD system.
+This module provides a simplified interface for managing Celery tasks.
+All previous RQ (Redis Queue) functionality has been removed in favour of a
+fully Celery-based implementation.
 """
 
-from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
+from datetime import datetime
 import time
 import threading
 from loguru import logger
 
-from core.task_queue import QueueManager
 from core.tasks import celery_app
 
 class UnifiedQueueManager:
-    """Unified queue manager for RQ and Celery tasks."""
+    """Unified queue manager for Celery tasks."""
     
     def __init__(self):
-        self.rq_manager = QueueManager()
         self._task_cache = {}
         self._cache_lock = threading.Lock()
         
@@ -26,27 +24,9 @@ class UnifiedQueueManager:
         self._start_cache_refresh()
     
     def get_all_tasks(self) -> List[Dict[str, Any]]:
-        """Get all tasks from both RQ and Celery queues."""
+        """Get all tasks from Celery."""
         try:
             tasks = []
-            
-            # Get RQ jobs
-            rq_jobs = self.rq_manager.get_all_jobs()
-            for job in rq_jobs:
-                tasks.append({
-                    'id': job['id'],
-                    'queue_type': 'rq',
-                    'name': 'Transcription Job',
-                    'status': job['status'],
-                    'progress': job.get('progress', 0),
-                    'created_at': job.get('created_at'),
-                    'started_at': job.get('started_at'),
-                    'ended_at': job.get('ended_at'),
-                    'video_path': job.get('video_path', ''),
-                    'worker': 'RQ Worker',
-                    'error': job.get('error_details'),
-                    'position': job.get('position', 0)
-                })
             
             # Get Celery tasks
             inspect = celery_app.control.inspect()
@@ -99,7 +79,7 @@ class UnifiedQueueManager:
             return []
     
     def get_task_summary(self) -> Dict[str, Any]:
-        """Get summary statistics for all queues."""
+        """Get summary statistics for Celery tasks."""
         try:
             tasks = self.get_all_tasks()
             
@@ -146,135 +126,96 @@ class UnifiedQueueManager:
                 'queue_health': {'rq_healthy': False, 'celery_healthy': False}
             }
     
-    def get_task_details(self, task_id: str, queue_type: str) -> Optional[Dict[str, Any]]:
-        """Get detailed information about a specific task."""
+    def get_task_details(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Get detailed information about a specific Celery task."""
         try:
-            if queue_type == 'rq':
-                return self.rq_manager.get_job_status(task_id)
-            elif queue_type == 'celery':
-                # Get task result from Celery
-                result = celery_app.AsyncResult(task_id)
-                return {
-                    'id': task_id,
-                    'queue_type': 'celery',
-                    'status': result.status,
-                    'result': result.result if result.ready() else None,
-                    'error': str(result.info) if result.failed() else None,
-                    'created_at': None,  # Celery doesn't provide this easily
-                    'started_at': None,
-                    'ended_at': None
-                }
-            else:
-                logger.error(f"Unknown queue type: {queue_type}")
-                return None
+            result = celery_app.AsyncResult(task_id)
+            return {
+                'id': task_id,
+                'queue_type': 'celery',
+                'status': result.status,
+                'result': result.result if result.ready() else None,
+                'error': str(result.info) if result.failed() else None,
+                'created_at': None,
+                'started_at': None,
+                'ended_at': None
+            }
                 
         except Exception as e:
             logger.error(f"Error getting task details for {task_id}: {e}")
             return None
     
-    def stop_task(self, task_id: str, queue_type: str) -> bool:
-        """Stop a running task."""
+    def stop_task(self, task_id: str) -> bool:
+        """Stop a running Celery task."""
         try:
-            if queue_type == 'rq':
-                return self.rq_manager.stop_job(task_id)
-            elif queue_type == 'celery':
-                # Revoke Celery task
-                celery_app.control.revoke(task_id, terminate=True)
-                return True
-            else:
-                logger.error(f"Unknown queue type: {queue_type}")
-                return False
+            celery_app.control.revoke(task_id, terminate=True)
+            return True
                 
         except Exception as e:
             logger.error(f"Error stopping task {task_id}: {e}")
             return False
     
-    def pause_task(self, task_id: str, queue_type: str) -> bool:
-        """Pause a task (RQ only, Celery doesn't support pausing)."""
+    def pause_task(self, task_id: str) -> bool:
+        """Attempt to pause a Celery task.
+
+        Celery does not natively support pausing tasks so this method issues a
+        revoke without terminating the running process. It will effectively
+        prevent the task from executing if it has not yet started.
+        """
         try:
-            if queue_type == 'rq':
-                return self.rq_manager.pause_job(task_id)
-            elif queue_type == 'celery':
-                logger.warning("Celery doesn't support pausing tasks")
-                return False
-            else:
-                logger.error(f"Unknown queue type: {queue_type}")
-                return False
+            celery_app.control.revoke(task_id, terminate=False)
+            return True
                 
         except Exception as e:
             logger.error(f"Error pausing task {task_id}: {e}")
             return False
     
-    def resume_task(self, task_id: str, queue_type: str) -> bool:
-        """Resume a paused task (RQ only)."""
+    def resume_task(self, task_id: str) -> bool:
+        """Resume a task.
+
+        Celery does not have a built in resume capability, so this method simply
+        returns ``False`` to indicate the operation is not supported.
+        """
         try:
-            if queue_type == 'rq':
-                return self.rq_manager.resume_job(task_id)
-            elif queue_type == 'celery':
-                logger.warning("Celery doesn't support resuming tasks")
-                return False
-            else:
-                logger.error(f"Unknown queue type: {queue_type}")
-                return False
+            logger.warning("Celery doesn't support resuming tasks")
+            return False
                 
         except Exception as e:
             logger.error(f"Error resuming task {task_id}: {e}")
             return False
     
-    def remove_task(self, task_id: str, queue_type: str) -> bool:
-        """Remove a task from the queue."""
+    def remove_task(self, task_id: str) -> bool:
+        """Remove a Celery task from the queue and backend."""
         try:
-            if queue_type == 'rq':
-                return self.rq_manager.remove_job(task_id)
-            elif queue_type == 'celery':
-                # Revoke and purge Celery task
-                celery_app.control.revoke(task_id, terminate=True)
-                result = celery_app.AsyncResult(task_id)
-                result.forget()  # Remove from result backend
-                return True
-            else:
-                logger.error(f"Unknown queue type: {queue_type}")
-                return False
+            celery_app.control.revoke(task_id, terminate=True)
+            result = celery_app.AsyncResult(task_id)
+            result.forget()
+            return True
                 
         except Exception as e:
             logger.error(f"Error removing task {task_id}: {e}")
             return False
     
-    def reorder_task(self, task_id: str, position: int, queue_type: str) -> bool:
-        """Reorder a task in the queue (RQ only)."""
+    def reorder_task(self, task_id: str, position: int) -> bool:
+        """Reorder a task.
+
+        Celery does not provide task reordering, so this always returns ``False``.
+        """
         try:
-            if queue_type == 'rq':
-                return self.rq_manager.reorder_job(task_id, position)
-            elif queue_type == 'celery':
-                logger.warning("Celery doesn't support reordering tasks")
-                return False
-            else:
-                logger.error(f"Unknown queue type: {queue_type}")
-                return False
+            logger.warning("Celery doesn't support reordering tasks")
+            return False
                 
         except Exception as e:
             logger.error(f"Error reordering task {task_id}: {e}")
             return False
     
     def cleanup_failed_tasks(self) -> Dict[str, int]:
-        """Clean up failed tasks from both queues."""
+        """Clean up failed Celery tasks."""
         try:
-            results = {}
-            
-            # Clean up RQ failed jobs
-            try:
-                self.rq_manager.cleanup_failed_jobs()
-                results['rq_cleaned'] = 1
-            except Exception as e:
-                logger.error(f"Error cleaning up RQ failed jobs: {e}")
-                results['rq_error'] = 1
-            
-            # For Celery, we can't easily clean up failed tasks
-            # They are typically handled by result backend TTL
-            results['celery_note'] = 'Celery failed tasks are handled by result backend TTL'
-            
-            return results
-            
+            # Celery relies on the result backend TTL for failed task cleanup.
+            # This method is retained for API compatibility and returns an empty result.
+            return {}
+
         except Exception as e:
             logger.error(f"Error cleaning up failed tasks: {e}")
             return {'error': str(e)}
@@ -316,24 +257,6 @@ class UnifiedQueueManager:
                 'task_name': task_name
             }
     
-    def enqueue_transcription(self, video_path: str, position: Optional[int] = None) -> Dict[str, Any]:
-        """Enqueue a transcription job (RQ)."""
-        try:
-            job_id = self.rq_manager.enqueue_transcription(video_path, position)
-            return {
-                'success': True,
-                'job_id': job_id,
-                'queue_type': 'rq',
-                'video_path': video_path,
-                'message': 'Transcription job enqueued successfully'
-            }
-        except Exception as e:
-            logger.error(f"Error enqueueing transcription: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'video_path': video_path
-            }
     
     def get_worker_status(self) -> Dict[str, Any]:
         """Get detailed worker status information."""

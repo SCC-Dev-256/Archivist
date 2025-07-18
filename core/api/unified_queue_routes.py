@@ -1,11 +1,11 @@
 """
 Unified Queue Management API Routes
 
-This module provides REST API endpoints for managing both RQ and Celery tasks
-through a unified interface.
+This module exposes REST endpoints for inspecting and controlling Celery tasks.
+Older RQ based functionality has been removed.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request
 from flask_restx import Api, Resource, Namespace, fields
 from loguru import logger
 
@@ -24,7 +24,7 @@ api.add_namespace(workers_ns)
 # Define models
 task_model = api.model('Task', {
     'id': fields.String(required=True, description='Task ID'),
-    'queue_type': fields.String(required=True, description='Queue type (rq or celery)'),
+    'queue_type': fields.String(required=True, description="Queue type (always 'celery')"),
     'name': fields.String(description='Task name'),
     'status': fields.String(description='Task status'),
     'progress': fields.Integer(description='Task progress (0-100)'),
@@ -56,12 +56,12 @@ worker_model = api.model('Worker', {
 
 @tasks_ns.route('/')
 class TaskList(Resource):
-    """List all tasks from both RQ and Celery queues."""
+    """List all Celery tasks."""
     
     @tasks_ns.doc('list_tasks')
     @tasks_ns.marshal_list_with(task_model)
     def get(self):
-        """Get all tasks from both queues."""
+        """Get all Celery tasks."""
         try:
             queue_manager = get_unified_queue_manager()
             tasks = queue_manager.get_all_tasks()
@@ -77,7 +77,7 @@ class TaskSummary(Resource):
     @tasks_ns.doc('get_task_summary')
     @tasks_ns.marshal_with(task_summary_model)
     def get(self):
-        """Get summary statistics for all queues."""
+        """Get summary statistics for Celery tasks."""
         try:
             queue_manager = get_unified_queue_manager()
             summary = queue_manager.get_task_summary()
@@ -86,34 +86,34 @@ class TaskSummary(Resource):
             logger.error(f"Error getting task summary: {e}")
             api.abort(500, f"Failed to get task summary: {str(e)}")
 
-@tasks_ns.route('/<string:queue_type>/<string:task_id>')
+@tasks_ns.route('/<string:task_id>')
 class TaskDetail(Resource):
-    """Get detailed information about a specific task."""
-    
+    """Get detailed information about a specific Celery task."""
+
     @tasks_ns.doc('get_task_details')
-    def get(self, queue_type, task_id):
+    def get(self, task_id):
         """Get detailed information about a task."""
         try:
             queue_manager = get_unified_queue_manager()
-            details = queue_manager.get_task_details(task_id, queue_type)
+            details = queue_manager.get_task_details(task_id)
             if details:
                 return details
             else:
-                api.abort(404, f"Task {task_id} not found in {queue_type} queue")
+                api.abort(404, f"Task {task_id} not found")
         except Exception as e:
             logger.error(f"Error getting task details: {e}")
             api.abort(500, f"Failed to get task details: {str(e)}")
 
-@tasks_ns.route('/<string:queue_type>/<string:task_id>/stop')
+@tasks_ns.route('/<string:task_id>/stop')
 class TaskStop(Resource):
     """Stop a running task."""
     
     @tasks_ns.doc('stop_task')
-    def post(self, queue_type, task_id):
+    def post(self, task_id):
         """Stop a running task."""
         try:
             queue_manager = get_unified_queue_manager()
-            success = queue_manager.stop_task(task_id, queue_type)
+            success = queue_manager.stop_task(task_id)
             return {
                 'success': success,
                 'message': f"Task {task_id} {'stopped' if success else 'failed to stop'}"
@@ -122,16 +122,16 @@ class TaskStop(Resource):
             logger.error(f"Error stopping task: {e}")
             api.abort(500, f"Failed to stop task: {str(e)}")
 
-@tasks_ns.route('/<string:queue_type>/<string:task_id>/pause')
+@tasks_ns.route('/<string:task_id>/pause')
 class TaskPause(Resource):
-    """Pause a task (RQ only)."""
+    """Pause a task."""
     
     @tasks_ns.doc('pause_task')
-    def post(self, queue_type, task_id):
+    def post(self, task_id):
         """Pause a task."""
         try:
             queue_manager = get_unified_queue_manager()
-            success = queue_manager.pause_task(task_id, queue_type)
+            success = queue_manager.pause_task(task_id)
             return {
                 'success': success,
                 'message': f"Task {task_id} {'paused' if success else 'failed to pause'}"
@@ -140,16 +140,16 @@ class TaskPause(Resource):
             logger.error(f"Error pausing task: {e}")
             api.abort(500, f"Failed to pause task: {str(e)}")
 
-@tasks_ns.route('/<string:queue_type>/<string:task_id>/resume')
+@tasks_ns.route('/<string:task_id>/resume')
 class TaskResume(Resource):
-    """Resume a paused task (RQ only)."""
+    """Resume a paused task."""
     
     @tasks_ns.doc('resume_task')
-    def post(self, queue_type, task_id):
+    def post(self, task_id):
         """Resume a paused task."""
         try:
             queue_manager = get_unified_queue_manager()
-            success = queue_manager.resume_task(task_id, queue_type)
+            success = queue_manager.resume_task(task_id)
             return {
                 'success': success,
                 'message': f"Task {task_id} {'resumed' if success else 'failed to resume'}"
@@ -158,16 +158,16 @@ class TaskResume(Resource):
             logger.error(f"Error resuming task: {e}")
             api.abort(500, f"Failed to resume task: {str(e)}")
 
-@tasks_ns.route('/<string:queue_type>/<string:task_id>/remove')
+@tasks_ns.route('/<string:task_id>/remove')
 class TaskRemove(Resource):
     """Remove a task from the queue."""
     
     @tasks_ns.doc('remove_task')
-    def delete(self, queue_type, task_id):
+    def delete(self, task_id):
         """Remove a task from the queue."""
         try:
             queue_manager = get_unified_queue_manager()
-            success = queue_manager.remove_task(task_id, queue_type)
+            success = queue_manager.remove_task(task_id)
             return {
                 'success': success,
                 'message': f"Task {task_id} {'removed' if success else 'failed to remove'}"
@@ -176,26 +176,6 @@ class TaskRemove(Resource):
             logger.error(f"Error removing task: {e}")
             api.abort(500, f"Failed to remove task: {str(e)}")
 
-@tasks_ns.route('/<string:queue_type>/<string:task_id>/reorder')
-class TaskReorder(Resource):
-    """Reorder a task in the queue (RQ only)."""
-    
-    @tasks_ns.doc('reorder_task')
-    def post(self, queue_type, task_id):
-        """Reorder a task in the queue."""
-        try:
-            data = request.get_json()
-            position = data.get('position', 0)
-            
-            queue_manager = get_unified_queue_manager()
-            success = queue_manager.reorder_task(task_id, position, queue_type)
-            return {
-                'success': success,
-                'message': f"Task {task_id} {'reordered' if success else 'failed to reorder'}"
-            }
-        except Exception as e:
-            logger.error(f"Error reordering task: {e}")
-            api.abort(500, f"Failed to reorder task: {str(e)}")
 
 @tasks_ns.route('/cleanup')
 class TaskCleanup(Resource):
@@ -203,7 +183,7 @@ class TaskCleanup(Resource):
     
     @tasks_ns.doc('cleanup_failed_tasks')
     def post(self):
-        """Clean up failed tasks from both queues."""
+        """Clean up failed Celery tasks."""
         try:
             queue_manager = get_unified_queue_manager()
             results = queue_manager.cleanup_failed_tasks()
@@ -238,27 +218,6 @@ class TriggerCeleryTask(Resource):
             logger.error(f"Error triggering Celery task: {e}")
             api.abort(500, f"Failed to trigger task: {str(e)}")
 
-@tasks_ns.route('/enqueue-transcription')
-class EnqueueTranscription(Resource):
-    """Enqueue a transcription job (RQ)."""
-    
-    @tasks_ns.doc('enqueue_transcription')
-    def post(self):
-        """Enqueue a transcription job."""
-        try:
-            data = request.get_json()
-            video_path = data.get('video_path')
-            position = data.get('position')
-            
-            if not video_path:
-                api.abort(400, "video_path is required")
-            
-            queue_manager = get_unified_queue_manager()
-            result = queue_manager.enqueue_transcription(video_path, position)
-            return result
-        except Exception as e:
-            logger.error(f"Error enqueueing transcription: {e}")
-            api.abort(500, f"Failed to enqueue transcription: {str(e)}")
 
 @workers_ns.route('/')
 class WorkerList(Resource):
