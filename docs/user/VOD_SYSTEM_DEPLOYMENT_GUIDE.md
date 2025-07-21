@@ -246,7 +246,7 @@ export FLASK_DEBUG=true
 export LOG_LEVEL=DEBUG
 
 # Restart system
-python3 start_complete_system.py
+python3 /opt/Archivist/scripts/deployment/start_complete_system.py
 ```
 
 ## 📈 Performance Optimization
@@ -349,3 +349,34 @@ sudo systemctl restart archivist-vod.service
 ---
 
 *This deployment guide covers the complete VOD processing system implementation. For additional support, check the logs and run the test suite to identify any issues.* 
+
+---
+
+## Solution
+
+You need to install `loguru` in your virtual environment. Here’s how:
+
+1. **Activate your virtual environment** (if not already active):
+   ```bash
+   source venv_py311/bin/activate
+   ```
+
+2. **Install loguru**:
+   ```bash
+   pip install loguru
+   ```
+
+3. **(Optional) Add to requirements.txt**  
+   To ensure future deployments work smoothly, add `loguru` to your `requirements.txt`:
+   ```bash
+   pip freeze | grep loguru >> requirements.txt
+   ```
+
+4. **Re-run your script**:
+   ```bash
+   python3 scripts/deployment/start_complete_system.py
+   ```
+
+---
+
+Would you like me to check for any other missing dependencies or help update your requirements file? 

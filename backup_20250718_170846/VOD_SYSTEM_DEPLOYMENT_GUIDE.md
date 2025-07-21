@@ -38,7 +38,7 @@ This guide provides step-by-step instructions for deploying and running the comp
 source venv_py311/bin/activate
 
 # Start the complete system
-python3 start_complete_system.py
+python3 /opt/Archivist/scripts/deployment/start_complete_system.py
 ```
 
 ### 2. **Verify System Status**
