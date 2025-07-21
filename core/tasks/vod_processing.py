@@ -454,6 +454,7 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
     
     This function scans mounted flex servers for video files and creates
     VOD entries that can be processed locally without downloading from Cablecast.
+    It prioritizes the most recently recorded content and filters out already processed files.
     
     Args:
         mount_path: Path to flex server mount
@@ -477,16 +478,16 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
             logger.warning(f"Mount point {mount_path} is not readable")
             return []
         
-        # Look for video files in common directories
+        # Look for video files in common directories (prioritize recording directories)
         video_dirs = [
-            os.path.join(mount_path, 'videos'),
-            os.path.join(mount_path, 'vod_content'),
+            os.path.join(mount_path, 'recordings'),  # Most likely location for recent recordings
             os.path.join(mount_path, 'city_council'),
             os.path.join(mount_path, 'meetings'),
-            os.path.join(mount_path, 'content'),
-            os.path.join(mount_path, 'recordings'),
             os.path.join(mount_path, 'broadcasts'),
-            mount_path  # Root directory
+            os.path.join(mount_path, 'videos'),
+            os.path.join(mount_path, 'vod_content'),
+            os.path.join(mount_path, 'content'),
+            mount_path  # Root directory as fallback
         ]
         
         for video_dir in video_dirs:
@@ -505,8 +506,15 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
                                 file_size = stat.st_size
                                 mod_time = stat.st_mtime
                                 
-                                # Skip files smaller than 1MB (likely not videos)
-                                if file_size < 1024 * 1024:
+                                # Skip files smaller than 5MB (likely not complete videos)
+                                if file_size < 5 * 1024 * 1024:
+                                    continue
+                                
+                                # Check if SCC file already exists (skip if already processed)
+                                base_name = os.path.splitext(file)[0]
+                                scc_path = os.path.join(os.path.dirname(file_path), f"{base_name}.scc")
+                                if os.path.exists(scc_path):
+                                    logger.debug(f"Skipping {file} - SCC already exists")
                                     continue
                                 
                                 # Create VOD entry with more detailed information
@@ -520,33 +528,39 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
                                     'city_id': city_id,
                                     'relative_path': os.path.relpath(file_path, mount_path),
                                     'directory': os.path.basename(os.path.dirname(file_path)),
-                                    'extension': os.path.splitext(file)[1].lower()
+                                    'extension': os.path.splitext(file)[1].lower(),
+                                    'recording_date': mod_time,  # For sorting by recording time
+                                    'priority': 1 if 'recordings' in video_dir else 2  # Higher priority for recordings
                                 }
                                 
                                 vod_files.append(vod_entry)
                                 
-                                if len(vod_files) >= limit * 3:  # Get more than needed for filtering
+                                if len(vod_files) >= limit * 5:  # Get more than needed for better filtering
                                     break
                                     
                             except OSError as e:
                                 logger.warning(f"Error accessing file {file_path}: {e}")
                                 continue
                     
-                    if len(vod_files) >= limit * 3:
+                    if len(vod_files) >= limit * 5:
                         break
                         
-                if len(vod_files) >= limit * 3:
+                if len(vod_files) >= limit * 5:
                     break
         
-        # Sort by modification time (most recent first)
-        vod_files.sort(key=lambda x: x['modified_time'], reverse=True)
+        # Sort by priority first, then by modification time (most recent first)
+        vod_files.sort(key=lambda x: (x['priority'], -x['modified_time']))
         
         # Return the most recent files
         recent_vods = vod_files[:limit]
         
         logger.info(f"Found {len(recent_vods)} recent VOD files on flex server {city_id}")
         for vod in recent_vods:
-            logger.debug(f"  - {vod['title']} ({vod['file_path']}) - {vod['file_size'] / (1024*1024):.1f}MB")
+            from datetime import datetime
+            mod_date = datetime.fromtimestamp(vod['modified_time']).strftime('%Y-%m-%d %H:%M')
+            logger.info(f"  - {vod['title']} ({vod['file_path']}) - {vod['file_size'] / (1024*1024):.1f}MB - {mod_date}")
+        
+        return recent_vods
         
         return recent_vods
         
