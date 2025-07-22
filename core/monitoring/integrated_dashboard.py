@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from flask import Flask, render_template, jsonify, request, Blueprint
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import threading
 
 from loguru import logger
@@ -29,18 +30,117 @@ class IntegratedDashboard:
         self.host = host
         self.port = port
         self.app = Flask(__name__)
+        self.app.config['SECRET_KEY'] = 'archivist-integrated-dashboard-2025'
+        
+        # Initialize SocketIO for real-time updates
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode='threading')
+        
         self.metrics_collector = get_metrics_collector()
         self.health_manager = get_health_manager()
         self.queue_manager = QueueManager()
         
+        # Task history storage for analytics
+        self.task_history = []
+        self.max_history_size = 1000
+        
         # Enable CORS
         CORS(self.app)
         
-        # Register routes
+        # Register routes and SocketIO events
         self._register_routes()
+        self._register_socketio_events()
         
-        # Start background metrics collection
+        # Start background metrics collection and real-time monitoring
         self._start_background_collection()
+        self._start_realtime_monitoring()
+    
+    def _register_socketio_events(self):
+        """Register SocketIO event handlers for real-time updates."""
+        
+        @self.socketio.on('connect')
+        def handle_connect():
+            """Handle client connection."""
+            logger.info(f"Client connected: {request.sid}")
+            emit('connected', {'status': 'connected', 'timestamp': datetime.now().isoformat()})
+        
+        @self.socketio.on('disconnect')
+        def handle_disconnect():
+            """Handle client disconnection."""
+            logger.info(f"Client disconnected: {request.sid}")
+        
+        @self.socketio.on('join_task_monitoring')
+        def handle_join_task_monitoring(data):
+            """Join task monitoring room."""
+            room = 'task_monitoring'
+            join_room(room)
+            emit('joined_room', {'room': room, 'status': 'joined'})
+            logger.info(f"Client {request.sid} joined task monitoring room")
+        
+        @self.socketio.on('request_task_updates')
+        def handle_request_task_updates(data):
+            """Send current task status on request."""
+            try:
+                task_data = self._get_realtime_task_data()
+                emit('task_updates', task_data)
+            except Exception as e:
+                logger.error(f"Error sending task updates: {e}")
+                emit('error', {'message': str(e)})
+        
+        @self.socketio.on('filter_tasks')
+        def handle_filter_tasks(data):
+            """Filter tasks by type and send filtered results."""
+            try:
+                task_type = data.get('type', 'all')
+                filtered_data = self._get_filtered_task_data(task_type)
+                emit('filtered_tasks', filtered_data)
+            except Exception as e:
+                logger.error(f"Error filtering tasks: {e}")
+                emit('error', {'message': str(e)})
+        
+        @self.socketio.on('request_system_metrics')
+        def handle_system_metrics_request():
+            """Send system metrics to client (from web_interface)."""
+            try:
+                import psutil
+                import redis as redis_lib
+                cpu_percent = psutil.cpu_percent(interval=0.1)
+                memory = psutil.virtual_memory()
+                disk = psutil.disk_usage('/')
+                # Celery
+                inspect = celery_app.control.inspect()
+                active_workers = inspect.stats() if inspect else {}
+                # Redis
+                try:
+                    redis_client = redis_lib.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+                    redis_client.ping()
+                    redis_info = redis_client.info()
+                    redis_status = {
+                        'status': 'connected',
+                        'version': redis_info.get('redis_version', 'unknown'),
+                        'connected_clients': redis_info.get('connected_clients', 0),
+                        'used_memory_human': redis_info.get('used_memory_human', 'unknown'),
+                    }
+                except Exception as e:
+                    redis_status = {'status': 'disconnected', 'error': str(e)}
+                metrics = {
+                    'timestamp': datetime.now().isoformat(),
+                    'system': {
+                        'cpu_percent': cpu_percent,
+                        'memory_percent': memory.percent,
+                        'memory_available': memory.available // (1024**3),
+                        'disk_percent': disk.percent,
+                        'disk_free': disk.free // (1024**3),
+                    },
+                    'celery': {
+                        'active_workers': list(active_workers.keys()) if active_workers else [],
+                        'worker_count': len(active_workers) if active_workers else 0,
+                    },
+                    'redis': redis_status
+                }
+                emit('system_metrics', metrics)
+            except Exception as e:
+                logger.error(f"Error sending system metrics: {e}")
+                emit('error', {'message': str(e)})
     
     def _register_routes(self):
         """Register all dashboard routes."""
@@ -138,7 +238,7 @@ class IntegratedDashboard:
         
         @self.app.route('/api/celery/tasks')
         def api_celery_tasks():
-            """Get Celery task statistics."""
+            """Get Celery task statistics with real-time updates."""
             try:
                 # Get Celery task stats
                 inspect = celery_app.control.inspect()
@@ -146,14 +246,37 @@ class IntegratedDashboard:
                 active = inspect.active()
                 reserved = inspect.reserved()
                 
+                # Get real-time task data
+                realtime_data = self._get_realtime_task_data()
+                
                 return jsonify({
                     'stats': stats,
                     'active': active,
                     'reserved': reserved,
-                    'summary': self._summarize_celery_tasks(stats, active, reserved)
+                    'summary': self._summarize_celery_tasks(stats, active, reserved),
+                    'realtime': realtime_data,
+                    'task_history': self._get_task_analytics()
                 })
             except Exception as e:
                 logger.error(f"Error getting Celery tasks: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/tasks/realtime')
+        def api_tasks_realtime():
+            """Get real-time task monitoring data."""
+            try:
+                return jsonify(self._get_realtime_task_data())
+            except Exception as e:
+                logger.error(f"Error getting real-time task data: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/tasks/analytics')
+        def api_tasks_analytics():
+            """Get task performance analytics."""
+            try:
+                return jsonify(self._get_task_analytics())
+            except Exception as e:
+                logger.error(f"Error getting task analytics: {e}")
                 return jsonify({'error': str(e)}), 500
         
         @self.app.route('/api/celery/workers')
@@ -384,6 +507,94 @@ class IntegratedDashboard:
             except Exception as e:
                 logger.error(f"Error getting unified tasks: {e}")
                 return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/tasks/trigger_vod_processing', methods=['POST'])
+        def trigger_vod_processing():
+            """Trigger VOD processing manually (from web_interface)."""
+            try:
+                from core.tasks.vod_processing import process_recent_vods
+                result = process_recent_vods.delay()
+                return jsonify({
+                    'success': True,
+                    'task_id': result.id,
+                    'message': 'VOD processing triggered successfully'
+                })
+            except Exception as e:
+                logger.error(f"Error triggering VOD processing: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+
+        @self.app.route('/api/tasks/trigger_transcription', methods=['POST'])
+        def trigger_transcription():
+            """Trigger transcription for a specific file (from web_interface)."""
+            try:
+                from core.tasks.transcription import run_whisper_transcription
+                data = request.get_json()
+                file_path = data.get('file_path')
+                if not file_path:
+                    return jsonify({
+                        'success': False,
+                        'error': 'file_path is required'
+                    }), 400
+                result = run_whisper_transcription.delay(file_path)
+                return jsonify({
+                    'success': True,
+                    'task_id': result.id,
+                    'message': f'Transcription triggered for {file_path}'
+                })
+            except Exception as e:
+                logger.error(f"Error triggering transcription: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+
+        @self.app.route('/api/status')
+        def api_status():
+            """Alias for system metrics (from web_interface)."""
+            try:
+                # Compose system metrics (CPU, memory, disk, Redis, Celery)
+                import psutil
+                import redis as redis_lib
+                cpu_percent = psutil.cpu_percent(interval=0.1)
+                memory = psutil.virtual_memory()
+                disk = psutil.disk_usage('/')
+                # Celery
+                inspect = celery_app.control.inspect()
+                active_workers = inspect.stats() if inspect else {}
+                # Redis
+                try:
+                    redis_client = redis_lib.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+                    redis_client.ping()
+                    redis_info = redis_client.info()
+                    redis_status = {
+                        'status': 'connected',
+                        'version': redis_info.get('redis_version', 'unknown'),
+                        'connected_clients': redis_info.get('connected_clients', 0),
+                        'used_memory_human': redis_info.get('used_memory_human', 'unknown'),
+                    }
+                except Exception as e:
+                    redis_status = {'status': 'disconnected', 'error': str(e)}
+                return jsonify({
+                    'timestamp': datetime.now().isoformat(),
+                    'system': {
+                        'cpu_percent': cpu_percent,
+                        'memory_percent': memory.percent,
+                        'memory_available': memory.available // (1024**3),
+                        'disk_percent': disk.percent,
+                        'disk_free': disk.free // (1024**3),
+                    },
+                    'celery': {
+                        'active_workers': list(active_workers.keys()) if active_workers else [],
+                        'worker_count': len(active_workers) if active_workers else 0,
+                    },
+                    'redis': redis_status
+                })
+            except Exception as e:
+                logger.error(f"Error in /api/status: {e}")
+                return jsonify({'error': str(e)}), 500
     
     def _count_job_statuses(self, jobs: List[Dict]) -> Dict[str, int]:
         """Count jobs by status."""
@@ -432,8 +643,243 @@ class IntegratedDashboard:
             'worker_status': 'healthy' if active_workers > 0 else 'unhealthy'
         }
     
+    def _get_realtime_task_data(self) -> Dict[str, Any]:
+        """Get real-time task monitoring data."""
+        try:
+            # Get current task status
+            inspect = celery_app.control.inspect()
+            active = inspect.active() or {}
+            reserved = inspect.reserved() or {}
+            stats = inspect.stats() or {}
+            
+            # Get RQ jobs
+            rq_jobs = self.queue_manager.get_all_jobs()
+            
+            # Combine into real-time view
+            realtime_tasks = []
+            
+            # Add active Celery tasks with progress tracking
+            for worker, tasks in active.items():
+                for task in tasks:
+                    task_info = {
+                        'id': task['id'],
+                        'type': 'celery',
+                        'name': task['name'],
+                        'status': 'active',
+                        'worker': worker,
+                        'started_at': task.get('time_start'),
+                        'args': task.get('args', []),
+                        'progress': self._get_task_progress(task['id']),
+                        'duration': time.time() - task.get('time_start', time.time()) if task.get('time_start') else 0
+                    }
+                    realtime_tasks.append(task_info)
+            
+            # Add reserved Celery tasks
+            for worker, tasks in reserved.items():
+                for task in tasks:
+                    task_info = {
+                        'id': task['id'],
+                        'type': 'celery',
+                        'name': task['name'],
+                        'status': 'reserved',
+                        'worker': worker,
+                        'created_at': task.get('time_start'),
+                        'args': task.get('args', []),
+                        'progress': 0,
+                        'duration': 0
+                    }
+                    realtime_tasks.append(task_info)
+            
+            # Add RQ jobs
+            for job in rq_jobs:
+                task_info = {
+                    'id': job['id'],
+                    'type': 'rq',
+                    'name': 'Transcription Job',
+                    'status': job['status'],
+                    'progress': job.get('progress', 0),
+                    'created_at': job.get('created_at'),
+                    'started_at': job.get('started_at'),
+                    'video_path': job.get('video_path', ''),
+                    'duration': self._calculate_job_duration(job)
+                }
+                realtime_tasks.append(task_info)
+            
+            return {
+                'tasks': realtime_tasks,
+                'summary': {
+                    'total': len(realtime_tasks),
+                    'active': len([t for t in realtime_tasks if t['status'] == 'active']),
+                    'reserved': len([t for t in realtime_tasks if t['status'] == 'reserved']),
+                    'queued': len([t for t in realtime_tasks if t['status'] == 'queued']),
+                    'celery_active': sum(len(tasks) for tasks in active.values()),
+                    'celery_reserved': sum(len(tasks) for tasks in reserved.values()),
+                    'rq_jobs': len(rq_jobs)
+                },
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Error getting real-time task data: {e}")
+            return {'error': str(e)}
+    
+    def _get_filtered_task_data(self, task_type: str) -> Dict[str, Any]:
+        """Get filtered task data by type."""
+        realtime_data = self._get_realtime_task_data()
+        if 'error' in realtime_data:
+            return realtime_data
+        
+        if task_type == 'all':
+            return realtime_data
+        
+        filtered_tasks = []
+        for task in realtime_data['tasks']:
+            if task_type == 'vod' and 'vod' in task['name'].lower():
+                filtered_tasks.append(task)
+            elif task_type == 'transcription' and ('transcription' in task['name'].lower() or task['type'] == 'rq'):
+                filtered_tasks.append(task)
+            elif task_type == 'cleanup' and 'cleanup' in task['name'].lower():
+                filtered_tasks.append(task)
+        
+        return {
+            'tasks': filtered_tasks,
+            'summary': {
+                'total': len(filtered_tasks),
+                'type': task_type
+            },
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    def _get_task_progress(self, task_id: str) -> float:
+        """Get task progress from Celery result backend."""
+        try:
+            result = celery_app.AsyncResult(task_id)
+            if result.state == 'PROGRESS':
+                return result.info.get('progress', 0)
+            elif result.state == 'SUCCESS':
+                return 100.0
+            elif result.state == 'FAILURE':
+                return 0.0
+            else:
+                return 0.0
+        except Exception as e:
+            logger.debug(f"Error getting progress for task {task_id}: {e}")
+            return 0.0
+    
+    def _calculate_job_duration(self, job: Dict) -> float:
+        """Calculate job duration in seconds."""
+        try:
+            if job.get('started_at') and job.get('ended_at'):
+                return (job['ended_at'] - job['started_at']).total_seconds()
+            elif job.get('started_at'):
+                return (datetime.now() - job['started_at']).total_seconds()
+            else:
+                return 0.0
+        except Exception:
+            return 0.0
+    
+    def _get_task_analytics(self) -> Dict[str, Any]:
+        """Get task performance analytics."""
+        try:
+            # Calculate analytics from task history
+            if not self.task_history:
+                return {
+                    'average_completion_time': 0,
+                    'success_rate': 0,
+                    'total_tasks': 0,
+                    'task_types': {},
+                    'recent_performance': []
+                }
+            
+            completed_tasks = [t for t in self.task_history if t.get('status') in ['SUCCESS', 'FAILURE']]
+            successful_tasks = [t for t in completed_tasks if t.get('status') == 'SUCCESS']
+            
+            # Calculate average completion time
+            completion_times = []
+            for task in completed_tasks:
+                if task.get('duration'):
+                    completion_times.append(task['duration'])
+            
+            avg_completion_time = sum(completion_times) / len(completion_times) if completion_times else 0
+            
+            # Calculate success rate
+            success_rate = (len(successful_tasks) / len(completed_tasks) * 100) if completed_tasks else 0
+            
+            # Task type distribution
+            task_types = {}
+            for task in self.task_history:
+                task_type = task.get('type', 'unknown')
+                task_types[task_type] = task_types.get(task_type, 0) + 1
+            
+            # Recent performance (last 24 hours)
+            recent_tasks = [t for t in self.task_history 
+                          if t.get('timestamp') and 
+                          datetime.fromisoformat(t['timestamp']) > datetime.now() - timedelta(hours=24)]
+            
+            return {
+                'average_completion_time': round(avg_completion_time, 2),
+                'success_rate': round(success_rate, 2),
+                'total_tasks': len(self.task_history),
+                'completed_tasks': len(completed_tasks),
+                'task_types': task_types,
+                'recent_performance': {
+                    'last_24h': len(recent_tasks),
+                    'successful_24h': len([t for t in recent_tasks if t.get('status') == 'SUCCESS'])
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error calculating task analytics: {e}")
+            return {'error': str(e)}
+    
+    def _update_task_history(self, task_data: Dict):
+        """Update task history for analytics."""
+        try:
+            # Add timestamp if not present
+            if 'timestamp' not in task_data:
+                task_data['timestamp'] = datetime.now().isoformat()
+            
+            # Add to history
+            self.task_history.append(task_data)
+            
+            # Maintain history size
+            if len(self.task_history) > self.max_history_size:
+                self.task_history = self.task_history[-self.max_history_size:]
+                
+        except Exception as e:
+            logger.error(f"Error updating task history: {e}")
+    
+    def _broadcast_task_updates(self):
+        """Broadcast task updates to all connected clients."""
+        try:
+            task_data = self._get_realtime_task_data()
+            self.socketio.emit('task_updates', task_data, room='task_monitoring')
+            
+            # Update task history for completed tasks
+            for task in task_data.get('tasks', []):
+                if task.get('status') in ['SUCCESS', 'FAILURE']:
+                    self._update_task_history(task)
+                    
+        except Exception as e:
+            logger.error(f"Error broadcasting task updates: {e}")
+    
+    def _start_realtime_monitoring(self):
+        """Start real-time task monitoring."""
+        def monitor_tasks():
+            while True:
+                try:
+                    self._broadcast_task_updates()
+                    time.sleep(5)  # Update every 5 seconds
+                except Exception as e:
+                    logger.error(f"Error in real-time monitoring: {e}")
+                    time.sleep(10)  # Wait longer on error
+        
+        # Start monitoring thread
+        monitor_thread = threading.Thread(target=monitor_tasks, daemon=True)
+        monitor_thread.start()
+        logger.info("Real-time task monitoring started")
+    
     def _render_dashboard(self) -> str:
         """Render the integrated dashboard HTML."""
+        import json
         return f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -443,6 +889,7 @@ class IntegratedDashboard:
     <title>Integrated VOD Processing Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
         body {{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -524,6 +971,158 @@ class IntegratedDashboard:
         .status-healthy {{ background-color: #28a745; }}
         .status-degraded {{ background-color: #ffc107; }}
         .status-unhealthy {{ background-color: #dc3545; }}
+        
+        /* Real-time Task Monitoring Styles */
+        .realtime-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }}
+        
+        .task-filters {{
+            display: flex;
+            gap: 10px;
+        }}
+        
+        .filter-btn {{
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }}
+        
+        .filter-btn.active {{
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }}
+        
+        .connection-status {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .task-summary {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }}
+        
+        .summary-card {{
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }}
+        
+        .summary-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }}
+        
+        .realtime-tasks-container {{
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        
+        .task-item {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background 0.3s;
+        }}
+        
+        .task-item:hover {{
+            background: #f8f9fa;
+        }}
+        
+        .task-info {{
+            flex: 1;
+        }}
+        
+        .task-name {{
+            font-weight: bold;
+            margin-bottom: 5px;
+        }}
+        
+        .task-details {{
+            font-size: 0.9em;
+            color: #666;
+        }}
+        
+        .task-progress {{
+            width: 200px;
+            margin: 0 15px;
+        }}
+        
+        .progress-bar {{
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }}
+        
+        .progress-fill {{
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            transition: width 0.3s;
+        }}
+        
+        .task-status {{
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }}
+        
+        .status-active {{ background: #d4edda; color: #155724; }}
+        .status-reserved {{ background: #fff3cd; color: #856404; }}
+        .status-queued {{ background: #d1ecf1; color: #0c5460; }}
+        .status-success {{ background: #d4edda; color: #155724; }}
+        .status-failure {{ background: #f8d7da; color: #721c24; }}
+        
+        .task-analytics {{
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        
+        .analytics-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }}
+        
+        .analytics-card {{
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: center;
+        }}
+        
+        .analytics-value {{
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #007bff;
+        }}
         .chart-container {{
             background: white;
             padding: 20px;
@@ -621,6 +1220,7 @@ class IntegratedDashboard:
         
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="showTab('overview')">📊 Overview</button>
+            <button class="nav-tab" onclick="showTab('realtime')">⚡ Real-time Tasks</button>
             <button class="nav-tab" onclick="showTab('queue')">📋 Queue Management</button>
             <button class="nav-tab" onclick="showTab('celery')">⚡ Celery Tasks</button>
             <button class="nav-tab" onclick="showTab('health')">🏥 Health Checks</button>
@@ -647,6 +1247,51 @@ class IntegratedDashboard:
                         <h3>📈 Recent Activity</h3>
                         <div id="recent-activity">Loading...</div>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Real-time Tasks Tab -->
+            <div id="realtime" class="tab-pane">
+                <div class="realtime-header">
+                    <h2>⚡ Real-time Task Monitoring</h2>
+                    <div class="task-filters">
+                        <button class="filter-btn active" onclick="filterTasks('all')">All Tasks</button>
+                        <button class="filter-btn" onclick="filterTasks('vod')">VOD Processing</button>
+                        <button class="filter-btn" onclick="filterTasks('transcription')">Transcription</button>
+                        <button class="filter-btn" onclick="filterTasks('cleanup')">Cleanup</button>
+                    </div>
+                    <div class="connection-status">
+                        <span id="socket-status" class="status-indicator status-unhealthy"></span>
+                        <span id="socket-text">Disconnected</span>
+                    </div>
+                </div>
+                
+                <div class="task-summary">
+                    <div class="summary-card">
+                        <h3>Total Tasks</h3>
+                        <div id="total-tasks" class="summary-value">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Active</h3>
+                        <div id="active-tasks" class="summary-value">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Reserved</h3>
+                        <div id="reserved-tasks" class="summary-value">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Queued</h3>
+                        <div id="queued-tasks" class="summary-value">0</div>
+                    </div>
+                </div>
+                
+                <div class="realtime-tasks-container">
+                    <div id="realtime-tasks-list">Loading real-time tasks...</div>
+                </div>
+                
+                <div class="task-analytics">
+                    <h3>Task Performance Analytics</h3>
+                    <div id="task-analytics-data">Loading analytics...</div>
                 </div>
             </div>
             
@@ -711,6 +1356,9 @@ class IntegratedDashboard:
                 case 'overview':
                     refreshOverviewData();
                     break;
+                case 'realtime':
+                    refreshRealtimeData();
+                    break;
                 case 'queue':
                     refreshQueueData();
                     break;
@@ -726,9 +1374,203 @@ class IntegratedDashboard:
             }}
         }}
         
+        // SocketIO connection and real-time task monitoring
+        let socket = null;
+        let currentTaskFilter = 'all';
+        
+        function initializeSocketIO() {{
+            socket = io();
+            
+            socket.on('connect', function() {{
+                console.log('Connected to SocketIO server');
+                updateSocketStatus(true);
+                socket.emit('join_task_monitoring');
+            }});
+            
+            socket.on('disconnect', function() {{
+                console.log('Disconnected from SocketIO server');
+                updateSocketStatus(false);
+            }});
+            
+            socket.on('task_updates', function(data) {{
+                updateRealtimeTasks(data);
+            }});
+            
+            socket.on('filtered_tasks', function(data) {{
+                updateRealtimeTasks(data);
+            }});
+            
+            socket.on('system_metrics', function(data) {{
+                updateSystemHealth(data);
+            }});
+            
+            socket.on('error', function(data) {{
+                console.error('SocketIO error:', data);
+            }});
+        }}
+        
+        function updateSocketStatus(connected) {{
+            const statusIndicator = document.getElementById('socket-status');
+            const statusText = document.getElementById('socket-text');
+            
+            if (connected) {{
+                statusIndicator.className = 'status-indicator status-healthy';
+                statusText.textContent = 'Connected';
+            }} else {{
+                statusIndicator.className = 'status-indicator status-unhealthy';
+                statusText.textContent = 'Disconnected';
+            }}
+        }}
+        
+        function refreshRealtimeData() {{
+            // Load initial real-time data
+            fetch('/api/tasks/realtime')
+                .then(response => response.json())
+                .then(data => {{
+                    updateRealtimeTasks(data);
+                }});
+            
+            // Load task analytics
+            fetch('/api/tasks/analytics')
+                .then(response => response.json())
+                .then(data => {{
+                    updateTaskAnalytics(data);
+                }});
+        }}
+        
+        function updateRealtimeTasks(data) {{
+            if (data.error) {{
+                document.getElementById('realtime-tasks-list').innerHTML = 
+                    `<div style="color: red; padding: 20px;">Error: ${{data.error}}</div>`;
+                return;
+            }}
+            
+            // Update summary values
+            const summary = data.summary || {{}};
+            document.getElementById('total-tasks').textContent = summary.total || 0;
+            document.getElementById('active-tasks').textContent = summary.active || 0;
+            document.getElementById('reserved-tasks').textContent = summary.reserved || 0;
+            document.getElementById('queued-tasks').textContent = summary.queued || 0;
+            
+            // Update task list
+            const tasks = data.tasks || [];
+            const tasksContainer = document.getElementById('realtime-tasks-list');
+            
+            if (tasks.length === 0) {{
+                tasksContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No tasks found</div>';
+                return;
+            }}
+            
+            let html = '';
+            tasks.forEach(task => {{
+                const statusClass = `status-${{task.status}}`;
+                const progressPercent = task.progress || 0;
+                const duration = task.duration ? Math.round(task.duration) : 0;
+                
+                html += `
+                    <div class="task-item">
+                        <div class="task-info">
+                            <div class="task-name">${{task.name}}</div>
+                            <div class="task-details">
+                                ID: ${{task.id}} | Type: ${{task.type}} | Worker: ${{task.worker || 'N/A'}} | Duration: ${{duration}}s
+                                ${{task.video_path ? '| File: ' + task.video_path : ''}}
+                            </div>
+                        </div>
+                        <div class="task-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${{progressPercent}}%"></div>
+                            </div>
+                            <div style="text-align: center; font-size: 0.8em; margin-top: 2px;">${{progressPercent}}%</div>
+                        </div>
+                        <span class="task-status ${{statusClass}}">${{task.status}}</span>
+                    </div>
+                `;
+            }});
+            
+            tasksContainer.innerHTML = html;
+        }}
+        
+        function updateTaskAnalytics(data) {{
+            if (data.error) {{
+                document.getElementById('task-analytics-data').innerHTML = 
+                    `<div style="color: red;">Error: ${{data.error}}</div>`;
+                return;
+            }}
+            
+            const analyticsContainer = document.getElementById('task-analytics-data');
+            let html = '<div class="analytics-grid">';
+            
+            html += `
+                <div class="analytics-card">
+                    <div class="analytics-value">${{data.average_completion_time || 0}}s</div>
+                    <div>Average Completion Time</div>
+                </div>
+                <div class="analytics-card">
+                    <div class="analytics-value">${{data.success_rate || 0}}%</div>
+                    <div>Success Rate</div>
+                </div>
+                <div class="analytics-card">
+                    <div class="analytics-value">${{data.total_tasks || 0}}</div>
+                    <div>Total Tasks</div>
+                </div>
+                <div class="analytics-card">
+                    <div class="analytics-value">${{data.completed_tasks || 0}}</div>
+                    <div>Completed Tasks</div>
+                </div>
+                <div class="analytics-card">
+                    <div class="analytics-value">${{data.recent_performance?.last_24h || 0}}</div>
+                    <div>Tasks (24h)</div>
+                </div>
+                <div class="analytics-card">
+                    <div class="analytics-value">${{data.recent_performance?.successful_24h || 0}}</div>
+                    <div>Successful (24h)</div>
+                </div>
+            `;
+            
+            html += '</div>';
+            
+            // Add task type distribution
+            if (data.task_types && Object.keys(data.task_types).length > 0) {{
+                html += '<h4 style="margin-top: 20px;">Task Type Distribution</h4><div class="analytics-grid">';
+                Object.entries(data.task_types).forEach(([type, count]) => {{
+                    html += `
+                        <div class="analytics-card">
+                            <div class="analytics-value">${{count}}</div>
+                            <div>${{type.charAt(0).toUpperCase() + type.slice(1)}}</div>
+                        </div>
+                    `;
+                }});
+                html += '</div>';
+            }}
+            
+            analyticsContainer.innerHTML = html;
+        }}
+        
+        function filterTasks(taskType) {{
+            currentTaskFilter = taskType;
+            
+            // Update filter button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {{
+                btn.classList.remove('active');
+            }});
+            event.target.classList.add('active');
+            
+            // Request filtered data from server
+            if (socket && socket.connected) {{
+                socket.emit('filter_tasks', {{ type: taskType }});
+            }} else {{
+                // Fallback to HTTP request
+                fetch(`/api/tasks/realtime?filter=${{taskType}}`)
+                    .then(response => response.json())
+                    .then(data => {{
+                        updateRealtimeTasks(data);
+                    }});
+            }}
+        }}
+        
         function refreshOverviewData() {{
             // Load system health
-            fetch('/api/health')
+            fetch('/api/status')
                 .then(response => response.json())
                 .then(data => {{
                     updateSystemHealth(data);
@@ -790,15 +1632,17 @@ class IntegratedDashboard:
         
         function updateSystemHealth(data) {{
             const div = document.getElementById('system-health');
-            const overallStatus = data.overall_status || 'unknown';
+            const overallStatus = data.system?.overall_status || 'unknown';
             const statusClass = overallStatus === 'healthy' ? 'healthy' : 
                               overallStatus === 'degraded' ? 'degraded' : 'unhealthy';
             
             div.innerHTML = `
                 <div><span class="status-indicator status-${{statusClass}}"></span>Overall: ${{overallStatus.toUpperCase()}}</div>
-                <div>Checks: ${{data.total_checks || 0}}</div>
-                <div>Healthy: ${{data.healthy_checks || 0}}</div>
-                <div>Failed: ${{data.failed_checks || 0}}</div>
+                <div>CPU: ${{data.system?.cpu_percent || 0}}%</div>
+                <div>Memory: ${{data.system?.memory_percent || 0}}%</div>
+                <div>Disk: ${{data.system?.disk_percent || 0}}%</div>
+                <div>Redis: ${{data.redis?.status || 'Disconnected'}}</div>
+                <div>Celery Workers: ${{data.celery?.active_workers?.length || 0}} active</div>
             `;
         }}
         
@@ -1069,8 +1913,50 @@ class IntegratedDashboard:
         // Initial load
         refreshOverviewData();
         
+        // Initialize SocketIO for real-time monitoring
+        initializeSocketIO();
+        
         // Auto-refresh every 30 seconds
         setInterval(() => refreshTabData(currentTab), 30000);
+    </script>
+    <div class='manual-controls' style='margin-bottom: 20px;'>
+        <h2>Manual Task Controls</h2>
+        <button onclick="triggerVODProcessing()">🎬 Trigger VOD Processing</button>
+        <button onclick="showTranscriptionDialog()">🎤 Trigger Transcription</button>
+    </div>
+    <div id="transcription-dialog" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%); background:white; border:1px solid #ccc; padding:20px; z-index:1000;">
+        <h3>Trigger Transcription</h3>
+        <input type="text" id="transcription-file-path" placeholder="Enter file path..." style="width:300px;" />
+        <button onclick="triggerTranscription()">Start</button>
+        <button onclick="closeTranscriptionDialog()">Cancel</button>
+    </div>
+    <script>
+        function triggerVODProcessing() {{
+            fetch('/api/tasks/trigger_vod_processing', {{method: 'POST'}})
+                .then(response => response.json())
+                .then(data => {{
+                    alert(data.message || (data.success ? 'Triggered!' : 'Failed: ' + data.error));
+                }});
+        }}
+        function showTranscriptionDialog() {{
+            document.getElementById('transcription-dialog').style.display = 'block';
+        }}
+        function closeTranscriptionDialog() {{
+            document.getElementById('transcription-dialog').style.display = 'none';
+        }}
+        function triggerTranscription() {{
+            const filePath = document.getElementById('transcription-file-path').value;
+            fetch('/api/tasks/trigger_transcription', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{file_path: filePath}})
+            }})
+            .then(response => response.json())
+            .then(data => {{
+                alert(data.message || (data.success ? 'Triggered!' : 'Failed: ' + data.error));
+                closeTranscriptionDialog();
+            }});
+        }}
     </script>
 </body>
 </html>
@@ -1089,9 +1975,9 @@ class IntegratedDashboard:
                     time.sleep(60)
     
     def run(self):
-        """Run the dashboard server."""
-        logger.info(f"Starting integrated monitoring dashboard on {self.host}:{self.port}")
-        self.app.run(host=self.host, port=self.port, debug=False, threaded=True)
+        """Run the dashboard server with SocketIO support."""
+        logger.info(f"Starting integrated monitoring dashboard with SocketIO on {self.host}:{self.port}")
+        self.socketio.run(self.app, host=self.host, port=self.port, debug=False, allow_unsafe_werkzeug=True)
 
 def start_integrated_dashboard(host: str = "0.0.0.0", port: int = 5051):
     """Start the integrated monitoring dashboard."""

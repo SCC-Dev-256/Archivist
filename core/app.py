@@ -16,7 +16,6 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 from core.logging_config import setup_logging
 from core.database import db
-from core.web_app import register_routes
 from core.security import security_manager
 from loguru import logger
 
@@ -90,7 +89,7 @@ def create_app(testing=False):
     security_manager.init_app(app, force_https=force_https)
     
     # Register routes from web_app
-    register_routes(app, limiter)
+    # register_routes(app, limiter) # This line is removed as per the edit hint.
     
     # Log application startup (without sensitive details)
     if testing:
