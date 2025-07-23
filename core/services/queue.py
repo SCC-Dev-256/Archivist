@@ -272,3 +272,47 @@ class QueueService:
         """
         logger.warning("Restarting workers is not supported via QueueService")
         return False
+
+    def get_all_jobs(self) -> List[Dict]:
+        """Get a list of all jobs (active, reserved, scheduled) with details."""
+        try:
+            inspect = self.queue_manager.control.inspect()
+            active = inspect.active() or {}
+            reserved = inspect.reserved() or {}
+            scheduled = inspect.scheduled() or {}
+
+            jobs = []
+            # Helper to extract job info
+            def extract_job_info(task, status):
+                return {
+                    'id': task.get('id'),
+                    'name': task.get('name'),
+                    'args': task.get('args'),
+                    'kwargs': task.get('kwargs'),
+                    'status': status,
+                    'worker': task.get('worker', ''),
+                }
+            # Active jobs
+            for worker, tasks in active.items():
+                for task in tasks:
+                    job = extract_job_info(task, 'active')
+                    job['worker'] = worker
+                    jobs.append(job)
+            # Reserved jobs
+            for worker, tasks in reserved.items():
+                for task in tasks:
+                    job = extract_job_info(task, 'reserved')
+                    job['worker'] = worker
+                    jobs.append(job)
+            # Scheduled jobs
+            for worker, tasks in scheduled.items():
+                for task in tasks:
+                    # Scheduled tasks may have 'request' dict
+                    t = task.get('request', task)
+                    job = extract_job_info(t, 'scheduled')
+                    job['worker'] = worker
+                    jobs.append(job)
+            return jobs
+        except Exception as e:
+            logger.error(f"Failed to get all jobs: {e}")
+            raise QueueError(f"Job listing failed: {str(e)}")

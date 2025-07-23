@@ -23,6 +23,7 @@ from core.exceptions import FileError, handle_file_error
 from core.file_manager import file_manager
 from core.check_mounts import verify_critical_mounts, list_mount_contents
 from core.config import MOUNT_POINTS, NAS_PATH
+from datetime import datetime
 
 class FileService:
     """Service for handling file operations."""
@@ -33,25 +34,30 @@ class FileService:
     
     @handle_file_error
     def browse_directory(self, path: str, user: str = "default", location: str = "default") -> Dict:
-        """Browse a directory and return its contents.
-        
-        Args:
-            path: Directory path to browse
-            user: User requesting the browse operation
-            location: Location context for access control
-            
-        Returns:
-            Dictionary containing directory contents
-        """
+        """Browse a directory and return its contents."""
         try:
-            # Use the existing file manager
+            # Use the existing file manager for context
             file_manager.user = user
             file_manager.location = location
-            
-            contents = file_manager.browse_directory(path)
+
+            # Directory listing logic (since file_manager has no browse_directory)
+            if not os.path.exists(path):
+                raise FileError(f"Directory not found: {path}")
+            if not os.path.isdir(path):
+                raise FileError(f"Not a directory: {path}")
+
+            items = []
+            for entry in os.listdir(path):
+                full_path = os.path.join(path, entry)
+                items.append({
+                    'name': entry,
+                    'is_dir': os.path.isdir(full_path),
+                    'size': os.path.getsize(full_path) if os.path.isfile(full_path) else None,
+                    'modified_at': datetime.fromtimestamp(os.path.getmtime(full_path)).isoformat(),
+                    'path': os.path.relpath(full_path, file_manager.base_path)
+                })
             logger.info(f"Browsed directory: {path}")
-            return contents
-            
+            return {'path': path, 'items': items}
         except Exception as e:
             logger.error(f"Failed to browse directory {path}: {e}")
             raise FileError(f"Directory browse failed: {str(e)}")

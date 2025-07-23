@@ -37,6 +37,7 @@ from core.monitoring.metrics import get_metrics_collector
 from core.monitoring.health_checks import get_health_manager
 from core.task_queue import QueueManager
 from core.tasks import celery_app
+from core.monitoring.socket_tracker import socket_tracker
 
 @dataclass
 class DashboardConfig:
@@ -177,21 +178,15 @@ class IntegratedDashboard:
         @self.socketio.on('connect')
         def handle_connect():
             """Handle client connection."""
-            self.performance_metrics['socket_connections'] += 1
-            logger.info(f"Client connected: {request.sid} (Total: {self.performance_metrics['socket_connections']})")
-            self.metrics_collector.increment('socket_connections')
-            emit('connected', {
-                'status': 'connected', 
-                'timestamp': datetime.now().isoformat(),
-                'client_id': request.sid
-            })
+            sid = request.sid
+            socket_tracker.on_connect(sid, request.environ)
+            emit('connected', {'sid': sid, 'message': 'Connected to server'})
         
         @self.socketio.on('disconnect')
         def handle_disconnect():
             """Handle client disconnection."""
-            self.performance_metrics['socket_connections'] = max(0, self.performance_metrics['socket_connections'] - 1)
-            logger.info(f"Client disconnected: {request.sid} (Total: {self.performance_metrics['socket_connections']})")
-            self.metrics_collector.increment('socket_disconnections')
+            sid = request.sid
+            socket_tracker.on_disconnect(sid)
         
         @self.socketio.on('join_task_monitoring')
         def handle_join_task_monitoring(data):
@@ -224,7 +219,10 @@ class IntegratedDashboard:
         
         @self.socketio.on('request_system_metrics')
         def handle_system_metrics_request():
-            """Send comprehensive system metrics to client."""
+            """Handle system metrics request."""
+            sid = request.sid
+            socket_tracker.on_event_received(sid, 'request_system_metrics')
+            
             try:
                 start_time = time.time()
                 
@@ -289,6 +287,7 @@ class IntegratedDashboard:
                     }
                 }
                 
+                socket_tracker.on_event_sent(sid, 'system_metrics')
                 emit('system_metrics', metrics)
                 self.metrics_collector.increment('system_metrics_requests')
                 
@@ -4133,7 +4132,12 @@ class IntegratedDashboard:
     def run(self):
         """Run the dashboard server with SocketIO support."""
         logger.info(f"Starting integrated monitoring dashboard with SocketIO on {self.host}:{self.port}")
-        self.socketio.run(self.app, host=self.host, port=self.port, debug=False, allow_unsafe_werkzeug=True)
+        ssl_context = None
+        import os
+        if os.path.exists('cert.pem') and os.path.exists('key.pem'):
+            ssl_context = ('cert.pem', 'key.pem')
+            logger.info("Using self-signed SSL context for HTTPS.")
+        self.socketio.run(self.app, host=self.host, port=self.port, debug=False, allow_unsafe_werkzeug=True, ssl_context=ssl_context)
 
 def start_integrated_dashboard(host: str = "0.0.0.0", port: int = 5051, config: Optional[DashboardConfig] = None):
     """Start the integrated monitoring dashboard."""

@@ -45,25 +45,59 @@ def create_browse_blueprint(limiter):
             logger.error(f"Error getting file details: {e}")
             return jsonify({'error': 'Internal server error'}), 500
 
+    @bp.route('/db-health')
+    @limiter.limit('10 per minute')
+    def db_health_check():
+        """Check database connectivity."""
+        try:
+            db.session.execute('SELECT 1')
+            db.session.commit()
+            return jsonify({
+                'status': 'healthy',
+                'database': 'connected',
+                'message': 'Database connection successful'
+            })
+        except Exception as e:
+            logger.error(f"Database health check failed: {e}")
+            return jsonify({
+                'status': 'unhealthy',
+                'database': 'disconnected',
+                'error': str(e),
+                'message': 'Database connection failed'
+            }), 500
+
     @bp.route('/transcriptions')
     @limiter.limit(FILE_OPERATION_RATE_LIMIT)
     def get_transcriptions():
         """Get list of completed transcriptions."""
         try:
+            # Test database connection first
+            try:
+                db.session.execute('SELECT 1')
+                db.session.commit()
+            except Exception as db_error:
+                logger.warning(f"Database connection failed, returning empty transcriptions list: {db_error}")
+                # Return empty list instead of error when database is unavailable
+                return jsonify([])
+            
             transcriptions = TranscriptionResultORM.query.order_by(
                 TranscriptionResultORM.completed_at.desc()
             ).all()
             result = [{
                 'id': t.id,
                 'video_path': t.video_path,
-                'completed_at': t.completed_at.isoformat(),
+                'completed_at': t.completed_at.isoformat() if t.completed_at else None,
                 'status': t.status,
                 'output_path': t.output_path
             } for t in transcriptions]
             return jsonify(sanitize_output(result))
         except Exception as e:
             logger.error(f"Error getting transcriptions: {e}")
-            return jsonify({'error': 'Internal server error'}), 500
+            logger.error(f"Error type: {type(e).__name__}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Return empty list instead of error to prevent frontend issues
+            return jsonify([])
 
     @bp.route('/transcriptions/<transcription_id>/view')
     @limiter.limit(FILE_OPERATION_RATE_LIMIT)
@@ -164,6 +198,24 @@ def create_browse_blueprint(limiter):
             return send_file(full_path, as_attachment=True)
         except Exception as e:
             logger.error(f"Error downloading file: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
+
+    @bp.route('/browse')
+    @limiter.limit(BROWSE_RATE_LIMIT)
+    def browse():
+        """Browse files and directories. If path is empty, return NAS root."""
+        path = request.args.get('path', '')
+        # If path is empty, use NAS_PATH as root
+        browse_path = NAS_PATH if not path else os.path.join(NAS_PATH, path)
+        # Validate path to prevent directory traversal
+        if not security_manager.validate_path(browse_path, NAS_PATH):
+            logger.warning(f"Invalid path access attempt: {browse_path}")
+            return jsonify({'error': 'Invalid path'}), 400
+        try:
+            contents = FileService().browse_directory(browse_path)
+            return jsonify(sanitize_output(contents)), 200
+        except Exception as e:
+            logger.error(f"Error browsing directory {browse_path}: {e}")
             return jsonify({'error': 'Internal server error'}), 500
 
     @bp.route('/member-cities')

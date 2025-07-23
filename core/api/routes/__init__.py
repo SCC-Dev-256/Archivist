@@ -10,6 +10,7 @@ from .browse import create_browse_blueprint
 from .transcribe import create_transcribe_blueprint
 from .queue import create_queue_blueprint
 from .vod import create_vod_blueprint
+from .metrics import bp as metrics_bp
 
 def register_routes(app, limiter):
     """Register all API routes with the Flask application."""
@@ -44,6 +45,7 @@ def register_routes(app, limiter):
     app.register_blueprint(transcribe_bp, url_prefix='/api')
     app.register_blueprint(queue_bp, url_prefix='/api')
     app.register_blueprint(vod_bp, url_prefix='/api')
+    app.register_blueprint(metrics_bp, url_prefix='/api')
 
     # Register main API blueprint
     app.register_blueprint(bp_api)
