@@ -136,10 +136,11 @@ def run_whisper_transcription(self, video_path: str) -> Dict:
 @celery_app.task(name="transcription.batch_process")
 def batch_transcription(video_paths: list, priority: Optional[int] = None) -> Dict:
     """
-    Process multiple video files for transcription.
+    Process multiple video files for transcription and captioning.
     
     This task allows for batch processing of multiple videos, which is useful
     for VOD processing pipelines that need to transcribe multiple files.
+    It integrates with the captioning workflow to generate SCC captions.
     
     Args:
         video_paths: List of video file paths to transcribe
@@ -155,7 +156,8 @@ def batch_transcription(video_paths: list, priority: Optional[int] = None) -> Di
         'completed': 0,
         'failed': 0,
         'results': [],
-        'errors': []
+        'errors': [],
+        'captioning_results': []
     }
     
     # Process videos sequentially to avoid overwhelming the system
@@ -169,16 +171,38 @@ def batch_transcription(video_paths: list, priority: Optional[int] = None) -> Di
             # Wait for completion (with timeout)
             result = task.get(timeout=3600)  # 1 hour timeout
             
-            results['results'].append({
-                'video_path': video_path,
-                'task_id': task.id,
-                'status': 'completed',
-                'result': result
-            })
-            results['completed'] += 1
-            
-            logger.info(f"Completed transcription for {video_path}")
-            
+            if result and result.get('status') == 'completed':
+                # Transcription successful, now integrate with captioning workflow
+                scc_path = result.get('output_path')
+                if scc_path and os.path.exists(scc_path):
+                    # Generate captioned video using VOD processing workflow
+                    captioning_result = generate_captioned_video(video_path, scc_path)
+                    results['captioning_results'].append({
+                        'video_path': video_path,
+                        'scc_path': scc_path,
+                        'captioning_success': captioning_result.get('success', False),
+                        'captioned_video_path': captioning_result.get('output_path')
+                    })
+                
+                results['results'].append({
+                    'video_path': video_path,
+                    'task_id': task.id,
+                    'status': 'completed',
+                    'result': result
+                })
+                results['completed'] += 1
+                
+                logger.info(f"Completed transcription and captioning for {video_path}")
+            else:
+                # Transcription failed
+                error_msg = f"Transcription failed for {video_path}"
+                results['errors'].append({
+                    'video_path': video_path,
+                    'error': error_msg,
+                    'task_id': task.id
+                })
+                results['failed'] += 1
+                
         except Exception as e:
             error_msg = f"Failed to transcribe {video_path}: {str(e)}"
             logger.error(error_msg)
@@ -191,6 +215,54 @@ def batch_transcription(video_paths: list, priority: Optional[int] = None) -> Di
     
     logger.info(f"Batch transcription completed: {results['completed']} successful, {results['failed']} failed")
     return results
+
+
+def generate_captioned_video(video_path: str, scc_path: str) -> Dict:
+    """
+    Generate captioned video using the VOD processing workflow.
+    
+    Args:
+        video_path: Path to the original video file
+        scc_path: Path to the SCC caption file
+        
+    Returns:
+        Dictionary with captioning results
+    """
+    try:
+        from core.tasks.vod_processing import create_captioned_video
+        
+        # Create output path for captioned video
+        video_dir = os.path.dirname(video_path)
+        video_name = os.path.basename(video_path)
+        name_without_ext = os.path.splitext(video_name)[0]
+        output_path = os.path.join(video_dir, f"{name_without_ext}_captioned.mp4")
+        
+        # Generate captioned video
+        success = create_captioned_video(video_path, scc_path, output_path)
+        
+        if success and os.path.exists(output_path):
+            logger.info(f"Captioned video generated: {output_path}")
+            return {
+                'success': True,
+                'output_path': output_path,
+                'message': 'Captioned video generated successfully'
+            }
+        else:
+            logger.error(f"Failed to generate captioned video for {video_path}")
+            return {
+                'success': False,
+                'error': 'Captioning failed',
+                'message': 'Failed to generate captioned video'
+            }
+            
+    except Exception as e:
+        error_msg = f"Captioning error for {video_path}: {str(e)}"
+        logger.error(error_msg)
+        return {
+            'success': False,
+            'error': str(e),
+            'message': error_msg
+        }
 
 
 @celery_app.task(name="transcription.cleanup_temp_files")

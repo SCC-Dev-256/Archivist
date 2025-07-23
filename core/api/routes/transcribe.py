@@ -7,8 +7,9 @@ from loguru import logger
 import os
 
 from core.services import TranscriptionService, FileService, QueueService
-from core.models import TranscribeRequest
+from core.models import TranscribeRequest, BatchTranscribeRequest
 from core.security import validate_json_input, sanitize_output, require_csrf_token
+from core.tasks.transcription import batch_transcription
 
 # Rate limiting configuration
 TRANSCRIBE_RATE_LIMIT = os.getenv('TRANSCRIBE_RATE_LIMIT', '10 per minute')
@@ -57,7 +58,7 @@ def create_transcribe_blueprint(limiter):
     @limiter.limit(TRANSCRIBE_RATE_LIMIT)
     @require_csrf_token
     def transcribe_batch():
-        """Transcribe multiple video files."""
+        """Transcribe multiple video files using Celery batch processing."""
         try:
             data = request.get_json()
             video_paths = data.get('paths', [])
@@ -70,23 +71,38 @@ def create_transcribe_blueprint(limiter):
             
             # Validate all paths
             file_service = FileService()
+            valid_paths = []
+            invalid_paths = []
+            
             for path in video_paths:
-                if not file_service.validate_path(path):
-                    return jsonify({'error': f'Invalid file path: {path}'}), 400
+                if file_service.validate_path(path):
+                    valid_paths.append(path)
+                else:
+                    invalid_paths.append(path)
             
-            # Enqueue all jobs
-            queue_service = QueueService()
-            job_ids = []
+            if not valid_paths:
+                return jsonify({'error': 'No valid video paths provided'}), 400
             
-            for video_path in video_paths:
-                job_id = queue_service.enqueue_transcription(video_path)
-                job_ids.append(job_id)
+            # Use Celery batch transcription task for better integration with captioning workflow
+            logger.info(f"Starting Celery batch transcription for {len(valid_paths)} files")
+            batch_task = batch_transcription.delay(valid_paths)
             
-            return jsonify({
-                'message': f'Queued {len(job_ids)} transcription jobs',
-                'job_ids': job_ids,
-                'video_paths': video_paths
-            })
+            # Return response with task ID for tracking
+            response_data = {
+                'message': f'Batch transcription queued successfully',
+                'batch_task_id': batch_task.id,
+                'total_files': len(valid_paths),
+                'valid_paths': valid_paths,
+                'queued': valid_paths
+            }
+            
+            if invalid_paths:
+                response_data['errors'] = [f'Invalid file path: {path}' for path in invalid_paths]
+                response_data['invalid_paths'] = invalid_paths
+            
+            logger.info(f"Batch transcription task {batch_task.id} queued for {len(valid_paths)} files")
+            return jsonify(response_data)
+            
         except Exception as e:
             logger.error(f"Error queuing batch transcription: {e}")
             return jsonify({'error': 'Internal server error'}), 500

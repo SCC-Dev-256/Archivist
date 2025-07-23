@@ -68,9 +68,14 @@ class QueueService:
 
             status = info.get('status', result.status.lower())
             response = {
+                'id': job_id,
                 'status': status,
                 'progress': info.get('progress', 0),
                 'status_message': info.get('status_message', ''),
+                'video_path': info.get('video_path', ''),
+                'created_at': info.get('created_at'),
+                'started_at': info.get('started_at'),
+                'ended_at': info.get('ended_at')
             }
 
             if result.failed():
@@ -109,7 +114,8 @@ class QueueService:
                 'running_jobs': running_jobs,
                 'queued_jobs': queued_jobs,
                 'failed_jobs': 0,
-                'completed_jobs': 0
+                'completed_jobs': 0,
+                'status': 'healthy' if total_jobs >= 0 else 'error'
             }
 
             logger.info(f"Retrieved queue status: {total_jobs} total jobs")
@@ -118,6 +124,81 @@ class QueueService:
         except Exception as e:
             logger.error(f"Failed to get queue status: {e}")
             raise QueueError(f"Queue status retrieval failed: {str(e)}")
+    
+    def get_all_jobs(self) -> List[Dict]:
+        """Get all jobs in the queue.
+        
+        Returns:
+            List of job dictionaries
+        """
+        try:
+            inspect = self.queue_manager.control.inspect()
+            active = inspect.active() or {}
+            reserved = inspect.reserved() or {}
+            scheduled = inspect.scheduled() or {}
+            
+            jobs = []
+            
+            # Process active jobs
+            for worker_name, worker_tasks in active.items():
+                for task in worker_tasks:
+                    jobs.append({
+                        'id': task['id'],
+                        'name': task['name'],
+                        'status': 'processing',
+                        'progress': 0,  # Celery doesn't provide progress by default
+                        'status_message': 'Processing...',
+                        'video_path': task.get('args', [''])[0] if task.get('args') else '',
+                        'worker': worker_name,
+                        'created_at': task.get('time_start'),
+                        'started_at': task.get('time_start')
+                    })
+            
+            # Process reserved jobs
+            for worker_name, worker_tasks in reserved.items():
+                for task in worker_tasks:
+                    jobs.append({
+                        'id': task['id'],
+                        'name': task['name'],
+                        'status': 'queued',
+                        'progress': 0,
+                        'status_message': 'Waiting to start...',
+                        'video_path': task.get('args', [''])[0] if task.get('args') else '',
+                        'worker': worker_name,
+                        'created_at': task.get('time_start')
+                    })
+            
+            # Process scheduled jobs
+            for worker_name, worker_tasks in scheduled.items():
+                for task in worker_tasks:
+                    jobs.append({
+                        'id': task['id'],
+                        'name': task['name'],
+                        'status': 'scheduled',
+                        'progress': 0,
+                        'status_message': 'Scheduled for later...',
+                        'video_path': task.get('args', [''])[0] if task.get('args') else '',
+                        'worker': worker_name,
+                        'created_at': task.get('eta')
+                    })
+            
+            # Get additional status info for each job
+            for job in jobs:
+                try:
+                    result = AsyncResult(job['id'], app=self.queue_manager)
+                    if result.info and isinstance(result.info, dict):
+                        job['progress'] = result.info.get('progress', job['progress'])
+                        job['status_message'] = result.info.get('status_message', job['status_message'])
+                        job['video_path'] = result.info.get('video_path', job['video_path'])
+                except Exception as e:
+                    logger.debug(f"Could not get additional info for job {job['id']}: {e}")
+            
+            logger.info(f"Retrieved {len(jobs)} jobs from queue")
+            return jobs
+            
+        except Exception as e:
+            logger.error(f"Failed to get all jobs: {e}")
+            raise QueueError(f"Job retrieval failed: {str(e)}")
     
     def reorder_job(self, job_id: str, new_position: int) -> bool:
         """Reorder a job in the queue.
@@ -169,19 +250,10 @@ class QueueService:
             self.queue_manager.control.revoke(job_id, terminate=True)
             logger.info(f"Cancelled job {job_id}")
             return True
-
+            
         except Exception as e:
             logger.error(f"Failed to cancel job {job_id}: {e}")
             raise QueueError(f"Job cancellation failed: {str(e)}")
-    
-    def get_failed_jobs(self) -> List[Dict]:
-        """Get list of failed jobs.
-        
-        Returns:
-            List of failed job dictionaries
-        """
-        logger.warning("Retrieving failed jobs is not supported with Celery")
-        return []
     
     def get_job_progress(self, job_id: str) -> Dict:
         """Get the progress of a job.
@@ -272,47 +344,3 @@ class QueueService:
         """
         logger.warning("Restarting workers is not supported via QueueService")
         return False
-
-    def get_all_jobs(self) -> List[Dict]:
-        """Get a list of all jobs (active, reserved, scheduled) with details."""
-        try:
-            inspect = self.queue_manager.control.inspect()
-            active = inspect.active() or {}
-            reserved = inspect.reserved() or {}
-            scheduled = inspect.scheduled() or {}
-
-            jobs = []
-            # Helper to extract job info
-            def extract_job_info(task, status):
-                return {
-                    'id': task.get('id'),
-                    'name': task.get('name'),
-                    'args': task.get('args'),
-                    'kwargs': task.get('kwargs'),
-                    'status': status,
-                    'worker': task.get('worker', ''),
-                }
-            # Active jobs
-            for worker, tasks in active.items():
-                for task in tasks:
-                    job = extract_job_info(task, 'active')
-                    job['worker'] = worker
-                    jobs.append(job)
-            # Reserved jobs
-            for worker, tasks in reserved.items():
-                for task in tasks:
-                    job = extract_job_info(task, 'reserved')
-                    job['worker'] = worker
-                    jobs.append(job)
-            # Scheduled jobs
-            for worker, tasks in scheduled.items():
-                for task in tasks:
-                    # Scheduled tasks may have 'request' dict
-                    t = task.get('request', task)
-                    job = extract_job_info(t, 'scheduled')
-                    job['worker'] = worker
-                    jobs.append(job)
-            return jobs
-        except Exception as e:
-            logger.error(f"Failed to get all jobs: {e}")
-            raise QueueError(f"Job listing failed: {str(e)}")
