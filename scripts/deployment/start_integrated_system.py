@@ -15,7 +15,7 @@ import threading
 from pathlib import Path
 
 # Add the project root to Python path
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent.parent  # Go up 3 levels: deployment -> scripts -> project root
 sys.path.insert(0, str(project_root))
 
 from loguru import logger

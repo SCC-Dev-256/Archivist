@@ -798,21 +798,86 @@ class IntegratedDashboard:
             """Trigger transcription for a specific file (from web_interface)."""
             try:
                 from core.tasks.transcription import run_whisper_transcription
+                from core.check_mounts import list_mount_contents
                 data = request.get_json()
                 file_path = data.get('file_path')
+                
                 if not file_path:
                     return jsonify({
                         'success': False,
                         'error': 'file_path is required'
                     }), 400
+                
+                # Validate file exists and is accessible
+                if not os.path.exists(file_path):
+                    return jsonify({
+                        'success': False,
+                        'error': f'File not found: {file_path}'
+                    }), 404
+                
+                # Check if file is on a mounted drive
+                mount_points = ['/mnt/flex-1', '/mnt/flex-2', '/mnt/flex-3', '/mnt/flex-4', 
+                               '/mnt/flex-5', '/mnt/flex-6', '/mnt/flex-7', '/mnt/flex-8']
+                
+                is_mounted = any(file_path.startswith(mount) for mount in mount_points)
+                if is_mounted:
+                    logger.info(f"Transcription requested for mounted file: {file_path}")
+                else:
+                    logger.warning(f"Transcription requested for non-mounted file: {file_path}")
+                
                 result = run_whisper_transcription.delay(file_path)
                 return jsonify({
                     'success': True,
                     'task_id': result.id,
-                    'message': f'Transcription triggered for {file_path}'
+                    'message': f'Transcription triggered for {file_path}',
+                    'mounted_file': is_mounted
                 })
             except Exception as e:
                 logger.error(f"Error triggering transcription: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+        
+        @self.app.route('/api/mounts/list', methods=['GET'])
+        def list_mounts():
+            """List available mount points and their contents."""
+            try:
+                from core.check_mounts import list_mount_contents, verify_critical_mounts
+                
+                mount_points = ['/mnt/flex-1', '/mnt/flex-2', '/mnt/flex-3', '/mnt/flex-4', 
+                               '/mnt/flex-5', '/mnt/flex-6', '/mnt/flex-7', '/mnt/flex-8']
+                
+                mounts_data = {}
+                for mount in mount_points:
+                    try:
+                        if os.path.exists(mount) and os.path.ismount(mount):
+                            contents = list_mount_contents(mount)
+                            mounts_data[mount] = {
+                                'status': 'mounted',
+                                'contents': contents[:50],  # Limit to first 50 items
+                                'total_files': len(contents)
+                            }
+                        else:
+                            mounts_data[mount] = {
+                                'status': 'not_mounted',
+                                'contents': [],
+                                'total_files': 0
+                            }
+                    except Exception as e:
+                        mounts_data[mount] = {
+                            'status': 'error',
+                            'error': str(e),
+                            'contents': [],
+                            'total_files': 0
+                        }
+                
+                return jsonify({
+                    'success': True,
+                    'mounts': mounts_data
+                })
+            except Exception as e:
+                logger.error(f"Error listing mounts: {e}")
                 return jsonify({
                     'success': False,
                     'error': str(e)
@@ -1231,14 +1296,19 @@ class IntegratedDashboard:
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="/static/dashboard.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Integrated VOD Processing Monitor</h1>
-            <p>Unified monitoring for VOD processing, queue management, and system health</p>
-            <button class="refresh-button" onclick="refreshAllData()">🔄 Refresh All</button>
-        </div>
+            <div class="container">
+            <div class="header">
+                <h1>🚀 Integrated VOD Processing Monitor</h1>
+                <p>Unified monitoring for VOD processing, queue management, and system health</p>
+                <div class="header-actions">
+                    <button class="refresh-button" onclick="refreshAllData()">🔄 Refresh All</button>
+                    <button class="status-button" onclick="showSystemStatus()">📊 System Status</button>
+                    <button class="help-button" onclick="showHelp()">❓ Help</button>
+                </div>
+            </div>
         
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="showTab('overview')">📊 Overview</button>
@@ -1383,50 +1453,47 @@ class IntegratedDashboard:
         </div>
     </div>
 
-    <!-- Transcription Dialog -->
-    <div id="transcription-dialog" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Transcription</h3>
-                <span class="close" onclick="closeTranscriptionDialog()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <p class="transcription-dialog p">Enter the full path to the video file you want to transcribe:</p>
-                <input type="text" id="transcription-file-path" placeholder="e.g., /path/to/video.mp4" />
-                <div class="dialog-buttons">
-                    <button onclick="closeTranscriptionDialog()" class="cancel-btn">
-                        Cancel
-                    </button>
-                    <button onclick="triggerTranscription()" class="start-btn">
-                        Start Transcription
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+                        <!-- Transcription Dialog -->
+                    <div id="transcription-dialog" class="modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>🎤 Transcription - Mounted Drives</h3>
+                                <span class="close" onclick="closeTranscriptionDialog()">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                                <div class="file-browser-section">
+                                    <h4>📁 Available Mounted Drives</h4>
+                                    <div id="mounts-list" class="mounts-grid">
+                                        <p>Loading mounted drives...</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="file-path-section">
+                                    <h4>📄 File Path</h4>
+                                    <p>Enter the full path to the video file you want to transcribe:</p>
+                                    <input type="text" id="transcription-file-path" placeholder="e.g., /mnt/flex-1/videos/video.mp4" />
+                                    <div class="path-validation">
+                                        <span id="path-status" class="path-indicator"></span>
+                                        <span id="path-message"></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="dialog-buttons">
+                                    <button onclick="closeTranscriptionDialog()" class="cancel-btn">
+                                        Cancel
+                                    </button>
+                                    <button onclick="triggerTranscription()" class="start-btn">
+                                        🎤 Start Transcription
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <script>
-        var currentTab = 'overview';
+</body>
+</html>
         
-        function showTab(tabName) {
-            // Remove active class from all tab panes
-            var panes = document.querySelectorAll('.tab-pane');
-            for (var i = 0; i < panes.length; i++) {
-                panes[i].classList.remove('active');
-            }
-            // Remove active class from all tabs
-            var tabs = document.querySelectorAll('.nav-tab');
-            for (var i = 0; i < tabs.length; i++) {
-                tabs[i].classList.remove('active');
-            }
-            // Show selected tab pane
-            document.getElementById(tabName).classList.add('active');
-            // Add active class to selected tab
-            event.target.classList.add('active');
-            currentTab = tabName;
-            // Refresh data for the selected tab
-            refreshTabData(tabName);
-        }
+
         
         function refreshAllData() {
             refreshTabData(currentTab);
@@ -1594,10 +1661,366 @@ class IntegratedDashboard:
         
         function openTranscriptionDialog() {
             document.getElementById('transcription-dialog').style.display = 'block';
+            loadMountedDrives();
         }
         
         function closeTranscriptionDialog() {
             document.getElementById('transcription-dialog').style.display = 'none';
+            document.getElementById('transcription-file-path').value = '';
+            document.getElementById('path-status').className = 'path-indicator';
+            document.getElementById('path-message').textContent = '';
+        }
+        
+        function loadMountedDrives() {
+            console.log('Loading mounted drives...');
+            var mountsList = document.getElementById('mounts-list');
+            if (!mountsList) {
+                console.error('Mounts list element not found');
+                return;
+            }
+            
+            mountsList.innerHTML = '<p>Loading mounted drives...</p>';
+            
+            fetch('/api/mounts/list')
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Mounts data received:', data);
+                    if (data.success && data.mounts) {
+                        displayMountedDrives(data.mounts);
+                    } else {
+                        console.error('Invalid mounts data:', data);
+                        mountsList.innerHTML = '<p>Error: Invalid data received</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading mounted drives:', error);
+                    mountsList.innerHTML = '<p>Error loading mounted drives: ' + error.message + '</p>';
+                });
+        }
+        
+        function displayMountedDrives(mounts) {
+            var mountsList = document.getElementById('mounts-list');
+            var html = '';
+            
+            for (var mountPath in mounts) {
+                var mount = mounts[mountPath];
+                var statusClass = mount.status === 'mounted' ? 'mount-healthy' : 'mount-unhealthy';
+                
+                html += '<div class="mount-item ' + statusClass + '">';
+                html += '<div class="mount-header">';
+                html += '<span class="mount-path">' + mountPath + '</span>';
+                html += '<span class="mount-status">' + mount.status + '</span>';
+                html += '</div>';
+                
+                if (mount.status === 'mounted' && mount.contents && mount.contents.length > 0) {
+                    html += '<div class="mount-contents">';
+                    html += '<div class="mount-summary">' + mount.total_files + ' files available</div>';
+                    
+                    // Create organized file tree
+                    var videoFiles = mount.contents.filter(function(file) {
+                        return file.toLowerCase().match(/\.(mp4|avi|mov|mkv|wmv|flv|webm|mpeg|mpg)$/);
+                    });
+                    
+                    if (videoFiles.length > 0) {
+                        html += '<div class="file-tree">';
+                        html += '<div class="tree-header">';
+                        html += '<span class="tree-title">Video Files (' + videoFiles.length + ')</span>';
+                        html += '<button class="expand-all-btn" onclick="toggleAllFiles(' + JSON.stringify(mountPath) + ')">Expand All</button>';
+                        html += '</div>';
+                        html += '<div class="tree-content" id="tree-' + mountPath.replace(/\//g, '-') + '">';
+                        
+                        // Group files by year/type for better organization
+                        var groupedFiles = groupFilesByYear(videoFiles);
+                        
+                        for (var year in groupedFiles) {
+                            html += '<div class="year-group">';
+                            html += '<div class="year-header" onclick="toggleYearGroup(this)">';
+                            html += '<span class="year-icon">📅</span>';
+                            html += '<span class="year-title">' + year + ' (' + groupedFiles[year].length + ' files)</span>';
+                            html += '<span class="expand-icon">▶</span>';
+                            html += '</div>';
+                            html += '<div class="year-files">';
+                            
+                            groupedFiles[year].forEach(function(file) {
+                                html += '<div class="file-item" onclick="selectFile(' + JSON.stringify(mountPath + '/' + file) + ')">';
+                                html += '<span class="file-icon">🎬</span>';
+                                html += '<span class="file-name">' + file + '</span>';
+                                html += '<button class="add-to-queue-btn" onclick="event.stopPropagation(); addToQueue(' + JSON.stringify(mountPath + '/' + file) + ')">+</button>';
+                                html += '</div>';
+                            });
+                            
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        
+                        html += '</div>';
+                        html += '</div>';
+                    } else {
+                        html += '<div class="no-videos">No video files found in this mount</div>';
+                    }
+                    
+                    html += '</div>';
+                } else if (mount.status === 'error') {
+                    html += '<div class="mount-error">Error: ' + mount.error + '</div>';
+                }
+                
+                html += '</div>';
+            }
+            
+            mountsList.innerHTML = html;
+        }
+        
+        function groupFilesByYear(files) {
+            var grouped = {};
+            
+            files.forEach(function(file) {
+                // Extract year from filename (common pattern: YYYY in filename)
+                var yearMatch = file.match(/(20\d{2})/);
+                var year = yearMatch ? yearMatch[1] : 'Unknown';
+                
+                if (!grouped[year]) {
+                    grouped[year] = [];
+                }
+                grouped[year].push(file);
+            });
+            
+            // Sort years and files within each year
+            var sortedGrouped = {};
+            Object.keys(grouped).sort().reverse().forEach(function(year) {
+                sortedGrouped[year] = grouped[year].sort();
+            });
+            
+            return sortedGrouped;
+        }
+        
+        function toggleYearGroup(header) {
+            var yearGroup = header.parentElement;
+            var yearFiles = yearGroup.querySelector('.year-files');
+            var expandIcon = header.querySelector('.expand-icon');
+            
+            if (yearFiles.style.display === 'none' || yearFiles.style.display === '') {
+                yearFiles.style.display = 'block';
+                expandIcon.textContent = '▼';
+                yearGroup.classList.add('expanded');
+            } else {
+                yearFiles.style.display = 'none';
+                expandIcon.textContent = '▶';
+                yearGroup.classList.remove('expanded');
+            }
+        }
+        
+        function toggleAllFiles(mountPath) {
+            var treeId = 'tree-' + mountPath.replace(/\//g, '-');
+            var treeContent = document.getElementById(treeId);
+            var yearGroups = treeContent.querySelectorAll('.year-group');
+            var expandAllBtn = treeContent.parentElement.querySelector('.expand-all-btn');
+            
+            var allExpanded = true;
+            yearGroups.forEach(function(group) {
+                var yearFiles = group.querySelector('.year-files');
+                if (yearFiles.style.display === 'none' || yearFiles.style.display === '') {
+                    allExpanded = false;
+                }
+            });
+            
+            yearGroups.forEach(function(group) {
+                var yearFiles = group.querySelector('.year-files');
+                var expandIcon = group.querySelector('.expand-icon');
+                
+                if (allExpanded) {
+                    yearFiles.style.display = 'none';
+                    expandIcon.textContent = '▶';
+                    group.classList.remove('expanded');
+                } else {
+                    yearFiles.style.display = 'block';
+                    expandIcon.textContent = '▼';
+                    group.classList.add('expanded');
+                }
+            });
+            
+            expandAllBtn.textContent = allExpanded ? 'Expand All' : 'Collapse All';
+        }
+        
+        function addToQueue(filePath) {
+            // Add file to transcription queue
+            fetch('/api/tasks/trigger_transcription', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_path: filePath
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('✅ File added to transcription queue: ' + filePath.split('/').pop(), 'success');
+                } else {
+                    showNotification('❌ Error adding file to queue: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding to queue:', error);
+                showNotification('❌ Error adding file to queue', 'error');
+            });
+        }
+        
+        function showNotification(message, type) {
+            // Create notification element
+            var notification = document.createElement('div');
+            notification.className = 'notification notification-' + type;
+            notification.textContent = message;
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(function() {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function showSystemStatus() {
+            // Show detailed system status in a modal
+            var statusHtml = '<div class="system-status-modal">';
+            statusHtml += '<h2>📊 System Status Overview</h2>';
+            statusHtml += '<div class="status-grid-detailed">';
+            
+            // Fetch and display detailed status
+            fetch('/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.checks) {
+                        // System resources
+                        if (data.checks.system) {
+                            statusHtml += '<div class="status-section">';
+                            statusHtml += '<h3>💻 System Resources</h3>';
+                            data.checks.system.forEach(check => {
+                                statusHtml += '<div class="status-item">';
+                                statusHtml += '<span class="status-label">' + check.component + ':</span>';
+                                statusHtml += '<span class="status-value ' + check.status + '">' + check.status + '</span>';
+                                statusHtml += '</div>';
+                            });
+                            statusHtml += '</div>';
+                        }
+                        
+                        // Storage status
+                        if (data.checks.storage) {
+                            statusHtml += '<div class="status-section">';
+                            statusHtml += '<h3>💾 Storage Status</h3>';
+                            data.checks.storage.forEach(check => {
+                                statusHtml += '<div class="status-item">';
+                                statusHtml += '<span class="status-label">' + check.component + ':</span>';
+                                statusHtml += '<span class="status-value ' + check.status + '">' + check.status + '</span>';
+                                statusHtml += '</div>';
+                            });
+                            statusHtml += '</div>';
+                        }
+                    }
+                    
+                    statusHtml += '</div>';
+                    statusHtml += '<button onclick="closeSystemStatus()" class="close-btn">Close</button>';
+                    statusHtml += '</div>';
+                    
+                    // Create modal
+                    var modal = document.createElement('div');
+                    modal.className = 'modal-overlay';
+                    modal.innerHTML = statusHtml;
+                    document.body.appendChild(modal);
+                })
+                .catch(error => {
+                    console.error('Error fetching system status:', error);
+                    showNotification('Error loading system status', 'error');
+                });
+        }
+        
+        function closeSystemStatus() {
+            var modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function showHelp() {
+            var helpHtml = '<div class="help-modal">';
+            helpHtml += '<h2>❓ Help & Documentation</h2>';
+            helpHtml += '<div class="help-content">';
+            helpHtml += '<h3>🎮 Manual Controls</h3>';
+            helpHtml += '<ul>';
+            helpHtml += '<li><strong>VOD Processing:</strong> Trigger manual VOD processing for specific files</li>';
+            helpHtml += '<li><strong>Transcription:</strong> Start transcription jobs with file browser</li>';
+            helpHtml += '</ul>';
+            helpHtml += '<h3>📋 File Browser</h3>';
+            helpHtml += '<ul>';
+            helpHtml += '<li><strong>Year Groups:</strong> Files are organized by year for easy navigation</li>';
+            helpHtml += '<li><strong>Quick Add:</strong> Click the green "+" button to add files to queue</li>';
+            helpHtml += '<li><strong>File Selection:</strong> Click file names to auto-fill the path field</li>';
+            helpHtml += '</ul>';
+            helpHtml += '<h3>📊 Dashboard Features</h3>';
+            helpHtml += '<ul>';
+            helpHtml += '<li><strong>Overview:</strong> System health, queue status, and recent activity</li>';
+            helpHtml += '<li><strong>Real-time Tasks:</strong> Live monitoring of active tasks</li>';
+            helpHtml += '<li><strong>Queue Management:</strong> View and manage queued jobs</li>';
+            helpHtml += '<li><strong>Health Checks:</strong> Detailed system health information</li>';
+            helpHtml += '</ul>';
+            helpHtml += '</div>';
+            helpHtml += '<button onclick="closeHelp()" class="close-btn">Close</button>';
+            helpHtml += '</div>';
+            
+            var modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = helpHtml;
+            document.body.appendChild(modal);
+        }
+        
+        function closeHelp() {
+            var modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function selectFile(filePath) {
+            document.getElementById('transcription-file-path').value = filePath;
+            validateFilePath(filePath);
+        }
+        
+        function validateFilePath(filePath) {
+            var pathStatus = document.getElementById('path-status');
+            var pathMessage = document.getElementById('path-message');
+            
+            if (!filePath) {
+                pathStatus.className = 'path-indicator path-unknown';
+                pathMessage.textContent = '';
+                return;
+            }
+            
+            // Check if it's a video file
+            var videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm'];
+            var isVideo = videoExtensions.some(ext => filePath.toLowerCase().endsWith(ext));
+            
+            if (!isVideo) {
+                pathStatus.className = 'path-indicator path-error';
+                pathMessage.textContent = 'Not a video file';
+                return;
+            }
+            
+            // Check if it's on a mounted drive
+            var mountPoints = ['/mnt/flex-1', '/mnt/flex-2', '/mnt/flex-3', '/mnt/flex-4', 
+                              '/mnt/flex-5', '/mnt/flex-6', '/mnt/flex-7', '/mnt/flex-8'];
+            var isMounted = mountPoints.some(mount => filePath.startsWith(mount));
+            
+            if (isMounted) {
+                pathStatus.className = 'path-indicator path-valid';
+                pathMessage.textContent = '✅ Mounted file - optimal for transcription';
+            } else {
+                pathStatus.className = 'path-indicator path-warning';
+                pathMessage.textContent = '⚠️ Non-mounted file - may be slower';
+            }
         }
         
         function triggerVODProcessing() {
@@ -1660,26 +2083,176 @@ class IntegratedDashboard:
         
         // Data refresh functions
         function refreshOverviewData() {
+            console.log('Refreshing overview data...');
+            
             // Refresh system health
             fetch('/api/health')
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Health data received:', data);
+                    var systemHealth = document.getElementById('system-health');
                     if (data.checks && data.checks.system) {
-                        updateSystemHealth({ system: data.checks.system });
+                        var systemChecks = data.checks.system;
+                        var html = '<div class="health-grid">';
+                        
+                        // System resources
+                        if (systemChecks.find(check => check.component === 'system:resources')) {
+                            var resources = systemChecks.find(check => check.component === 'system:resources');
+                            if (resources && resources.details) {
+                                html += '<div class="health-item">';
+                                html += '<span class="health-label">CPU:</span>';
+                                html += '<span class="health-value">' + resources.details.cpu_percent + '%</span>';
+                                html += '</div>';
+                                html += '<div class="health-item">';
+                                html += '<span class="health-label">Memory:</span>';
+                                html += '<span class="health-value">' + resources.details.memory_percent + '%</span>';
+                                html += '</div>';
+                                html += '<div class="health-item">';
+                                html += '<span class="health-label">Disk:</span>';
+                                html += '<span class="health-value">' + resources.details.disk_percent + '%</span>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        // Celery workers
+                        if (systemChecks.find(check => check.component === 'system:celery_workers')) {
+                            var workers = systemChecks.find(check => check.component === 'system:celery_workers');
+                            if (workers && workers.details) {
+                                html += '<div class="health-item">';
+                                html += '<span class="health-label">Workers:</span>';
+                                html += '<span class="health-value">' + workers.details.worker_count + ' active</span>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        html += '</div>';
+                        systemHealth.innerHTML = html;
+                    } else {
+                        systemHealth.innerHTML = '<p>No system health data available</p>';
                     }
                 })
-                .catch(error => console.error('Error refreshing overview:', error));
+                .catch(error => {
+                    console.error('Error refreshing system health:', error);
+                    document.getElementById('system-health').innerHTML = '<p>Error loading system health</p>';
+                });
             
             // Refresh queue overview
             fetch('/api/queue/stats')
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Queue stats received:', data);
                     var queueOverview = document.getElementById('queue-overview');
+                    var html = '<div class="queue-summary">';
+                    
                     if (data.total_jobs !== undefined) {
-                        queueOverview.innerHTML = '<p>Total Jobs: ' + data.total_jobs + '</p>';
+                        html += '<div class="queue-item">';
+                        html += '<span class="queue-label">Total Jobs:</span>';
+                        html += '<span class="queue-value">' + data.total_jobs + '</span>';
+                        html += '</div>';
                     }
+                    
+                    if (data.status_counts) {
+                        for (var status in data.status_counts) {
+                            html += '<div class="queue-item">';
+                            html += '<span class="queue-label">' + status + ':</span>';
+                            html += '<span class="queue-value">' + data.status_counts[status] + '</span>';
+                            html += '</div>';
+                        }
+                    }
+                    
+                    if (data.success_rate !== undefined) {
+                        html += '<div class="queue-item">';
+                        html += '<span class="queue-label">Success Rate:</span>';
+                        html += '<span class="queue-value">' + (data.success_rate * 100).toFixed(1) + '%</span>';
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
+                    queueOverview.innerHTML = html;
                 })
-                .catch(error => console.error('Error refreshing queue overview:', error));
+                .catch(error => {
+                    console.error('Error refreshing queue overview:', error);
+                    document.getElementById('queue-overview').innerHTML = '<p>Error loading queue data</p>';
+                });
+            
+            // Refresh Celery workers overview
+            fetch('/api/celery/workers')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Celery workers data received:', data);
+                    var celeryOverview = document.getElementById('celery-overview');
+                    var html = '<div class="celery-summary">';
+                    
+                    if (data.summary) {
+                        html += '<div class="celery-item">';
+                        html += '<span class="celery-label">Total Workers:</span>';
+                        html += '<span class="celery-value">' + data.summary.total_workers + '</span>';
+                        html += '</div>';
+                        html += '<div class="celery-item">';
+                        html += '<span class="celery-label">Active Workers:</span>';
+                        html += '<span class="celery-value">' + data.summary.active_workers + '</span>';
+                        html += '</div>';
+                    }
+                    
+                    if (data.workers && Object.keys(data.workers).length > 0) {
+                        html += '<div class="celery-workers-list">';
+                        for (var workerName in data.workers) {
+                            var worker = data.workers[workerName];
+                            html += '<div class="worker-item">';
+                            html += '<span class="worker-name">' + workerName + '</span>';
+                            html += '<span class="worker-status">' + (worker.status || 'unknown') + '</span>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                    } else {
+                        html += '<p>No active workers found</p>';
+                    }
+                    
+                    html += '</div>';
+                    celeryOverview.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error refreshing Celery overview:', error);
+                    document.getElementById('celery-overview').innerHTML = '<p>Error loading Celery data</p>';
+                });
+            
+            // Refresh recent activity
+            fetch('/api/queue/stats')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Recent activity data received:', data);
+                    var recentActivity = document.getElementById('recent-activity');
+                    var html = '<div class="activity-summary">';
+                    
+                    if (data.recent_activity) {
+                        var activity = data.recent_activity;
+                        html += '<div class="activity-item">';
+                        html += '<span class="activity-label">Jobs Created:</span>';
+                        html += '<span class="activity-value">' + (activity.jobs_created || 0) + '</span>';
+                        html += '</div>';
+                        html += '<div class="activity-item">';
+                        html += '<span class="activity-label">Jobs Completed:</span>';
+                        html += '<span class="activity-value">' + (activity.jobs_completed || 0) + '</span>';
+                        html += '</div>';
+                        html += '<div class="activity-item">';
+                        html += '<span class="activity-label">Jobs Failed:</span>';
+                        html += '<span class="activity-value">' + (activity.jobs_failed || 0) + '</span>';
+                        html += '</div>';
+                        html += '<div class="activity-item">';
+                        html += '<span class="activity-label">Avg Processing Time:</span>';
+                        html += '<span class="activity-value">' + (activity.average_processing_time || 0).toFixed(2) + 's</span>';
+                        html += '</div>';
+                    } else {
+                        html += '<p>No recent activity data available</p>';
+                    }
+                    
+                    html += '</div>';
+                    recentActivity.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error refreshing recent activity:', error);
+                    document.getElementById('recent-activity').innerHTML = '<p>Error loading activity data</p>';
+                });
         }
         
         function refreshRealtimeData() {
@@ -1703,10 +2276,10 @@ class IntegratedDashboard:
                             html += '<div class="job-details">ID: ' + job.id + ' | Status: ' + job.status + '</div>';
                             html += '</div>';
                             html += '<div class="job-actions">';
-                            html += '<button onclick="pauseJob(\'' + job.id + '\')" class="action-btn">Pause</button>';
-                            html += '<button onclick="resumeJob(\'' + job.id + '\')" class="action-btn">Resume</button>';
-                            html += '<button onclick="stopJob(\'' + job.id + '\')" class="action-btn">Stop</button>';
-                            html += '<button onclick="removeJob(\'' + job.id + '\')" class="action-btn">Remove</button>';
+                            html += '<button onclick="pauseJob(' + JSON.stringify(job.id) + ')" class="action-btn">Pause</button>';
+                            html += '<button onclick="resumeJob(' + JSON.stringify(job.id) + ')" class="action-btn">Resume</button>';
+                            html += '<button onclick="stopJob(' + JSON.stringify(job.id) + ')" class="action-btn">Stop</button>';
+                            html += '<button onclick="removeJob(' + JSON.stringify(job.id) + ')" class="action-btn">Remove</button>';
                             html += '</div>';
                             html += '</div>';
                         }
@@ -1841,13 +2414,41 @@ class IntegratedDashboard:
         
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard DOM loaded, initializing...');
+            
+            // Initialize SocketIO
             initializeSocketIO();
+            
+            // Initial data load
+            console.log('Loading initial data...');
             refreshAllData();
             
             // Set up periodic refresh
-            setInterval(refreshAllData, 30000); // Refresh every 30 seconds
+            setInterval(function() {
+                console.log('Periodic refresh triggered');
+                refreshAllData();
+            }, 30000); // Refresh every 30 seconds
+            
+            // Set up file path validation
+            var transcriptionInput = document.getElementById('transcription-file-path');
+            if (transcriptionInput) {
+                transcriptionInput.addEventListener('input', function() {
+                    validateFilePath(this.value);
+                });
+            }
+            
+            // Add loading indicators
+            showLoadingStates();
+            
+            console.log('Dashboard initialization complete');
         });
-    </script>
+        
+        function showLoadingStates() {
+            // Show loading states for all overview sections
+            var loadingSections = ["system-health", "queue-overview", "celery-overview", "recent-activity"];
+            loadingSections.forEach(function(sectionId) { var element = document.getElementById(sectionId); if (element) { element.innerHTML = '<div class="loading-spinner">🔄 Loading...</div>'; } });
+        }
+
 </body>
 </html>
 """
@@ -1948,6 +2549,608 @@ class IntegratedDashboard:
         }
         
         .status-healthy { background-color: #28a745; }
+        
+        /* Overview Data Display Styles */
+        .health-grid, .queue-summary, .celery-summary, .activity-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .health-item, .queue-item, .celery-item, .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .health-label, .queue-label, .celery-label, .activity-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .health-value, .queue-value, .celery-value, .activity-value {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .celery-workers-list {
+            margin-top: 10px;
+        }
+        
+        .worker-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 4px;
+        }
+        
+        .worker-name {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .worker-status {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        
+        /* File Browser and Transcription Dialog Styles */
+        .file-browser-section, .file-path-section {
+            margin-bottom: 20px;
+        }
+        
+        .file-browser-section h4, .file-path-section h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .mounts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .mount-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f8f9fa;
+        }
+        
+        .mount-item.mount-healthy {
+            border-left: 4px solid #28a745;
+        }
+        
+        .mount-item.mount-unhealthy {
+            border-left: 4px solid #dc3545;
+        }
+        
+        .mount-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .mount-path {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .mount-status {
+            font-size: 0.8em;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #e9ecef;
+            color: #6c757d;
+        }
+        
+        .mount-contents {
+            margin-top: 10px;
+        }
+        
+        .mount-summary {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+        
+        /* File Tree Styles */
+        .file-tree {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .tree-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .tree-title {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .expand-all-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .expand-all-btn:hover {
+            background: #0056b3;
+        }
+        
+        .tree-content {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .year-group {
+            border-bottom: 1px solid #f1f3f4;
+        }
+        
+        .year-header {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .year-header:hover {
+            background: #e9ecef;
+        }
+        
+        .year-icon {
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+        
+        .year-title {
+            flex: 1;
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .expand-icon {
+            font-size: 0.8em;
+            color: #6c757d;
+            transition: transform 0.2s;
+        }
+        
+        .year-group.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+        
+        .year-files {
+            display: none;
+            background: white;
+        }
+        
+        .year-group.expanded .year-files {
+            display: block;
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f8f9fa;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .file-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .file-icon {
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+        
+        .file-name {
+            flex: 1;
+            font-size: 0.9em;
+            color: #495057;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .add-to-queue-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-left: 8px;
+        }
+        
+        .add-to-queue-btn:hover {
+            background: #218838;
+        }
+        
+        .no-videos {
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        /* Notification Styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification-success {
+            background: #28a745;
+        }
+        
+        .notification-error {
+            background: #dc3545;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Loading and Visual Enhancements */
+        .loading-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #6c757d;
+            font-size: 1.1em;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Enhanced Status Cards */
+        .status-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .status-card h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+            font-size: 1.2em;
+            font-weight: 600;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 8px;
+        }
+        
+        /* Enhanced Health Grid */
+        .health-grid, .queue-summary, .celery-summary, .activity-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .health-item, .queue-item, .celery-item, .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+        
+        .health-item:hover, .queue-item:hover, .celery-item:hover, .activity-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .health-label, .queue-label, .celery-label, .activity-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .health-value, .queue-value, .celery-value, .activity-value {
+            font-weight: 500;
+            color: #007bff;
+            background: #e3f2fd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        /* Enhanced Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .nav-tab {
+            background: white;
+            border: 1px solid #dee2e6;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            color: #6c757d;
+        }
+        
+        .nav-tab:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+            transform: translateY(-1px);
+        }
+        
+        .nav-tab.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+        
+        /* Enhanced Header */
+        .header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 0 0 20px 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .refresh-button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .refresh-button:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .status-button, .help-button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .status-button:hover, .help-button:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+        
+        /* Modal Overlay Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        
+        .system-status-modal, .help-modal {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .system-status-modal h2, .help-modal h2 {
+            margin: 0 0 20px 0;
+            color: #495057;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        .status-grid-detailed {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .status-section h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+            font-size: 1.1em;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 5px;
+        }
+        
+        .status-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .status-value {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        
+        .status-value.healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-value.unhealthy {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-value.degraded {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .help-content h3 {
+            margin: 20px 0 10px 0;
+            color: #495057;
+        }
+        
+        .help-content ul {
+            margin: 0 0 20px 20px;
+        }
+        
+        .help-content li {
+            margin-bottom: 8px;
+            color: #6c757d;
+        }
+        
+        .close-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        
+        .close-btn:hover {
+            background: #5a6268;
+        }
+        
+        .mount-error {
+            color: #dc3545;
+            font-size: 0.9em;
+            font-style: italic;
+        }
+        
+        .path-validation {
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+        }
+        
+        .path-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .path-unknown { background-color: #6c757d; }
+        .path-valid { background-color: #28a745; }
+        .path-warning { background-color: #ffc107; }
+        .path-error { background-color: #dc3545; }
+        
+        #path-message {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
         .status-degraded { background-color: #ffc107; }
         .status-unhealthy { background-color: #dc3545; }
         
@@ -2172,6 +3375,760 @@ class IntegratedDashboard:
                 except Exception as e:
                     logger.error(f"Background metrics collection error: {e}")
                     time.sleep(60)
+    
+    def _render_dashboard_js(self) -> str:
+        """Render the dashboard JavaScript code."""
+        return """
+        var currentTab = 'overview';
+        var socket = null;
+        var currentTaskFilter = 'all';
+        
+        function initializeSocketIO() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('Connected to SocketIO server');
+                updateSocketStatus(true);
+                socket.emit('join_task_monitoring');
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Disconnected from SocketIO server');
+                updateSocketStatus(false);
+            });
+            
+            socket.on('task_updates', function(data) {
+                updateRealtimeTasks(data);
+            });
+            
+            socket.on('filtered_tasks', function(data) {
+                updateRealtimeTasks(data);
+            });
+            
+            socket.on('system_metrics', function(data) {
+                updateSystemHealth(data);
+            });
+            
+            socket.on('error', function(data) {
+                console.error('SocketIO error:', data);
+            });
+        }
+        
+        function updateSocketStatus(connected) {
+            var statusIndicator = document.getElementById('socket-status');
+            var statusText = document.getElementById('socket-text');
+            
+            if (statusIndicator && statusText) {
+                if (connected) {
+                    statusIndicator.className = 'status-indicator status-healthy';
+                    statusText.textContent = 'Connected';
+                } else {
+                    statusIndicator.className = 'status-indicator status-unhealthy';
+                    statusText.textContent = 'Disconnected';
+                }
+            }
+        }
+        
+        function filterTasks(filterType) {
+            currentTaskFilter = filterType;
+            
+            // Update filter button states
+            var filterBtns = document.querySelectorAll('.filter-btn');
+            for (var i = 0; i < filterBtns.length; i++) {
+                filterBtns[i].classList.remove('active');
+            }
+            event.target.classList.add('active');
+            
+            // Request filtered tasks from server
+            if (socket && socket.connected) {
+                socket.emit('filter_tasks', { filter: filterType });
+            }
+        }
+        
+        function updateRealtimeTasks(data) {
+            var tasksList = document.getElementById('realtime-tasks-list');
+            var totalTasks = document.getElementById('total-tasks');
+            var activeTasks = document.getElementById('active-tasks');
+            var reservedTasks = document.getElementById('reserved-tasks');
+            var queuedTasks = document.getElementById('queued-tasks');
+            
+            if (data.tasks && data.tasks.length > 0) {
+                var html = '';
+                for (var i = 0; i < data.tasks.length; i++) {
+                    var task = data.tasks[i];
+                    html += '<div class="task-item">';
+                    html += '<div class="task-info">';
+                    html += '<div class="task-name">' + task.name + '</div>';
+                    html += '<div class="task-details">ID: ' + task.id + ' | Status: ' + task.status + '</div>';
+                    html += '</div>';
+                    if (task.progress !== undefined) {
+                        html += '<div class="task-progress">';
+                        html += '<div class="progress-bar">';
+                        html += '<div class="progress-fill" style="width: ' + task.progress + '%"></div>';
+                        html += '</div>';
+                        html += '<div class="progress-text">' + task.progress + '%</div>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+                if (tasksList) tasksList.innerHTML = html;
+            } else {
+                if (tasksList) tasksList.innerHTML = '<p>No tasks found</p>';
+            }
+            
+            // Update task counts
+            if (totalTasks) totalTasks.textContent = data.total_tasks || 0;
+            if (activeTasks) activeTasks.textContent = data.active_tasks || 0;
+            if (reservedTasks) reservedTasks.textContent = data.reserved_tasks || 0;
+            if (queuedTasks) queuedTasks.textContent = data.queued_tasks || 0;
+        }
+        
+        function updateSystemHealth(data) {
+            var systemHealth = document.getElementById('system-health');
+            if (systemHealth && data.overall_status) {
+                if (data.overall_status === 'healthy') {
+                    systemHealth.innerHTML = '<div class="health-status healthy">✅ System Healthy</div>';
+                } else {
+                    systemHealth.innerHTML = '<div class="health-status unhealthy">⚠️ System Issues Detected</div>';
+                }
+            }
+        }
+        
+        function showTab(tabName) {
+            // Remove active class from all tab panes
+            var panes = document.querySelectorAll('.tab-pane');
+            for (var i = 0; i < panes.length; i++) {
+                panes[i].classList.remove('active');
+            }
+            
+            // Remove active class from all tab buttons
+            var tabs = document.querySelectorAll('.nav-tab');
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            
+            // Add active class to selected tab and pane
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            currentTab = tabName;
+            
+            // Refresh data for the selected tab
+            refreshTabData(tabName);
+        }
+        
+        function refreshTabData(tabName) {
+            switch(tabName) {
+                case 'overview':
+                    refreshOverviewData();
+                    break;
+                case 'realtime':
+                    refreshRealtimeData();
+                    break;
+                case 'queue':
+                    refreshQueueData();
+                    break;
+                case 'celery':
+                    refreshCeleryData();
+                    break;
+                case 'health':
+                    refreshHealthData();
+                    break;
+                case 'metrics':
+                    refreshMetricsData();
+                    break;
+            }
+        }
+        
+        function refreshAllData() {
+            refreshTabData(currentTab);
+        }
+        
+        function refreshOverviewData() {
+            // Refresh system health
+            fetch('/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    var systemHealth = document.getElementById('system-health');
+                    if (data.overall_status === 'healthy') {
+                        systemHealth.innerHTML = '<div class="health-status healthy">✅ System Healthy</div>';
+                    } else {
+                        systemHealth.innerHTML = '<div class="health-status unhealthy">⚠️ System Issues Detected</div>';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('system-health').innerHTML = '<div class="health-status error">❌ Error Loading</div>';
+                });
+            
+            // Refresh queue overview
+            fetch('/api/queue/stats')
+                .then(response => response.json())
+                .then(data => {
+                    var queueOverview = document.getElementById('queue-overview');
+                    queueOverview.innerHTML = '<div class="queue-summary">📋 ' + data.total_jobs + ' Total Jobs</div>';
+                })
+                .catch(error => {
+                    document.getElementById('queue-overview').innerHTML = '<div class="queue-summary error">❌ Error Loading</div>';
+                });
+            
+            // Refresh Celery overview
+            fetch('/api/celery/workers')
+                .then(response => response.json())
+                .then(data => {
+                    var celeryOverview = document.getElementById('celery-overview');
+                    celeryOverview.innerHTML = '<div class="celery-summary">⚡ ' + data.worker_count + ' Active Workers</div>';
+                })
+                .catch(error => {
+                    document.getElementById('celery-overview').innerHTML = '<div class="celery-summary error">❌ Error Loading</div>';
+                });
+            
+            // Refresh recent activity
+            fetch('/api/queue/stats')
+                .then(response => response.json())
+                .then(data => {
+                    var recentActivity = document.getElementById('recent-activity');
+                    var html = '<div class="activity-summary">';
+                    if (data.recent_activity && data.recent_activity.length > 0) {
+                        for (var i = 0; i < Math.min(5, data.recent_activity.length); i++) {
+                            var activity = data.recent_activity[i];
+                            html += '<div class="activity-item">' + activity.description + '</div>';
+                        }
+                    } else {
+                        html += '<div class="activity-item">No recent activity</div>';
+                    }
+                    html += '</div>';
+                    recentActivity.innerHTML = html;
+                })
+                .catch(error => {
+                    document.getElementById('recent-activity').innerHTML = '<p>Error loading activity data</p>';
+                });
+        }
+        
+        function refreshRealtimeData() {
+            if (socket && socket.connected) {
+                socket.emit('request_task_updates');
+            }
+        }
+        
+        function refreshQueueData() {
+            fetch('/api/queue/jobs')
+                .then(response => response.json())
+                .then(data => {
+                    var queueJobs = document.getElementById('queue-jobs');
+                    if (data.jobs && data.jobs.length > 0) {
+                        var html = '<div class="queue-jobs-list">';
+                        for (var i = 0; i < data.jobs.length; i++) {
+                            var job = data.jobs[i];
+                            html += '<div class="job-item">';
+                            html += '<div class="job-info">';
+                            html += '<div class="job-name">' + job.name + '</div>';
+                            html += '<div class="job-details">ID: ' + job.id + ' | Status: ' + job.status + '</div>';
+                            html += '</div>';
+                            html += '<div class="job-actions">';
+                            html += '<button onclick="pauseJob(' + JSON.stringify(job.id) + ')" class="action-btn">Pause</button>';
+                            html += '<button onclick="resumeJob(' + JSON.stringify(job.id) + ')" class="action-btn">Resume</button>';
+                            html += '<button onclick="stopJob(' + JSON.stringify(job.id) + ')" class="action-btn">Stop</button>';
+                            html += '<button onclick="removeJob(' + JSON.stringify(job.id) + ')" class="action-btn">Remove</button>';
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        queueJobs.innerHTML = html;
+                    } else {
+                        queueJobs.innerHTML = '<p>No jobs in queue</p>';
+                    }
+                })
+                .catch(error => console.error('Error refreshing queue data:', error));
+        }
+        
+        function refreshCeleryData() {
+            fetch('/api/celery/tasks')
+                .then(response => response.json())
+                .then(data => {
+                    var celeryTasks = document.getElementById('celery-tasks');
+                    if (data.tasks && data.tasks.length > 0) {
+                        var html = '<div class="celery-tasks-list">';
+                        for (var i = 0; i < data.tasks.length; i++) {
+                            var task = data.tasks[i];
+                            html += '<div class="task-item">';
+                            html += '<div class="task-info">';
+                            html += '<div class="task-name">' + task.name + '</div>';
+                            html += '<div class="task-details">ID: ' + task.id + ' | Status: ' + task.status + '</div>';
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        celeryTasks.innerHTML = html;
+                    } else {
+                        celeryTasks.innerHTML = '<p>No Celery tasks found</p>';
+                    }
+                })
+                .catch(error => console.error('Error refreshing Celery data:', error));
+        }
+        
+        function refreshHealthData() {
+            fetch('/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    var healthChecks = document.getElementById('health-checks');
+                    if (data.checks) {
+                        var html = '<div class="health-checks-grid">';
+                        for (var checkName in data.checks) {
+                            var check = data.checks[checkName];
+                            html += '<div class="health-check-item">';
+                            html += '<div class="health-check-name">' + checkName + '</div>';
+                            html += '<div class="health-check-status ' + check.status + '">' + check.status + '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        healthChecks.innerHTML = html;
+                    }
+                })
+                .catch(error => console.error('Error refreshing health data:', error));
+        }
+        
+        function refreshMetricsData() {
+            fetch('/api/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    var metricsData = document.getElementById('metrics-data');
+                    if (data.metrics) {
+                        var html = '<div class="metrics-grid">';
+                        for (var metricName in data.metrics) {
+                            var metric = data.metrics[metricName];
+                            html += '<div class="metric-item">';
+                            html += '<div class="metric-name">' + metricName + '</div>';
+                            html += '<div class="metric-value">' + metric.value + '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        metricsData.innerHTML = html;
+                    }
+                })
+                .catch(error => console.error('Error refreshing metrics data:', error));
+        }
+        
+        function showLoadingStates() {
+            // Show loading states for all overview sections
+            var loadingSections = ["system-health", "queue-overview", "celery-overview", "recent-activity"];
+            loadingSections.forEach(function(sectionId) { var element = document.getElementById(sectionId); if (element) { element.innerHTML = '<div class="loading-spinner">🔄 Loading...</div>'; } });
+        }
+        
+        function showSystemStatus() {
+            // Create modal overlay
+            var overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = '<div class="system-status-modal"><h2>System Status</h2><div id="system-status-content">Loading...</div><button onclick="this.parentElement.parentElement.remove()">Close</button></div>';
+            document.body.appendChild(overlay);
+            
+            // Load system status
+            fetch('/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    var content = document.getElementById('system-status-content');
+                    var html = '<div class="status-details">';
+                    html += '<p><strong>Overall Status:</strong> ' + data.overall_status + '</p>';
+                    html += '<p><strong>Total Checks:</strong> ' + data.summary.total_checks + '</p>';
+                    html += '<p><strong>Healthy:</strong> ' + data.summary.healthy + '</p>';
+                    html += '<p><strong>Degraded:</strong> ' + data.summary.degraded + '</p>';
+                    html += '<p><strong>Unhealthy:</strong> ' + data.summary.unhealthy + '</p>';
+                    html += '</div>';
+                    content.innerHTML = html;
+                })
+                .catch(error => {
+                    document.getElementById('system-status-content').innerHTML = '<p>Error loading system status</p>';
+                });
+        }
+        
+        function showHelp() {
+            // Create modal overlay
+            var overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = '<div class="help-modal"><h2>Dashboard Help</h2><div class="help-content"><h3>Overview Tab</h3><p>Shows system health, queue status, and recent activity.</p><h3>Real-time Tasks</h3><p>Displays live task updates and progress.</p><h3>Queue Management</h3><p>Manage and control job queues.</p><h3>Manual Controls</h3><p>Trigger VOD processing and transcription jobs.</p></div><button onclick="this.parentElement.parentElement.remove()">Close</button></div>';
+            document.body.appendChild(overlay);
+        }
+        
+        function showNotification(message, type) {
+            // Create notification element
+            var notification = document.createElement('div');
+            notification.className = 'notification notification-' + type;
+            notification.textContent = message;
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(function() {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function openVODDialog() {
+            document.getElementById('vod-dialog').style.display = 'block';
+        }
+        
+        function closeVODDialog() {
+            document.getElementById('vod-dialog').style.display = 'none';
+        }
+        
+        function closeSystemStatus() {
+            var modal = document.querySelector('.system-status-modal');
+            if (modal && modal.parentElement) {
+                modal.parentElement.remove();
+            }
+        }
+        
+        function closeHelp() {
+            var modal = document.querySelector('.help-modal');
+            if (modal && modal.parentElement) {
+                modal.parentElement.remove();
+            }
+        }
+        
+        function triggerVODProcessing() {
+            var filePath = document.getElementById('vod-file-path').value.trim();
+            
+            if (!filePath) {
+                showNotification('Please enter a file path', 'error');
+                return;
+            }
+            
+            if (!validateFilePath(filePath)) {
+                showNotification('Invalid file path', 'error');
+                return;
+            }
+            
+            fetch('/api/tasks/trigger_vod_processing', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file_path: filePath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('VOD processing triggered successfully', 'success');
+                    closeVODDialog();
+                    refreshAllData();
+                } else {
+                    showNotification('Failed to trigger VOD processing: ' + (data.error || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error triggering VOD processing:', error);
+                showNotification('Error triggering VOD processing', 'error');
+            });
+        }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard DOM loaded, initializing...');
+            
+            // Initialize SocketIO
+            initializeSocketIO();
+            
+            // Initial data refresh
+            refreshAllData();
+            
+            // Set up periodic refresh
+            setInterval(refreshAllData, 30000); // Refresh every 30 seconds
+            
+            // Set up file path validation
+            var transcriptionInput = document.getElementById('transcription-file-path');
+            if (transcriptionInput) {
+                transcriptionInput.addEventListener('input', function() {
+                    validateFilePath(this.value);
+                });
+            }
+            
+            // Add loading indicators
+            showLoadingStates();
+            
+            console.log('Dashboard initialization complete');
+        });
+        
+        // File browser and transcription functions
+        function openTranscriptionDialog() {
+            document.getElementById('transcription-dialog').style.display = 'block';
+            loadMountedDrives();
+        }
+        
+        function closeTranscriptionDialog() {
+            document.getElementById('transcription-dialog').style.display = 'none';
+            var input = document.getElementById('transcription-file-path');
+            if (input) {
+                input.value = '';
+                document.getElementById('path-status').className = 'path-indicator';
+                document.getElementById('path-message').textContent = '';
+            }
+        }
+        
+        function loadMountedDrives() {
+            console.log('Loading mounted drives...');
+            var mountsList = document.getElementById('mounts-list');
+            if (!mountsList) {
+                console.error('Mounts list element not found');
+                return;
+            }
+            mountsList.innerHTML = '<p>Loading mounted drives...</p>';
+            fetch('/api/mounts/list')
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Mounts data received:', data);
+                    if (data.success && data.mounts) {
+                        displayMountedDrives(data.mounts);
+                    } else {
+                        console.error('Invalid mounts data:', data);
+                        mountsList.innerHTML = '<p>Error: Invalid data received</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading mounted drives:', error);
+                    mountsList.innerHTML = '<p>Error loading mounted drives: ' + error.message + '</p>';
+                });
+        }
+        
+        function displayMountedDrives(mounts) {
+            var mountsList = document.getElementById('mounts-list');
+            var html = '';
+            for (var mountPath in mounts) {
+                var mount = mounts[mountPath];
+                var statusClass = mount.status === 'mounted' ? 'mount-healthy' : 'mount-unhealthy';
+                html += '<div class="mount-item ' + statusClass + '">';
+                html += '<div class="mount-header">';
+                html += '<div class="mount-path">' + mountPath + '</div>';
+                html += '<div class="mount-status">' + mount.status + '</div>';
+                html += '</div>';
+                if (mount.contents && mount.contents.length > 0) {
+                    var videoFiles = mount.contents.filter(function(file) {
+                        return /\.(mp4|avi|mov|mkv|wmv|flv|webm|mpeg|mpg)$/i.test(file);
+                    });
+                    if (videoFiles.length > 0) {
+                        var groupedFiles = groupFilesByYear(videoFiles, mountPath);
+                        html += '<div class="mount-contents">';
+                        html += '<div class="mount-summary">' + videoFiles.length + ' video files found</div>';
+                        html += '<div class="file-tree">';
+                        html += '<div class="tree-header">';
+                        html += '<div class="tree-title">Video Files</div>';
+                        html += '<button class="expand-all-btn" onclick="toggleAllFiles(' + JSON.stringify(mountPath) + ')">Expand All</button>';
+                        html += '</div>';
+                        html += '<div class="tree-content">';
+                        for (var year in groupedFiles) {
+                            html += '<div class="year-group">';
+                            html += '<div class="year-header" onclick="toggleYear(' + JSON.stringify(year) + ')">';
+                            html += '<span class="year-icon">📁</span>';
+                            html += '<span class="year-title">' + year + '</span>';
+                            html += '<span class="expand-icon">▼</span>';
+                            html += '</div>';
+                            html += '<div class="year-files" id="year-' + year + '">';
+                            for (var i = 0; i < groupedFiles[year].length; i++) {
+                                var file = groupedFiles[year][i];
+                                html += '<div class="file-item" onclick="selectFile(' + JSON.stringify(mountPath + '/' + file) + ')">';
+                                html += '<span class="file-icon">🎬</span>';
+                                html += '<span class="file-name">' + file + '</span>';
+                                html += '<button class="add-to-queue-btn" onclick="event.stopPropagation(); addToQueue(' + JSON.stringify(mountPath + '/' + file) + ')">+</button>';
+                                html += '</div>';
+                            }
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                    } else {
+                        html += '<div class="mount-contents">';
+                        html += '<div class="no-videos">No video files found</div>';
+                        html += '</div>';
+                    }
+                } else {
+                    html += '<div class="mount-contents">';
+                    html += '<div class="no-videos">No contents available</div>';
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+            mountsList.innerHTML = html;
+        }
+        
+        function groupFilesByYear(files, mountPath) {
+            var grouped = {};
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var year = '2023'; // Default year, could be extracted from filename or metadata
+                if (!grouped[year]) {
+                    grouped[year] = [];
+                }
+                grouped[year].push(file);
+            }
+            return grouped;
+        }
+        
+        function toggleYear(year) {
+            var yearFiles = document.getElementById('year-' + year);
+            if (yearFiles) {
+                yearFiles.style.display = yearFiles.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+        
+        function toggleAllFiles(mountPath) {
+            var yearFiles = document.querySelectorAll('.year-files');
+            yearFiles.forEach(function(element) {
+                element.style.display = 'block';
+            });
+        }
+        
+        function selectFile(filePath) {
+            var input = document.getElementById('transcription-file-path');
+            if (input) {
+                input.value = filePath;
+                validateFilePath(filePath);
+            }
+        }
+        
+        function addToQueue(filePath) {
+            // Add file to transcription queue
+            fetch('/api/tasks/trigger_transcription', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_path: filePath
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('File added to transcription queue: ' + filePath, 'success');
+                } else {
+                    showNotification('Error adding file to queue: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error adding file to queue: ' + error.message, 'error');
+            });
+        }
+        
+        function validateFilePath(filePath) {
+            var statusElement = document.getElementById('path-status');
+            var messageElement = document.getElementById('path-message');
+            
+            if (!filePath) {
+                statusElement.className = 'path-indicator';
+                messageElement.textContent = '';
+                return;
+            }
+            
+            // Basic validation - check if it looks like a video file path
+            var videoExtensions = /\.(mp4|avi|mov|mkv|wmv|flv|webm|mpeg|mpg)$/i;
+            if (videoExtensions.test(filePath)) {
+                statusElement.className = 'path-indicator valid';
+                messageElement.textContent = 'Valid video file path';
+            } else {
+                statusElement.className = 'path-indicator invalid';
+                messageElement.textContent = 'Invalid video file path';
+            }
+        }
+        
+        function triggerTranscription() {
+            var filePath = document.getElementById('transcription-file-path').value;
+            if (!filePath) {
+                showNotification('Please enter a file path', 'error');
+                return;
+            }
+            
+            fetch('/api/tasks/trigger_transcription', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_path: filePath
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Transcription started successfully', 'success');
+                    closeTranscriptionDialog();
+                } else {
+                    showNotification('Error starting transcription: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error starting transcription: ' + error.message, 'error');
+            });
+        }
+        
+        // Job control functions
+        function pauseJob(jobId) {
+            fetch('/api/queue/jobs/' + jobId + '/pause', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Job paused successfully', 'success');
+                        refreshQueueData();
+                    } else {
+                        showNotification('Error pausing job: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error pausing job: ' + error.message, 'error');
+                });
+        }
+        
+        function resumeJob(jobId) {
+            fetch('/api/queue/jobs/' + jobId + '/resume', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Job resumed successfully', 'success');
+                        refreshQueueData();
+                    } else {
+                        showNotification('Error resuming job: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error resuming job: ' + error.message, 'error');
+                });
+        }
+        
+        function stopJob(jobId) {
+            fetch('/api/queue/jobs/' + jobId + '/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Job stopped successfully', 'success');
+                        refreshQueueData();
+                    } else {
+                        showNotification('Error stopping job: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error stopping job: ' + error.message, 'error');
+                });
+        }
+        
+        function removeJob(jobId) {
+            fetch('/api/queue/jobs/' + jobId + '/remove', { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Job removed successfully', 'success');
+                        refreshQueueData();
+                    } else {
+                        showNotification('Error removing job: ' + data.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error removing job: ' + error.message, 'error');
+                });
+        }
+        """
     
     def run(self):
         """Run the dashboard server with SocketIO support."""
