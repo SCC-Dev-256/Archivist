@@ -123,7 +123,7 @@ class MonitoringIntegrationTester:
         for i in range(4):  # Should trigger circuit breaker
             try:
                 cb.call(failing_func)
-            except Exception:
+            except (ConnectionError, TimeoutError):
                 failure_count += 1
         
         status = cb.get_status()

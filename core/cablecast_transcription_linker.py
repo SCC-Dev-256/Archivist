@@ -210,7 +210,7 @@ class CablecastTranscriptionLinker:
             seconds = float(parts[2])
             
             return hours * 3600 + minutes * 60 + seconds
-        except Exception:
+        except (ValueError, IndexError):
             return 0.0
     
     def _extract_key_phrases(self, text: str, max_phrases: int = 10) -> List[str]:

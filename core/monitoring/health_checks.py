@@ -123,7 +123,7 @@ class StorageHealthChecker:
             stat = os.statvfs(path)
             free_bytes = stat.f_frsize * stat.f_bavail
             return free_bytes / (1024**3)  # Convert to GB
-        except Exception:
+        except (OSError, PermissionError):
             return None
 
     def check_all_storage(self) -> List[HealthCheckResult]:

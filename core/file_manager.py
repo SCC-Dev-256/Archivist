@@ -26,6 +26,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 import magic
+from loguru import logger
 
 from .config import FLEX_PATHS, LOCATIONS, MOUNT_POINTS, NAS_PATH
 
@@ -163,7 +164,7 @@ class FileManager:
             try:
                 metadata = self._get_video_metadata(full_path)
             except Exception as e:
-                print(f"Error getting video metadata: {e}")
+                logger.error(f"Error getting video metadata: {e}")
 
         # Determine which mount point this file belongs to
         mount_info = None
@@ -235,7 +236,7 @@ class FileManager:
             if result.returncode == 0:
                 return json.loads(result.stdout)
         except Exception as e:
-            print(f"Error getting video metadata: {e}")
+            logger.error(f"Error getting video metadata: {e}")
         return None
 
 

@@ -1177,7 +1177,7 @@ class IntegratedDashboard:
                 return (datetime.now() - job['started_at']).total_seconds()
             else:
                 return 0.0
-        except Exception:
+        except (TypeError, ValueError):
             return 0.0
     
     def _get_task_analytics(self) -> Dict[str, Any]:

@@ -10,15 +10,16 @@ This script starts the complete integrated system including:
 
 import os
 import sys
-import time
 import threading
+import time
 from pathlib import Path
+
+from loguru import logger
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent.parent  # Go up 3 levels: deployment -> scripts -> project root
 sys.path.insert(0, str(project_root))
 
-from loguru import logger
 from core.admin_ui import start_admin_ui
 from core.monitoring.integrated_dashboard import start_integrated_dashboard
 
@@ -138,8 +139,8 @@ def start_background_services():
 
 def main():
     """Main startup function."""
-    print("🚀 Starting Integrated VOD Processing System")
-    print("=" * 50)
+    logger.info("🚀 Starting Integrated VOD Processing System")
+    logger.info("=" * 50)
     
     # Setup logging
     setup_logging()
@@ -167,11 +168,13 @@ def main():
     logger.info(f"Admin UI will start on {admin_host}:{admin_port}")
     logger.info(f"Monitoring dashboard will be embedded on port {dashboard_port}")
     
-    print(f"\n📊 Admin UI: http://{admin_host}:{admin_port}")
-    print(f"📈 Monitoring Dashboard: http://localhost:{dashboard_port}")
-    print(f"📚 API Documentation: http://{admin_host}:{admin_port}/api/docs")
-    print(f"🔗 Unified Queue API: http://{admin_host}:{admin_port}/api/unified-queue/docs")
-    print("\n" + "=" * 50)
+    logger.info("")
+    logger.info(f"📊 Admin UI: http://{admin_host}:{admin_port}")
+    logger.info(f"📈 Monitoring Dashboard: http://localhost:{dashboard_port}")
+    logger.info(f"📚 API Documentation: http://{admin_host}:{admin_port}/api/docs")
+    logger.info(f"🔗 Unified Queue API: http://{admin_host}:{admin_port}/api/unified-queue/docs")
+    logger.info("")
+    logger.info("=" * 50)
     
     try:
         # Start the integrated admin UI

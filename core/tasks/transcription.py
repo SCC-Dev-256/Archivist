@@ -17,7 +17,7 @@ import os
 import time
 
 from core.tasks import celery_app
-from core.transcription import run_whisper_transcription as sync_transcribe
+from core.services import TranscriptionService
 
 
 @celery_app.task(name="transcription.run_whisper", bind=True)
@@ -82,9 +82,10 @@ def run_whisper_transcription(self, video_path: str) -> Dict:
             }
         )
         
-        # Perform transcription using synchronous helper
+        # Perform transcription using service layer
         logger.info(f"Task {task_id}: Starting transcription of {video_path}")
-        result = sync_transcribe(video_path=video_path)
+        service = TranscriptionService()
+        result = service.transcribe_file(video_path)
         
         # Update progress to completion
         self.update_state(
@@ -334,23 +335,21 @@ def enqueue_transcription(video_path: str, position: Optional[int] = None) -> st
     """
     Enqueue a transcription job (backward compatibility with RQ system).
     
-    This function provides a drop-in replacement for the RQ enqueue_transcription
-    function, allowing for seamless migration from RQ to Celery.
+    This function delegates to the service layer for proper queue management.
     
     Args:
         video_path: Path to the video file
-        position: Ignored (Celery doesn't support position-based queuing)
+        position: Optional position in queue
         
     Returns:
-        Celery task ID
+        Job ID
     """
-    logger.info(f"Enqueueing transcription for {video_path} via Celery")
+    logger.info(f"Enqueueing transcription for {video_path} via service layer")
     
-    # Submit Celery task
-    task = run_whisper_transcription.delay(video_path)
-    
-    logger.info(f"Transcription task submitted: {task.id}")
-    return task.id
+    # Use service layer for proper queue management
+    from core.services import QueueService
+    service = QueueService()
+    return service.enqueue_transcription(video_path, position)
 
 
 # Export for backward compatibility

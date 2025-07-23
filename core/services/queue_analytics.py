@@ -2,12 +2,13 @@
 Queue analytics service for tracking job performance and queue metrics.
 """
 
-import time
 import threading
-from datetime import datetime, timedelta
+import time
 from collections import defaultdict, deque
-from loguru import logger
+from datetime import datetime, timedelta
+
 import redis
+from loguru import logger
 
 class QueueAnalytics:
     """Track queue performance and job analytics."""
@@ -158,6 +159,10 @@ class QueueAnalytics:
                 max_duration = max(durations) if durations else 0
                 min_duration = min(durations) if durations else 0
                 
+                # Calculate recent average duration
+                recent_durations = [job.get('duration', 0) for job in recent_task_jobs if job.get('duration') is not None]
+                recent_avg_duration = sum(recent_durations) / len(recent_durations) if recent_durations else 0
+                
                 task_stats[task_name] = {
                     'total_jobs': len(task_jobs),
                     'recent_jobs': len(recent_task_jobs),
@@ -167,7 +172,7 @@ class QueueAnalytics:
                     'avg_duration': round(avg_duration, 2),
                     'max_duration': round(max_duration, 2),
                     'min_duration': round(min_duration, 2),
-                    'recent_avg_duration': 0  # TODO: Calculate from recent jobs
+                    'recent_avg_duration': round(recent_avg_duration, 2)
                 }
             
             # Overall statistics

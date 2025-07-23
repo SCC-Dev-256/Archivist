@@ -1,164 +1,179 @@
 #!/usr/bin/env python3
-"""
-Simple System Status Check
-Quick overview of VOD processing system components
-"""
+"""System status monitoring script for VOD processing system."""
 
-import json
 import os
 import sys
-import time
 from datetime import datetime
-from pathlib import Path
 
-# Add the project root to Python path
-sys.path.insert(0, str(Path(__file__).parent))
+import psutil
+from loguru import logger
+
+# Add the project root to the path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from core.services import VODService
 
 
 def check_flex_mounts():
-    """Check flex mount status"""
-    print("🔍 Checking Flex Mounts...")
-    mounts = [
-        "/mnt/flex-1",
-        "/mnt/flex-2",
-        "/mnt/flex-3",
-        "/mnt/flex-4",
-        "/mnt/flex-5",
-        "/mnt/flex-6",
-        "/mnt/flex-7",
-        "/mnt/flex-8",
-        "/mnt/flex-9",
+    """Check status of flex server mounts."""
+    logger.info("🔍 Checking Flex Mounts...")
+    
+    flex_mounts = [
+        '/mnt/flex-1', '/mnt/flex-2', '/mnt/flex-3', '/mnt/flex-4',
+        '/mnt/flex-5', '/mnt/flex-6', '/mnt/flex-7', '/mnt/flex-8', '/mnt/flex-9'
     ]
-
-    working = 0
-    for mount in mounts:
+    
+    working_mounts = 0
+    total_mounts = len(flex_mounts)
+    
+    for mount in flex_mounts:
         try:
             if os.path.ismount(mount):
-                test_file = f"{mount}/status_test_{int(time.time())}.txt"
-                with open(test_file, "w") as f:
-                    f.write("test")
-                os.remove(test_file)
-                print(f"✅ {mount}: Working")
-                working += 1
+                # Test write access
+                test_file = os.path.join(mount, '.test_write')
+                try:
+                    with open(test_file, 'w') as f:
+                        f.write('test')
+                    os.remove(test_file)
+                    logger.success(f"{mount}: Working")
+                    working_mounts += 1
+                except (OSError, IOError):
+                    logger.warning(f"{mount}: Mounted but no write access")
             else:
-                print(f"❌ {mount}: Not mounted")
+                logger.error(f"{mount}: Not mounted")
         except Exception as e:
-            print(f"❌ {mount}: Error - {e}")
-
-    return working, len(mounts)
+            logger.error(f"{mount}: Error - {e}")
+    
+    return working_mounts, total_mounts
 
 
 def check_celery():
-    """Check Celery status"""
-    print("\n🔍 Checking Celery...")
+    """Check Celery and Redis status."""
+    logger.info("🔍 Checking Celery...")
+    
     try:
-        import redis
-
-        r = redis.Redis(host="localhost", port=6379, db=0)
-
+        from core.tasks import celery_app
+        from celery import current_app
+        
         # Check Redis connection
-        r.ping()
-        print("✅ Redis: Connected")
-
+        redis_client = current_app.connection()
+        redis_client.ensure_connection()
+        logger.success("Redis: Connected")
+        
         # Check Celery workers
-        workers = r.smembers("celery:workers")
-        print(f"✅ Celery Workers: {len(workers)} active")
-
+        i = current_app.control.inspect()
+        workers = i.active()
+        if workers:
+            logger.success(f"Celery Workers: {len(workers)} active")
+        else:
+            logger.warning("Celery Workers: No active workers found")
+        
         # Check recent tasks
-        task_keys = r.keys("celery:task-meta-*")
-        print(f"✅ Recent Tasks: {len(task_keys)} found")
-
+        task_keys = redis_client.client.keys('celery-task-meta-*')
+        logger.info(f"Recent Tasks: {len(task_keys)} found")
+        
         return True
+        
     except Exception as e:
-        print(f"❌ Celery/Redis Error: {e}")
+        logger.error(f"Celery/Redis Error: {e}")
         return False
 
 
-def check_cablecast():
-    """Check Cablecast API"""
-    print("\n🔍 Checking Cablecast API...")
+def check_cablecast_api():
+    """Check Cablecast API connection."""
+    logger.info("🔍 Checking Cablecast API...")
+    
     try:
-        from core.cablecast_client import CablecastAPIClient
-
-        client = CablecastAPIClient()
-
-        if client.test_connection():
-            print("✅ Cablecast API: Connected")
+        vod_service = VODService()
+        if vod_service.test_connection():
+            logger.success("Cablecast API: Connected")
             return True
         else:
-            print("❌ Cablecast API: Connection failed")
+            logger.error("Cablecast API: Connection failed")
             return False
     except Exception as e:
-        print(f"❌ Cablecast API Error: {e}")
+        logger.error(f"Cablecast API Error: {e}")
         return False
 
 
 def check_system_resources():
-    """Check system resources"""
-    print("\n🔍 Checking System Resources...")
+    """Check system resource usage."""
+    logger.info("🔍 Checking System Resources...")
+    
     try:
-        import psutil
-
-        cpu = psutil.cpu_percent()
+        # CPU usage
+        cpu = psutil.cpu_percent(interval=1)
+        logger.info(f"CPU Usage: {cpu}%")
+        
+        # Memory usage
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage("/")
-
-        print(f"✅ CPU Usage: {cpu}%")
-        print(
-            f"✅ Memory Usage: {memory.percent}% ({memory.used // (1024**3)}GB / {memory.total // (1024**3)}GB)"
-        )
-        print(
-            f"✅ Disk Usage: {disk.percent}% ({disk.used // (1024**3)}GB / {disk.total // (1024**3)}GB)"
-        )
-
-        return True
+        logger.info(f"Memory Usage: {memory.percent}% ({memory.used // (1024**3)}GB / {memory.total // (1024**3)}GB)")
+        
+        # Disk usage
+        disk = psutil.disk_usage('/')
+        logger.info(f"Disk Usage: {disk.percent}% ({disk.used // (1024**3)}GB / {disk.total // (1024**3)}GB)")
+        
+        # Check if resources are within acceptable limits
+        if cpu < 80 and memory.percent < 85 and disk.percent < 90:
+            logger.success("System Resources: Within acceptable limits")
+            return True
+        else:
+            logger.warning("System Resources: Some metrics above thresholds")
+            return True  # Still operational, just warning
+            
     except Exception as e:
-        print(f"❌ System Resources Error: {e}")
+        logger.error(f"System Resources Error: {e}")
         return False
 
 
 def main():
-    """Run all checks"""
-    print("🚀 VOD Processing System Status Check")
-    print("=" * 50)
-    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print()
-
-    # Check flex mounts
-    working_mounts, total_mounts = check_flex_mounts()
-
-    # Check Celery
-    celery_ok = check_celery()
-
-    # Check Cablecast
-    cablecast_ok = check_cablecast()
-
-    # Check system resources
-    system_ok = check_system_resources()
-
-    # Summary
-    print("\n" + "=" * 50)
-    print("📊 STATUS SUMMARY")
-    print("=" * 50)
-    print(f"Flex Mounts: {working_mounts}/{total_mounts} working")
-    print(f"Celery/Redis: {'✅ OK' if celery_ok else '❌ FAILED'}")
-    print(f"Cablecast API: {'✅ OK' if cablecast_ok else '❌ FAILED'}")
-    print(f"System Resources: {'✅ OK' if system_ok else '❌ FAILED'}")
-
-    # Overall status
-    if working_mounts >= 5 and celery_ok and cablecast_ok and system_ok:
-        print("\n🎉 SYSTEM STATUS: OPERATIONAL")
-        print("   VOD processing system is ready for production use.")
-    elif working_mounts >= 3 and celery_ok:
-        print("\n⚠️  SYSTEM STATUS: PARTIALLY OPERATIONAL")
-        print("   System can process VODs but some components need attention.")
-    else:
-        print("\n❌ SYSTEM STATUS: DEGRADED")
-        print("   System needs immediate attention before production use.")
-
-    print(f"\n📊 Dashboard: http://localhost:5051")
-    print(f"📋 Logs: /opt/Archivist/logs/archivist.log")
+    """Main status check function."""
+    logger.info("🚀 VOD Processing System Status Check")
+    logger.info("=" * 50)
+    logger.info(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("")
+    
+    # Run all checks
+    try:
+        working_mounts, total_mounts = check_flex_mounts()
+        celery_ok = check_celery()
+        cablecast_ok = check_cablecast_api()
+        system_ok = check_system_resources()
+        
+        # Calculate overall status
+        mount_ratio = working_mounts / total_mounts if total_mounts > 0 else 0
+        operational_components = sum([mount_ratio >= 0.5, celery_ok, cablecast_ok, system_ok])
+        
+        logger.info("")
+        logger.info("=" * 50)
+        logger.info("📊 STATUS SUMMARY")
+        logger.info("=" * 50)
+        logger.info(f"Flex Mounts: {working_mounts}/{total_mounts} working")
+        logger.info(f"Celery/Redis: {'✅ OK' if celery_ok else '❌ FAILED'}")
+        logger.info(f"Cablecast API: {'✅ OK' if cablecast_ok else '❌ FAILED'}")
+        logger.info(f"System Resources: {'✅ OK' if system_ok else '❌ FAILED'}")
+        
+        # Determine overall status
+        if operational_components >= 3:
+            logger.success("🎉 SYSTEM STATUS: OPERATIONAL")
+            logger.info("   VOD processing system is ready for production use.")
+        elif operational_components >= 2:
+            logger.warning("⚠️  SYSTEM STATUS: PARTIALLY OPERATIONAL")
+            logger.info("   System can process VODs but some components need attention.")
+        else:
+            logger.error("❌ SYSTEM STATUS: DEGRADED")
+            logger.info("   System needs immediate attention before production use.")
+        
+        logger.info("")
+        logger.info(f"📊 Dashboard: http://localhost:5051")
+        logger.info(f"📋 Logs: /opt/Archivist/logs/archivist.log")
+        
+        return 0 if operational_components >= 3 else 1
+        
+    except Exception as e:
+        logger.error(f"Status check failed: {e}")
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

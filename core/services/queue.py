@@ -22,7 +22,7 @@ from typing import Dict, List, Optional
 from celery.result import AsyncResult
 from core.exceptions import QueueError
 from core.tasks import celery_app
-from core.tasks import transcription as transcription_tasks
+from core.tasks.transcription import run_whisper_transcription
 from loguru import logger
 
 
@@ -49,7 +49,9 @@ class QueueService:
             if not os.path.exists(video_path):
                 raise QueueError(f"Video file not found: {video_path}")
 
-            job_id = transcription_tasks.enqueue_transcription(video_path, position)
+            # Submit Celery task directly
+            task = run_whisper_transcription.delay(video_path)
+            job_id = task.id
             logger.info(f"Enqueued transcription job {job_id} for {video_path}")
             return job_id
 

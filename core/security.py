@@ -392,7 +392,7 @@ class SecurityManager:
             full_path = os.path.join(normalized_base, normalized_path)
             return os.path.commonpath([full_path, normalized_base]) == normalized_base
             
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error(f"Path validation error: {e}")
             return False
     

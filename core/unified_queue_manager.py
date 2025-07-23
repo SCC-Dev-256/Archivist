@@ -562,7 +562,7 @@ class UnifiedQueueManager:
                             'timestamp': datetime.now()
                         }
                     time.sleep(30)  # Refresh every 30 seconds
-                except Exception as e:
+                except (RedisError, ConnectionError) as e:
                     logger.error(f"Error refreshing cache: {e}")
                     time.sleep(60)  # Wait longer on error
         

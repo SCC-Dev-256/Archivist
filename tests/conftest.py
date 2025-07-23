@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 try:
     from core.app import create_app
-except Exception:  # pragma: no cover - fallback for missing deps
+except ImportError:  # pragma: no cover - fallback for missing deps
     from unittest.mock import MagicMock
 
     def create_app(*args, **kwargs):
@@ -13,7 +13,7 @@ except Exception:  # pragma: no cover - fallback for missing deps
 
 try:
     from core.logging_config import setup_logging
-except Exception:
+except ImportError:
     import logging
 
     def setup_logging(*args, **kwargs):
