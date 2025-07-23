@@ -45,9 +45,10 @@ class TranscriptionService:
             raise TranscriptionError(f"File not found: {file_path}")
         logger.info(f"Starting transcription of {file_path}")
         try:
-            from core.transcription import run_whisper_transcription
+            # Call the direct transcription function to avoid circular imports
+            from core.transcription import _transcribe_with_faster_whisper
 
-            result = run_whisper_transcription(video_path=file_path)
+            result = _transcribe_with_faster_whisper(file_path)
             output_path = result.get('srt_path') or result.get('output_path', '')
             return {
                 'output_path': output_path,

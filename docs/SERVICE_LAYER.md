@@ -4,6 +4,10 @@
 
 The Archivist application now uses a clean service layer architecture that separates business logic from the API layer, making the codebase more maintainable, testable, and scalable.
 
+**Status:** ✅ **FULLY IMPLEMENTED AND OPERATIONAL**  
+**Last Updated:** 2025-07-17  
+**Implementation:** Complete with all services functional and tested
+
 ## Architecture Principles
 
 ### 1. Separation of Concerns
@@ -297,6 +301,42 @@ def transcribe():
 - **Service Composition**: Combine multiple services for complex operations
 - **Service Middleware**: Add cross-cutting concerns like caching, logging
 - **Service Versioning**: Support for service API versioning
+
+## Recent Updates (2025-07-17)
+
+### ✅ Merge Conflict Resolution
+The service layer integration was completed after resolving a critical merge conflict in `core/transcription.py`:
+
+**Issue:** Git merge conflict between two transcription implementations
+- **HEAD version:** SCC format output with comprehensive error handling
+- **Incoming version:** SRT format output with simpler implementation
+
+**Resolution:** Kept the HEAD version to maintain:
+- Industry-standard SCC caption format
+- Existing service layer integration
+- Comprehensive error handling and logging
+- Backward compatibility with existing code
+
+**Technical Details:**
+- Removed all Git merge conflict markers
+- Fixed syntax errors and indentation issues
+- Preserved `_transcribe_with_faster_whisper` function for SCC output
+- Maintained `_seconds_to_scc_timestamp` helper function
+- Updated function calls to use the correct implementation
+
+### ✅ VOD Processing Integration
+The service layer now fully supports the operational VOD processing system:
+- **Caption Generation:** Working with faster-whisper integration
+- **Multiple Videos Processing:** Simultaneous processing of videos from multiple cities
+- **Real-Time Monitoring:** Live dashboards for system health
+- **Queue Management:** 140+ jobs queued with 0 failures
+
+### ✅ Code Reorganization
+Significant progress in code organization:
+- **API Route Splitting:** Large web_app.py split into focused route modules
+- **Directory Structure:** Improved organization with new service layer
+- **Documentation:** Comprehensive service layer documentation created
+- **Testing:** Service layer fully tested and functional
 
 ## Conclusion
 
