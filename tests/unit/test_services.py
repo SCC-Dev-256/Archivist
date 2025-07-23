@@ -8,6 +8,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from core.services import TranscriptionService, VODService, FileService, QueueService
 from core.exceptions import TranscriptionError, VODError, FileError, QueueError
+from core.config import OUTPUT_DIR
 
 class TestTranscriptionService:
     """Test the TranscriptionService."""
@@ -20,14 +21,13 @@ class TestTranscriptionService:
         assert hasattr(service, 'use_gpu')
         assert hasattr(service, 'language')
     
-    @patch('core.transcription.run_whisper_transcription')
+    @patch('core.whisperx_helper.transcribe_with_whisperx')
     @patch('os.path.exists')
     def test_transcribe_file_success(self, mock_exists, mock_transcribe):
         """Test successful transcription."""
         mock_exists.return_value = True
         mock_transcribe.return_value = {
-            'success': True,
-            'srt_path': '/path/to/output.srt',
+            'output_path': '/path/to/output.srt',
             'segments': 10,
             'duration': 120.5
         }
@@ -39,7 +39,7 @@ class TestTranscriptionService:
         assert result['status'] == 'completed'
         assert result['segments'] == 10
         assert result['duration'] == 120.5
-        mock_transcribe.assert_called_once_with(video_path='/path/to/video.mp4')
+        mock_transcribe.assert_called_once_with('/path/to/video.mp4', OUTPUT_DIR)
     
     def test_transcribe_file_not_found(self):
         """Test transcription with non-existent file."""

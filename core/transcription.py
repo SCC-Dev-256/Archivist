@@ -166,9 +166,7 @@ def run_whisper_transcription(*args, **kwargs):
         raise ValueError("video_path is required")
 
     try:
-        # If we already run inside a Celery worker, run transcription directly to
-        # prevent spawning a nested task.
-        if current_task and getattr(current_task, "request", None):
+        if current_task:
             logger.debug(
                 "Running transcription directly inside Celery worker for %s",
                 video_path,
