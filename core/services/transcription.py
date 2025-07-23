@@ -45,9 +45,6 @@ class TranscriptionService:
             raise TranscriptionError(f"File not found: {file_path}")
         logger.info(f"Starting transcription of {file_path}")
         try:
-            from core.whisperx_helper import transcribe_with_whisperx
-
-            result = transcribe_with_whisperx(file_path, output_dir or OUTPUT_DIR)
             return {
                 'output_path': result.get('output_path', ''),
                 'status': 'completed',

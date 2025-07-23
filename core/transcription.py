@@ -1,9 +1,11 @@
 """Synchronous wrapper for the Celery WhisperX transcription task."""
 
+import os
+import subprocess
+import tempfile
+from typing import Dict
 from loguru import logger
 from celery import current_task
-from .whisperx_helper import save_scc_file
-
 
 def run_whisper_transcription(*args, **kwargs):
     """Run WhisperX transcription and return the resulting SCC path.
@@ -11,8 +13,8 @@ def run_whisper_transcription(*args, **kwargs):
     This helper submits the ``transcription.run_whisper`` Celery task and
     blocks until the task completes.  When called from within an existing
     Celery worker (``current_task`` is available), the transcription is
-    performed directly via :class:`~core.services.transcription.TranscriptionService`
-    to avoid dispatching a nested Celery task.
+    performed directly via faster-whisper to avoid dispatching a nested
+    Celery task.
 
     Parameters
     ----------
@@ -23,7 +25,7 @@ def run_whisper_transcription(*args, **kwargs):
     Returns
     -------
     Dict
-        Result dictionary produced by the Celery task or service layer.  The
+        Result dictionary produced by the Celery task or direct transcription.  The
         ``output_path`` key contains the path to the generated SCC file.
     """
 
@@ -35,16 +37,11 @@ def run_whisper_transcription(*args, **kwargs):
         raise ValueError("video_path is required")
 
     try:
-        # If we already run inside a Celery worker, run the service directly to
-        # prevent spawning a nested task.
-        if current_task and getattr(current_task, "request", None):
-            from core.services.transcription import TranscriptionService
-
             logger.debug(
-                "Running transcription synchronously inside Celery worker for %s",
+                "Running transcription directly inside Celery worker for %s",
                 video_path,
             )
-            return TranscriptionService().transcribe_file(video_path)
+            return _transcribe_with_faster_whisper(video_path)
 
         # Otherwise dispatch the Celery task and wait for completion.
         from core.tasks.transcription import run_whisper_transcription as task
@@ -56,9 +53,7 @@ def run_whisper_transcription(*args, **kwargs):
         return async_result.get(timeout=3600)
     except Exception as exc:  # pragma: no cover - fallback path
         logger.error(
-            "Celery transcription failed (%s); falling back to direct service", exc
+            "Celery transcription failed (%s); falling back to direct transcription", exc
         )
-        from core.services.transcription import TranscriptionService
-
-        return TranscriptionService().transcribe_file(video_path)
+        return _transcribe_with_faster_whisper(video_path)
 

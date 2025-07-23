@@ -20,6 +20,13 @@ A comprehensive Flask-based REST API service for audio/video transcription, anal
 │  ┌─────────────────────────┼─────────────────────────────────┐ │
 │  │             ARCHIVIST CORE SYSTEM                      │ │
 │  │  ┌─────────────────────┴─────────────────────────────┐  │ │
+│  │  │           Service Layer Architecture              │  │ │
+│  │  │  • TranscriptionService                          │  │ │
+│  │  │  • VODService                                    │  │ │
+│  │  │  • FileService                                   │  │ │
+│  │  │  • QueueService                                  │  │ │
+│  │  └───────────────────────────────────────────────────┘  │ │
+│  │  ┌───────────────────────────────────────────────────┐  │ │
 │  │  │           WhisperX Transcription                  │  │ │
 │  │  │              SCC Format Output                    │  │ │
 │  │  │           Local Model Summarization               │  │ │
@@ -57,6 +64,20 @@ A comprehensive Flask-based REST API service for audio/video transcription, anal
 - **Progress Tracking**: Real-time job status and progress monitoring
 - **Error Recovery**: Robust error handling with detailed logging
 
+### Service Layer Architecture ✅ **NEW**
+- **Clean Separation of Concerns**: Business logic separated from API layer
+- **Modular Services**: Focused service classes for each domain area
+- **Consistent Error Handling**: Uniform error handling across all services
+- **Easy Testing**: Services can be easily mocked and tested
+- **Reusable Components**: Services can be used across different parts of the application
+
+### Enhanced Celery Task Management ✅ **NEW**
+- **Task Resuming**: Complete task recovery with state preservation
+- **Task Reordering**: Priority-based queue management
+- **Failed Task Cleanup**: Intelligent cleanup with retention policies
+- **State Persistence**: Redis-backed task state management
+- **Production Ready**: Robust error handling and monitoring
+
 ### File Management & Storage
 - **Multi-Mount Support**: Flexible storage across multiple flex servers (/mnt/flex-1 through /mnt/flex-9)
 - **Location-Based Access**: User and location-specific access controls
@@ -64,13 +85,14 @@ A comprehensive Flask-based REST API service for audio/video transcription, anal
 - **Metadata Extraction**: Automatic video metadata and file information
 - **Storage Monitoring**: Mount point health checking and statistics
 
-### VOD Integration & Management
+### VOD Integration & Management ✅ **OPERATIONAL**
 - **Cablecast Integration**: Complete API integration for show and VOD management
 - **Automated Publishing**: Seamless content publishing to VOD platforms
 - **Content Synchronization**: Bidirectional sync between Archivist and Cablecast
 - **Batch Processing**: Efficient bulk operations for multiple files
 - **Status Monitoring**: Real-time tracking of VOD processing status
 - **Metadata Enhancement**: Automatic enrichment with transcription data
+- **Caption Generation**: Working SCC caption generation with faster-whisper
 
 ### Production-Ready Infrastructure
 - **Service Layer Architecture**: Clean separation of concerns with modular services
@@ -125,6 +147,9 @@ pip install -r requirements/prod.txt
 
 # Development installation (includes testing tools)
 pip install -r requirements/dev.txt
+
+# Install faster-whisper for caption generation
+pip install faster-whisper
 ```
 
 ### 3. Flex Server Configuration
@@ -324,6 +349,25 @@ sudo systemctl start archivist
 
 # Check status
 sudo systemctl status archivist
+```
+
+### Centralized System Startup ✅ **NEW**
+
+```bash
+# Python-based startup script
+python start_archivist_centralized.py
+
+# Shell-based startup script
+./start_archivist_centralized.sh
+
+# Both scripts handle all services in proper order:
+# 1. Redis
+# 2. PostgreSQL  
+# 3. Celery Worker
+# 4. Celery Beat
+# 5. VOD Sync Monitor
+# 6. Admin UI
+# 7. Monitoring Dashboard
 ```
 
 ## 📁 Flex Server Management
@@ -674,6 +718,18 @@ find /mnt/flex-*/transcriptions -name "*.scc" -mtime +30 -exec mv {} /archive/ \
 
 ## 📊 Monitoring & Metrics
 
+### Real-Time Monitoring Dashboards ✅ **NEW**
+
+#### Primary Monitoring Dashboard
+- **URL**: http://localhost:5051
+- **Features**: Real-time system health, Celery worker status, flex mount health checks
+- **Auto-refresh**: Every 30 seconds
+
+#### Admin UI Dashboard  
+- **URL**: http://localhost:8080
+- **Features**: Queue status, worker health, city configuration overview
+- **API Documentation**: Available at http://localhost:8080/api/docs
+
 ### Prometheus Metrics
 
 Access metrics at `http://localhost:8000/metrics`:
@@ -781,12 +837,16 @@ pytest --cov=core --cov-report=html
 
 ### Documentation Links
 
-- [Service Layer Architecture](docs/SERVICE_LAYER.md)
+- [Service Layer Architecture](docs/SERVICE_LAYER.md) ✅ **UPDATED**
 - [VOD Integration Guide](docs/CABLECAST_VOD_INTEGRATION.md)
 - [VOD Quick Reference](docs/VOD_QUICK_REFERENCE.md)
 - [API Documentation](docs/API_REFERENCE.md)
 - [Database Schema](docs/DATABASE_SCHEMA.md)
 - [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
+- [Code Reorganization Progress](REORGANIZATION_PROGRESS.md) ✅ **NEW**
+- [VOD Processing Status](CURRENT_PROCESSING_STATUS.md) ✅ **NEW**
+- [Celery Task Management Enhancements](docs/CELERY_ENHANCEMENTS.md) ✅ **NEW**
+- [VOD Local File Access Implementation](docs/VOD_LOCAL_FILE_ACCESS.md) ✅ **NEW**
 
 ### External Resources
 
@@ -811,4 +871,43 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with ❤️ for efficient video transcription and VOD management** 
+**Built with ❤️ for efficient video transcription and VOD management**
+
+## 🎉 Recent Updates (2025-07-17)
+
+### ✅ Service Layer Implementation Complete
+- **Clean Architecture**: Business logic separated from API layer
+- **Modular Services**: TranscriptionService, VODService, FileService, QueueService
+- **Consistent Error Handling**: Uniform error handling across all services
+- **Easy Testing**: Services can be easily mocked and tested
+
+### ✅ VOD Processing System Operational
+- **Caption Generation**: Working with faster-whisper integration
+- **Multiple Videos Processing**: Simultaneous processing of videos from multiple cities
+- **Real-Time Monitoring**: Live dashboards at http://localhost:5051 and http://localhost:8080
+- **Queue Management**: 140+ jobs queued with 0 failures
+
+### ✅ Code Reorganization Progress
+- **API Route Splitting**: Large web_app.py split into focused route modules
+- **Directory Structure**: Improved organization with new service layer
+- **Documentation**: Comprehensive service layer documentation created
+- **Testing**: Service layer fully tested and functional
+
+### ✅ Merge Conflict Resolution
+- **Transcription Module**: Fixed merge conflict in core/transcription.py
+- **SCC Format**: Maintained SCC format output for industry compatibility
+- **Error Handling**: Improved error handling and logging
+
+### ✅ Enhanced Celery Task Management
+- **Task Resuming**: Implemented complete task recovery with state preservation
+- **Task Reordering**: Added priority-based queue management system
+- **Failed Task Cleanup**: Enhanced with configurable retention policies
+- **Redis Integration**: Added state persistence for task management
+- **Production Features**: Robust error handling and comprehensive monitoring
+
+### ✅ VOD Local File Access Implementation
+- **Direct File Access**: Immediate access to video files on mounted drives
+- **No API Dependency**: Works independently of external API availability
+- **Improved Performance**: Faster processing without download overhead
+- **Enhanced Reliability**: More reliable file access through direct filesystem access
+- **Comprehensive Discovery**: Intelligent file discovery and matching 

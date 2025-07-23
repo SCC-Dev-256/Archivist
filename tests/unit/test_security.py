@@ -17,13 +17,13 @@ import os
 import tempfile
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
-from flask import Flask
+from flask import Flask, jsonify
 from werkzeug.datastructures import FileStorage
 from io import BytesIO
 
 from core.security import (
-    SecurityManager, security_manager, validate_json_input, 
-    sanitize_output, require_csrf_token
+    SecurityManager, security_manager, validate_json_input,
+    sanitize_output, require_csrf_token, get_csrf_token
 )
 from core.models import (
     BrowseRequest, TranscribeRequest, QueueReorderRequest,
@@ -307,12 +307,30 @@ class TestRateLimiting:
 
 class TestCSRFProtection:
     """Test CSRF protection implementation."""
-    
+
     def test_csrf_token_required(self, client):
         """Test that CSRF tokens are required for state-changing operations."""
-        # This would require a proper CSRF token in a real implementation
-        # For now, we test that the decorator is applied
-        pass
+        app = client.application
+
+        @app.route('/protected', methods=['POST'])
+        @require_csrf_token
+        def protected():
+            return jsonify({'message': 'ok'})
+
+        # Request without CSRF token should be blocked
+        response = client.post('/protected')
+        assert response.status_code == 400
+
+        # Request with invalid token should also be blocked
+        response = client.post('/protected', headers={'X-CSRF-Token': 'invalid'})
+        assert response.status_code == 400
+
+        # Request with valid token should succeed
+        with app.test_request_context():
+            token = get_csrf_token()
+        response = client.post('/protected', headers={'X-CSRF-Token': token})
+        assert response.status_code == 200
+        assert response.get_json()['message'] == 'ok'
 
 class TestErrorHandling:
     """Test error handling and information disclosure prevention."""

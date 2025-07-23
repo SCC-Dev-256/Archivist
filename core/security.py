@@ -430,8 +430,20 @@ def require_csrf_token(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if request.method != 'GET':
-            # CSRF protection is handled by Flask-WTF and security middleware
-            pass
+            csrf_token = (
+                request.headers.get('X-CSRF-Token')
+                or request.headers.get('X-XSRF-TOKEN')
+                or request.form.get('csrf_token')
+                or request.args.get('csrf_token')
+            )
+
+            if not csrf_token:
+                abort(400, description="CSRF token required")
+
+            try:
+                validate_csrf(csrf_token)
+            except Exception:
+                abort(400, description="Invalid CSRF token")
         return f(*args, **kwargs)
     return decorated_function
 

@@ -130,10 +130,101 @@ def download_vod_content(vod_url: str, output_path: str, timeout: int = 1800) ->
         raise  # Let tenacity handle the retry
 
 def get_vod_file_path(vod_data: Dict) -> Optional[str]:
-    """Extract file path from VOD data, including direct URL download and storage checks."""
+    """Get VOD file path from local mounted drives or download if necessary.
+    
+    This function prioritizes local file access from mounted flex servers
+    over downloading from Cablecast API URLs.
+    """
+    vod_id = vod_data.get('id', 'unknown')
+    
+    # First, check for local file paths on mounted drives
+    local_paths = [
+        vod_data.get('file_path'),
+        vod_data.get('local_path'),
+        vod_data.get('mount_path'),
+        vod_data.get('flex_path')
+    ]
+    
+    # Add common flex server paths
+    for city_id, city_config in MEMBER_CITIES.items():
+        mount_path = city_config.get('mount_path', f'/mnt/{city_id}')
+        if mount_path and os.path.ismount(mount_path):
+            # Check for VOD files in common directories
+            vod_dirs = [
+                os.path.join(mount_path, 'videos'),
+                os.path.join(mount_path, 'vod_content'),
+                os.path.join(mount_path, 'city_council'),
+                os.path.join(mount_path, 'meetings'),
+                os.path.join(mount_path, 'content'),
+                mount_path  # Root directory
+            ]
+            
+            for vod_dir in vod_dirs:
+                if os.path.exists(vod_dir):
+                    # Look for files that might match this VOD
+                    possible_files = [
+                        f"{vod_id}.mp4",
+                        f"{vod_id}.mov",
+                        f"{vod_id}.avi",
+                        f"{vod_id}.mkv",
+                        f"vod_{vod_id}.mp4",
+                        f"VOD_{vod_id}.mp4"
+                    ]
+                    
+                    # Also check for files with title-based names
+                    title = vod_data.get('title', '').replace(' ', '_').replace('/', '_')
+                    if title:
+                        possible_files.extend([
+                            f"{title}.mp4",
+                            f"{title}.mov",
+                            f"{title}.avi",
+                            f"{title}.mkv"
+                        ])
+                    
+                    for filename in possible_files:
+                        file_path = os.path.join(vod_dir, filename)
+                        if os.path.exists(file_path) and os.access(file_path, os.R_OK):
+                            logger.info(f"Found VOD file on mounted drive: {file_path}")
+                            return file_path
+                    
+                    # Search recursively for video files that might match
+                    try:
+                        for root, dirs, files in os.walk(vod_dir):
+                            for file in files:
+                                if file.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.m4v')):
+                                    file_path = os.path.join(root, file)
+                                    # Check if this file might be our VOD
+                                    if (str(vod_id) in file or 
+                                        title.lower() in file.lower() or
+                                        vod_data.get('title', '').lower() in file.lower()):
+                                        if os.access(file_path, os.R_OK):
+                                            logger.info(f"Found matching VOD file: {file_path}")
+                                            return file_path
+                    except OSError as e:
+                        logger.warning(f"Error searching directory {vod_dir}: {e}")
+                        continue
+    
+    # Add local paths to the search list
+    local_paths.extend([
+        f"/mnt/vod/{vod_id}.mp4",
+        f"/mnt/vod/{vod_data.get('filename')}",
+        f"/mnt/vod/{vod_data.get('title', '').replace(' ', '_')}.mp4"
+    ])
+    
+    # Check all local paths first
+    for path in local_paths:
+        if path and os.path.exists(path):
+            if not os.access(path, os.R_OK):
+                logger.error(f"File exists but not readable: {path}")
+                send_alert("error", f"File exists but not readable: {path}")
+                continue
+            logger.info(f"Using local VOD file: {path}")
+            return path
+    
+    # Only attempt download if no local file is found
     vod_url = extract_vod_url_from_cablecast(vod_data)
     if vod_url:
-        vod_id = vod_data.get('id', 'unknown')
+        logger.info(f"No local file found, attempting download from: {vod_url}")
         temp_dir = "/tmp/vod_downloads"
         # Storage check
         if not os.path.exists(temp_dir):
@@ -157,19 +248,8 @@ def get_vod_file_path(vod_data: Dict) -> Optional[str]:
             logger.error(f"Download failed after retries: {e}")
             send_alert("error", f"Download failed after retries: {e}", vod_url=vod_url)
             return None
-    possible_paths = [
-        vod_data.get('file_path'),
-        vod_data.get('local_path'),
-        f"/mnt/vod/{vod_data.get('id')}.mp4",
-        f"/mnt/vod/{vod_data.get('filename')}"
-    ]
-    for path in possible_paths:
-        if path and os.path.exists(path):
-            if not os.access(path, os.R_OK):
-                logger.error(f"File exists but not readable: {path}")
-                send_alert("error", f"File exists but not readable: {path}")
-                continue
-            return path
+    
+    logger.warning(f"No VOD file found for VOD {vod_id} on any mounted drive or via download")
     return None
 
 def validate_video_file(video_path: str) -> bool:
@@ -369,6 +449,9 @@ def process_recent_vods() -> Dict[str, Any]:
 def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int = 5) -> List[Dict]:
     """Get recent VOD files from flex server mount point.
     
+    This function scans mounted flex servers for video files and creates
+    VOD entries that can be processed locally without downloading from Cablecast.
+    
     Args:
         mount_path: Path to flex server mount
         city_id: Member city ID
@@ -382,12 +465,24 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
     vod_files = []
     
     try:
+        # Check if mount is accessible
+        if not os.path.ismount(mount_path):
+            logger.warning(f"Mount point {mount_path} is not mounted")
+            return []
+        
+        if not os.access(mount_path, os.R_OK):
+            logger.warning(f"Mount point {mount_path} is not readable")
+            return []
+        
         # Look for video files in common directories
         video_dirs = [
             os.path.join(mount_path, 'videos'),
             os.path.join(mount_path, 'vod_content'),
             os.path.join(mount_path, 'city_council'),
             os.path.join(mount_path, 'meetings'),
+            os.path.join(mount_path, 'content'),
+            os.path.join(mount_path, 'recordings'),
+            os.path.join(mount_path, 'broadcasts'),
             mount_path  # Root directory
         ]
         
@@ -398,16 +493,20 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
                 # Find video files (recursive search)
                 for root, dirs, files in os.walk(video_dir):
                     for file in files:
-                        if file.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.m4v')):
+                        if file.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.m4v', '.wmv')):
                             file_path = os.path.join(root, file)
                             
-                            # Get file stats
+                            # Skip files that are too small (likely not complete videos)
                             try:
                                 stat = os.stat(file_path)
                                 file_size = stat.st_size
                                 mod_time = stat.st_mtime
                                 
-                                # Create VOD entry
+                                # Skip files smaller than 1MB (likely not videos)
+                                if file_size < 1024 * 1024:
+                                    continue
+                                
+                                # Create VOD entry with more detailed information
                                 vod_entry = {
                                     'id': f"flex_{city_id}_{len(vod_files)}",
                                     'title': os.path.splitext(file)[0],
@@ -415,22 +514,25 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
                                     'file_size': file_size,
                                     'modified_time': mod_time,
                                     'source': 'flex_server',
-                                    'city_id': city_id
+                                    'city_id': city_id,
+                                    'relative_path': os.path.relpath(file_path, mount_path),
+                                    'directory': os.path.basename(os.path.dirname(file_path)),
+                                    'extension': os.path.splitext(file)[1].lower()
                                 }
                                 
                                 vod_files.append(vod_entry)
                                 
-                                if len(vod_files) >= limit * 2:  # Get more than needed for filtering
+                                if len(vod_files) >= limit * 3:  # Get more than needed for filtering
                                     break
                                     
                             except OSError as e:
                                 logger.warning(f"Error accessing file {file_path}: {e}")
                                 continue
                     
-                    if len(vod_files) >= limit * 2:
+                    if len(vod_files) >= limit * 3:
                         break
                         
-                if len(vod_files) >= limit * 2:
+                if len(vod_files) >= limit * 3:
                     break
         
         # Sort by modification time (most recent first)
@@ -441,7 +543,7 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
         
         logger.info(f"Found {len(recent_vods)} recent VOD files on flex server {city_id}")
         for vod in recent_vods:
-            logger.debug(f"  - {vod['title']} ({vod['file_path']})")
+            logger.debug(f"  - {vod['title']} ({vod['file_path']}) - {vod['file_size'] / (1024*1024):.1f}MB")
         
         return recent_vods
         
@@ -460,34 +562,44 @@ def process_single_vod(vod_id: int, city_id: str, video_path: str = None) -> Dic
     client = CablecastAPIClient()
     transcription_service = TranscriptionService()
     try:
-        # If we have a direct file path, use it; otherwise try to get VOD details from API
+        # Prioritize local file access from mounted drives
         if video_path and os.path.exists(video_path):
             logger.info(f"Processing local file: {video_path}")
-            # Use the local file directly
             local_video_path = video_path
         else:
-            logger.info(f"No direct file path, attempting to get VOD {vod_id} from Cablecast API")
-            # Get VOD details with API fallback
-            try:
-                vod_data = client.get_vod(vod_id)
-            except Exception as api_exc:
-                logger.error(f"Cablecast API error: {api_exc}")
-                send_alert("error", f"Cablecast API error: {api_exc}", vod_id=vod_id, city_id=city_id)
-                return {
-                    'vod_id': vod_id,
-                    'city_id': city_id,
-                    'status': 'deferred',
-                    'error': str(api_exc),
-                    'message': 'Cablecast API unavailable, task deferred'
-                }
+            # Try to find the file on mounted drives first
+            logger.info(f"Searching for VOD {vod_id} on mounted drives")
             
-            if not vod_data:
-                raise Exception(f"VOD {vod_id} not found")
+            # Create a minimal VOD data structure for local file search
+            vod_data = {
+                'id': vod_id,
+                'title': f"VOD_{vod_id}",
+                'city_id': city_id
+            }
             
-            # Get video file path (download if needed)
+            # Search for the file on mounted drives
             local_video_path = get_vod_file_path(vod_data)
+            
             if not local_video_path:
-                raise Exception(f"No video file found for VOD {vod_id}")
+                # Fallback to Cablecast API only if local file not found
+                logger.info(f"No local file found, attempting to get VOD {vod_id} from Cablecast API")
+                try:
+                    vod_data = client.get_vod(vod_id)
+                    if vod_data:
+                        local_video_path = get_vod_file_path(vod_data)
+                except Exception as api_exc:
+                    logger.error(f"Cablecast API error: {api_exc}")
+                    send_alert("error", f"Cablecast API error: {api_exc}", vod_id=vod_id, city_id=city_id)
+                    return {
+                        'vod_id': vod_id,
+                        'city_id': city_id,
+                        'status': 'deferred',
+                        'error': str(api_exc),
+                        'message': 'Cablecast API unavailable, task deferred'
+                    }
+            
+            if not local_video_path:
+                raise Exception(f"No video file found for VOD {vod_id} on mounted drives or via API")
         
         # Validate video file
         if not validate_video_file(local_video_path):
