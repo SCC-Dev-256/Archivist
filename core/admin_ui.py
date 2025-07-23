@@ -815,7 +815,9 @@ class AdminUI:
         """Start the embedded monitoring dashboard in a separate thread."""
         def start_dashboard():
             try:
-                dashboard = IntegratedDashboard(host="0.0.0.0", port=self.dashboard_port)
+                from core.monitoring.integrated_dashboard import DashboardConfig
+                config = DashboardConfig(host="0.0.0.0", port=self.dashboard_port)
+                dashboard = IntegratedDashboard(config)
                 dashboard.run()
             except Exception as e:
                 logger.error(f"Failed to start embedded dashboard: {e}")

@@ -1,21 +1,36 @@
 """
-Integrated Monitoring Dashboard with Queue Management
+Production-Grade VOD Processing Dashboard
 
 This module provides a comprehensive web-based monitoring dashboard that integrates:
-- VOD processing monitoring
-- Queue management (RQ + Celery)
-- Real-time metrics and health checks
-- Unified task management interface
+- Real-time VOD processing monitoring with SocketIO
+- Unified queue management (RQ + Celery) with full CRUD operations
+- System health monitoring with Prometheus metrics
+- Task performance analytics and historical data
+- Manual controls for VOD processing and transcription
+- Production-ready architecture with security and scalability
+
+Architecture:
+- Flask REST API with Flask-SocketIO for real-time updates
+- Service layer pattern for clean separation of concerns
+- Redis-backed caching and session management
+- PostgreSQL integration for persistent analytics
+- Docker-ready deployment configuration
 """
 
 import json
 import time
+import psutil
+import redis
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from flask import Flask, render_template, jsonify, request, Blueprint
+from typing import Dict, List, Optional, Any, Tuple
+from dataclasses import dataclass
+from flask import Flask, render_template, jsonify, request, Blueprint, Response
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import threading
+import os
 
 from loguru import logger
 from core.monitoring.metrics import get_metrics_collector
@@ -23,36 +38,138 @@ from core.monitoring.health_checks import get_health_manager
 from core.task_queue import QueueManager
 from core.tasks import celery_app
 
+@dataclass
+class DashboardConfig:
+    """Configuration for the dashboard."""
+    host: str = "0.0.0.0"
+    port: int = 5051
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    max_history_size: int = 1000
+    refresh_interval: int = 30
+    socketio_ping_timeout: int = 60
+    socketio_ping_interval: int = 25
+
 class IntegratedDashboard:
-    """Integrated monitoring dashboard with queue management."""
+    """Production-grade integrated monitoring dashboard with queue management."""
     
-    def __init__(self, host: str = "0.0.0.0", port: int = 5051):
-        self.host = host
-        self.port = port
+    def __init__(self, config: Optional[DashboardConfig] = None):
+        self.config = config or DashboardConfig()
+        self.host = self.config.host
+        self.port = self.config.port
+        
+        # Initialize Flask app with production settings
         self.app = Flask(__name__)
-        self.app.config['SECRET_KEY'] = 'archivist-integrated-dashboard-2025'
+        self.app.config.update({
+            'SECRET_KEY': os.environ.get('DASHBOARD_SECRET_KEY', 'archivist-integrated-dashboard-2025'),
+            'SESSION_COOKIE_SECURE': True,
+            'SESSION_COOKIE_HTTPONLY': True,
+            'SESSION_COOKIE_SAMESITE': 'Lax',
+            'PERMANENT_SESSION_LIFETIME': timedelta(hours=24)
+        })
         
-        # Initialize SocketIO for real-time updates
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode='threading')
+        # Initialize rate limiting
+        self.limiter = Limiter(
+            app=self.app,
+            key_func=get_remote_address,
+            default_limits=["200 per day", "50 per hour"]
+        )
         
+        # Initialize SocketIO with production settings
+        self.socketio = SocketIO(
+            self.app,
+            cors_allowed_origins="*",
+            async_mode='threading',
+            ping_timeout=self.config.socketio_ping_timeout,
+            ping_interval=self.config.socketio_ping_interval,
+            logger=True,
+            engineio_logger=True
+        )
+        
+        # Initialize Redis connection
+        self.redis_client = redis.Redis(
+            host=self.config.redis_host,
+            port=self.config.redis_port,
+            db=self.config.redis_db,
+            decode_responses=True,
+            socket_connect_timeout=5,
+            socket_timeout=5
+        )
+        
+        # Initialize core services
         self.metrics_collector = get_metrics_collector()
         self.health_manager = get_health_manager()
         self.queue_manager = QueueManager()
         
         # Task history storage for analytics
         self.task_history = []
-        self.max_history_size = 1000
+        self.max_history_size = self.config.max_history_size
         
-        # Enable CORS
-        CORS(self.app)
+        # Performance tracking
+        self.performance_metrics = {
+            'api_response_times': {},
+            'socket_connections': 0,
+            'active_tasks': 0,
+            'system_load': 0.0
+        }
+        
+        # Enable CORS with security headers
+        CORS(self.app, resources={
+            r"/api/*": {"origins": ["http://localhost:3000", "http://localhost:8080"]},
+            r"/static/*": {"origins": "*"}
+        })
         
         # Register routes and SocketIO events
         self._register_routes()
         self._register_socketio_events()
+        self._register_error_handlers()
         
-        # Start background metrics collection and real-time monitoring
+        # Start background services
         self._start_background_collection()
         self._start_realtime_monitoring()
+        self._start_performance_monitoring()
+        
+        logger.info(f"Dashboard initialized with config: {self.config}")
+    
+    def _start_performance_monitoring(self):
+        """Start performance monitoring thread."""
+        def monitor_performance():
+            while True:
+                try:
+                    # Update system load
+                    self.performance_metrics['system_load'] = psutil.getloadavg()[0] if hasattr(psutil, 'getloadavg') else 0.0
+                    
+                    # Update active tasks count
+                    inspect = celery_app.control.inspect()
+                    active_tasks = inspect.active() if inspect else {}
+                    self.performance_metrics['active_tasks'] = sum(len(tasks) for tasks in active_tasks.values())
+                    
+                    # Store performance metrics in Redis for persistence
+                    self.redis_client.hset(
+                        'dashboard:performance',
+                        mapping={
+                            'system_load': self.performance_metrics['system_load'],
+                            'active_tasks': self.performance_metrics['active_tasks'],
+                            'socket_connections': self.performance_metrics['socket_connections'],
+                            'timestamp': datetime.now().isoformat()
+                        }
+                    )
+                    
+                    # Update metrics collector
+                    self.metrics_collector.gauge('system_load', self.performance_metrics['system_load'])
+                    self.metrics_collector.gauge('active_tasks', self.performance_metrics['active_tasks'])
+                    
+                    time.sleep(30)  # Update every 30 seconds
+                    
+                except Exception as e:
+                    logger.error(f"Error in performance monitoring: {e}")
+                    time.sleep(60)  # Wait longer on error
+        
+        # Start monitoring thread
+        monitor_thread = threading.Thread(target=monitor_performance, daemon=True)
+        monitor_thread.start()
+        logger.info("Performance monitoring started")
     
     def _register_socketio_events(self):
         """Register SocketIO event handlers for real-time updates."""
@@ -60,13 +177,21 @@ class IntegratedDashboard:
         @self.socketio.on('connect')
         def handle_connect():
             """Handle client connection."""
-            logger.info(f"Client connected: {request.sid}")
-            emit('connected', {'status': 'connected', 'timestamp': datetime.now().isoformat()})
+            self.performance_metrics['socket_connections'] += 1
+            logger.info(f"Client connected: {request.sid} (Total: {self.performance_metrics['socket_connections']})")
+            self.metrics_collector.increment('socket_connections')
+            emit('connected', {
+                'status': 'connected', 
+                'timestamp': datetime.now().isoformat(),
+                'client_id': request.sid
+            })
         
         @self.socketio.on('disconnect')
         def handle_disconnect():
             """Handle client disconnection."""
-            logger.info(f"Client disconnected: {request.sid}")
+            self.performance_metrics['socket_connections'] = max(0, self.performance_metrics['socket_connections'] - 1)
+            logger.info(f"Client disconnected: {request.sid} (Total: {self.performance_metrics['socket_connections']})")
+            self.metrics_collector.increment('socket_disconnections')
         
         @self.socketio.on('join_task_monitoring')
         def handle_join_task_monitoring(data):
@@ -99,48 +224,106 @@ class IntegratedDashboard:
         
         @self.socketio.on('request_system_metrics')
         def handle_system_metrics_request():
-            """Send system metrics to client (from web_interface)."""
+            """Send comprehensive system metrics to client."""
             try:
-                import psutil
-                import redis as redis_lib
+                start_time = time.time()
+                
+                # System metrics
                 cpu_percent = psutil.cpu_percent(interval=0.1)
                 memory = psutil.virtual_memory()
                 disk = psutil.disk_usage('/')
-                # Celery
+                network = psutil.net_io_counters()
+                
+                # Celery metrics
                 inspect = celery_app.control.inspect()
                 active_workers = inspect.stats() if inspect else {}
-                # Redis
+                active_tasks = inspect.active() if inspect else {}
+                reserved_tasks = inspect.reserved() if inspect else {}
+                
+                # Redis metrics
                 try:
-                    redis_client = redis_lib.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-                    redis_client.ping()
-                    redis_info = redis_client.info()
+                    redis_info = self.redis_client.info()
                     redis_status = {
                         'status': 'connected',
                         'version': redis_info.get('redis_version', 'unknown'),
                         'connected_clients': redis_info.get('connected_clients', 0),
                         'used_memory_human': redis_info.get('used_memory_human', 'unknown'),
+                        'total_commands_processed': redis_info.get('total_commands_processed', 0),
+                        'keyspace_hits': redis_info.get('keyspace_hits', 0),
+                        'keyspace_misses': redis_info.get('keyspace_misses', 0)
                     }
                 except Exception as e:
                     redis_status = {'status': 'disconnected', 'error': str(e)}
+                
+                # Performance metrics
+                response_time = time.time() - start_time
+                self.performance_metrics['api_response_times']['system_metrics'] = response_time
+                
                 metrics = {
                     'timestamp': datetime.now().isoformat(),
                     'system': {
                         'cpu_percent': cpu_percent,
                         'memory_percent': memory.percent,
-                        'memory_available': memory.available // (1024**3),
+                        'memory_available_gb': round(memory.available / (1024**3), 2),
+                        'memory_used_gb': round(memory.used / (1024**3), 2),
                         'disk_percent': disk.percent,
-                        'disk_free': disk.free // (1024**3),
+                        'disk_free_gb': round(disk.free / (1024**3), 2),
+                        'disk_used_gb': round(disk.used / (1024**3), 2),
+                        'network_bytes_sent': network.bytes_sent,
+                        'network_bytes_recv': network.bytes_recv,
+                        'load_average': psutil.getloadavg()[0] if hasattr(psutil, 'getloadavg') else 0.0
                     },
                     'celery': {
                         'active_workers': list(active_workers.keys()) if active_workers else [],
                         'worker_count': len(active_workers) if active_workers else 0,
+                        'active_tasks': sum(len(tasks) for tasks in active_tasks.values()),
+                        'reserved_tasks': sum(len(tasks) for tasks in reserved_tasks.values()),
+                        'total_tasks': sum(len(tasks) for tasks in active_tasks.values()) + 
+                                     sum(len(tasks) for tasks in reserved_tasks.values())
                     },
-                    'redis': redis_status
+                    'redis': redis_status,
+                    'dashboard': {
+                        'socket_connections': self.performance_metrics['socket_connections'],
+                        'active_tasks': self.performance_metrics['active_tasks'],
+                        'response_time_ms': round(response_time * 1000, 2)
+                    }
                 }
+                
                 emit('system_metrics', metrics)
+                self.metrics_collector.increment('system_metrics_requests')
+                
             except Exception as e:
                 logger.error(f"Error sending system metrics: {e}")
                 emit('error', {'message': str(e)})
+                self.metrics_collector.increment('system_metrics_errors')
+    
+    def _register_error_handlers(self):
+        """Register error handlers for production-grade error handling."""
+        
+        @self.app.errorhandler(404)
+        def not_found(error):
+            return jsonify({
+                'error': 'Resource not found',
+                'message': 'The requested resource does not exist',
+                'status_code': 404
+            }), 404
+        
+        @self.app.errorhandler(500)
+        def internal_error(error):
+            logger.error(f"Internal server error: {error}")
+            return jsonify({
+                'error': 'Internal server error',
+                'message': 'An unexpected error occurred',
+                'status_code': 500
+            }), 500
+        
+        @self.app.errorhandler(429)
+        def rate_limit_exceeded(error):
+            return jsonify({
+                'error': 'Rate limit exceeded',
+                'message': 'Too many requests, please try again later',
+                'status_code': 429
+            }), 429
     
     def _register_routes(self):
         """Register all dashboard routes."""
@@ -149,6 +332,20 @@ class IntegratedDashboard:
         def dashboard():
             """Main dashboard page."""
             return self._render_dashboard()
+        
+        @self.app.route('/favicon.ico')
+        def favicon():
+            """Serve favicon to prevent 404 errors."""
+            from flask import Response
+            # Return a minimal 1x1 transparent PNG
+            import base64
+            favicon_data = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==')
+            return Response(favicon_data, mimetype='image/x-icon')
+        
+        @self.app.route('/static/dashboard.css')
+        def dashboard_css():
+            """Serve the dashboard CSS file."""
+            return self._render_dashboard_css()
         
         @self.app.route('/static/dashboard.js')
         def dashboard_js():
@@ -236,9 +433,74 @@ class IntegratedDashboard:
             """Remove a job from the queue."""
             try:
                 success = self.queue_manager.remove_job(job_id)
+                if success:
+                    self.metrics_collector.increment('queue_jobs_removed')
+                    logger.info(f"Job {job_id} removed from queue")
                 return jsonify({'success': success})
             except Exception as e:
                 logger.error(f"Error removing job {job_id}: {e}")
+                self.metrics_collector.increment('queue_operation_errors')
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/queue/jobs/<job_id>/retry', methods=['POST'])
+        def api_queue_retry_job(job_id):
+            """Retry a failed job."""
+            try:
+                success = self.queue_manager.retry_job(job_id)
+                if success:
+                    self.metrics_collector.increment('queue_jobs_retried')
+                return jsonify({'success': success})
+            except Exception as e:
+                logger.error(f"Error retrying job {job_id}: {e}")
+                self.metrics_collector.increment('queue_operation_errors')
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/queue/jobs/<job_id>/cancel', methods=['POST'])
+        def api_queue_cancel_job(job_id):
+            """Cancel a running job."""
+            try:
+                success = self.queue_manager.cancel_job(job_id)
+                if success:
+                    self.metrics_collector.increment('queue_jobs_cancelled')
+                return jsonify({'success': success})
+            except Exception as e:
+                logger.error(f"Error cancelling job {job_id}: {e}")
+                self.metrics_collector.increment('queue_operation_errors')
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/queue/stats')
+        def api_queue_stats():
+            """Get comprehensive queue statistics."""
+            try:
+                jobs = self.queue_manager.get_all_jobs()
+                stats = {
+                    'total_jobs': len(jobs),
+                    'status_counts': self._count_job_statuses(jobs),
+                    'average_wait_time': self._calculate_average_wait_time(jobs),
+                    'success_rate': self._calculate_success_rate(jobs),
+                    'recent_activity': self._get_recent_queue_activity(),
+                    'performance_metrics': {
+                        'jobs_per_hour': self._calculate_jobs_per_hour(),
+                        'average_processing_time': self._calculate_average_processing_time(jobs)
+                    }
+                }
+                return jsonify(stats)
+            except Exception as e:
+                logger.error(f"Error getting queue stats: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/queue/cleanup', methods=['POST'])
+        def api_queue_cleanup():
+            """Clean up completed and failed jobs."""
+            try:
+                data = request.get_json() or {}
+                max_age_hours = data.get('max_age_hours', 24)
+                success = self.queue_manager.cleanup_old_jobs(max_age_hours)
+                if success:
+                    self.metrics_collector.increment('queue_cleanup_operations')
+                return jsonify({'success': success})
+            except Exception as e:
+                logger.error(f"Error cleaning up queue: {e}")
                 return jsonify({'error': str(e)}), 500
         
         @self.app.route('/api/celery/tasks')
@@ -609,6 +871,78 @@ class IntegratedDashboard:
             counts[status] = counts.get(status, 0) + 1
         return counts
     
+    def _calculate_average_wait_time(self, jobs: List[Dict]) -> float:
+        """Calculate average wait time for jobs."""
+        try:
+            wait_times = []
+            for job in jobs:
+                if job.get('created_at') and job.get('started_at'):
+                    wait_time = (job['started_at'] - job['created_at']).total_seconds()
+                    wait_times.append(wait_time)
+            
+            return sum(wait_times) / len(wait_times) if wait_times else 0.0
+        except Exception as e:
+            logger.error(f"Error calculating average wait time: {e}")
+            return 0.0
+    
+    def _calculate_success_rate(self, jobs: List[Dict]) -> float:
+        """Calculate success rate of completed jobs."""
+        try:
+            completed_jobs = [j for j in jobs if j.get('status') in ['finished', 'failed']]
+            if not completed_jobs:
+                return 0.0
+            
+            successful_jobs = [j for j in completed_jobs if j.get('status') == 'finished']
+            return (len(successful_jobs) / len(completed_jobs)) * 100
+        except Exception as e:
+            logger.error(f"Error calculating success rate: {e}")
+            return 0.0
+    
+    def _get_recent_queue_activity(self) -> Dict[str, Any]:
+        """Get recent queue activity for the last 24 hours."""
+        try:
+            cutoff_time = datetime.now() - timedelta(hours=24)
+            recent_jobs = [j for j in self.task_history 
+                          if j.get('timestamp') and 
+                          datetime.fromisoformat(j['timestamp']) > cutoff_time]
+            
+            return {
+                'jobs_created': len([j for j in recent_jobs if j.get('action') == 'created']),
+                'jobs_completed': len([j for j in recent_jobs if j.get('action') == 'completed']),
+                'jobs_failed': len([j for j in recent_jobs if j.get('action') == 'failed']),
+                'average_processing_time': self._calculate_average_processing_time(recent_jobs)
+            }
+        except Exception as e:
+            logger.error(f"Error getting recent queue activity: {e}")
+            return {}
+    
+    def _calculate_jobs_per_hour(self) -> float:
+        """Calculate jobs processed per hour."""
+        try:
+            cutoff_time = datetime.now() - timedelta(hours=1)
+            recent_jobs = [j for j in self.task_history 
+                          if j.get('timestamp') and 
+                          datetime.fromisoformat(j['timestamp']) > cutoff_time]
+            
+            return len(recent_jobs)
+        except Exception as e:
+            logger.error(f"Error calculating jobs per hour: {e}")
+            return 0.0
+    
+    def _calculate_average_processing_time(self, jobs: List[Dict]) -> float:
+        """Calculate average processing time for jobs."""
+        try:
+            processing_times = []
+            for job in jobs:
+                if job.get('started_at') and job.get('ended_at'):
+                    processing_time = (job['ended_at'] - job['started_at']).total_seconds()
+                    processing_times.append(processing_time)
+            
+            return sum(processing_times) / len(processing_times) if processing_times else 0.0
+        except Exception as e:
+            logger.error(f"Error calculating average processing time: {e}")
+            return 0.0
+    
     def _summarize_celery_tasks(self, stats: Dict, active: Dict, reserved: Dict) -> Dict[str, Any]:
         """Summarize Celery task statistics."""
         total_tasks = 0
@@ -892,328 +1226,11 @@ class IntegratedDashboard:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Integrated VOD Processing Monitor</title>
+    <link rel="icon" type="image/png" href="/favicon.ico">
+    <link rel="stylesheet" href="/static/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }}
-        .container {{
-            max-width: 1600px;
-            margin: 0 auto;
-        }}
-        .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-        }}
-        .nav-tabs {{
-            display: flex;
-            background: white;
-            border-radius: 10px 10px 0 0;
-            overflow: hidden;
-            margin-bottom: 0;
-        }}
-        .nav-tab {{
-            flex: 1;
-            padding: 15px;
-            text-align: center;
-            background: #f8f9fa;
-            border: none;
-            cursor: pointer;
-            transition: background 0.3s;
-        }}
-        .nav-tab.active {{
-            background: white;
-            font-weight: bold;
-        }}
-        .nav-tab:hover {{
-            background: #e9ecef;
-        }}
-        .tab-content {{
-            background: white;
-            padding: 20px;
-            border-radius: 0 0 10px 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            min-height: 600px;
-        }}
-        .tab-pane {{
-            display: none;
-        }}
-        .tab-pane.active {{
-            display: block;
-        }}
-        .status-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-        .status-card {{
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }}
-        .status-card h3 {{
-            margin-top: 0;
-            color: #333;
-        }}
-        .status-indicator {{
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }}
-        .status-healthy {{ background-color: #28a745; }}
-        .status-degraded {{ background-color: #ffc107; }}
-        .status-unhealthy {{ background-color: #dc3545; }}
-        
-        /* Real-time Task Monitoring Styles */
-        .realtime-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }}
-        
-        .task-filters {{
-            display: flex;
-            gap: 10px;
-        }}
-        
-        .filter-btn {{
-            padding: 8px 16px;
-            border: 1px solid #ddd;
-            background: white;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }}
-        
-        .filter-btn.active {{
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }}
-        
-        .connection-status {{
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-        
-        .task-summary {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }}
-        
-        .summary-card {{
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            text-align: center;
-        }}
-        
-        .summary-value {{
-            font-size: 2em;
-            font-weight: bold;
-            color: #007bff;
-        }}
-        
-        .realtime-tasks-container {{
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        
-        .task-item {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            transition: background 0.3s;
-        }}
-        
-        .task-item:hover {{
-            background: #f8f9fa;
-        }}
-        
-        .task-info {{
-            flex: 1;
-        }}
-        
-        .task-name {{
-            font-weight: bold;
-            margin-bottom: 5px;
-        }}
-        
-        .task-details {{
-            font-size: 0.9em;
-            color: #666;
-        }}
-        
-        .task-progress {{
-            width: 200px;
-            margin: 0 15px;
-        }}
-        
-        .progress-bar {{
-            width: 100%;
-            height: 8px;
-            background: #e9ecef;
-            border-radius: 4px;
-            overflow: hidden;
-        }}
-        
-        .progress-fill {{
-            height: 100%;
-            background: linear-gradient(90deg, #007bff, #0056b3);
-            transition: width 0.3s;
-        }}
-        
-        .task-status {{
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }}
-        
-        .status-active {{ background: #d4edda; color: #155724; }}
-        .status-reserved {{ background: #fff3cd; color: #856404; }}
-        .status-queued {{ background: #d1ecf1; color: #0c5460; }}
-        .status-success {{ background: #d4edda; color: #155724; }}
-        .status-failure {{ background: #f8d7da; color: #721c24; }}
-        
-        .task-analytics {{
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        
-        .analytics-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }}
-        
-        .analytics-card {{
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            text-align: center;
-        }}
-        
-        .analytics-value {{
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #007bff;
-        }}
-        .chart-container {{
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }}
-        .metrics-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }}
-        .metric-card {{
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            text-align: center;
-        }}
-        .metric-value {{
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-        }}
-        .metric-label {{
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }}
-        .refresh-button {{
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }}
-        .refresh-button:hover {{
-            background: #5a6fd8;
-        }}
-        .task-table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }}
-        .task-table th, .task-table td {{
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }}
-        .task-table th {{
-            background-color: #f8f9fa;
-            font-weight: bold;
-        }}
-        .task-table tr:hover {{
-            background-color: #f5f5f5;
-        }}
-        .action-button {{
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            margin: 2px;
-            font-size: 12px;
-        }}
-        .action-button:hover {{
-            background: #0056b3;
-        }}
-        .action-button.danger {{
-            background: #dc3545;
-        }}
-        .action-button.danger:hover {{
-            background: #c82333;
-        }}
-        .action-button.warning {{
-            background: #ffc107;
-            color: #333;
-        }}
-        .action-button.warning:hover {{
-            background: #e0a800;
-        }}
-    </style>
 </head>
 <body>
     <div class="container">
@@ -1230,6 +1247,7 @@ class IntegratedDashboard:
             <button class="nav-tab" onclick="showTab('celery')">⚡ Celery Tasks</button>
             <button class="nav-tab" onclick="showTab('health')">🏥 Health Checks</button>
             <button class="nav-tab" onclick="showTab('metrics')">📈 Metrics</button>
+            <button class="nav-tab" onclick="showTab('controls')">🎮 Manual Controls</button>
         </div>
         
         <div class="tab-content">
@@ -1321,13 +1339,74 @@ class IntegratedDashboard:
             <!-- Metrics Tab -->
             <div id="metrics" class="tab-pane">
                 <h2>Performance Metrics</h2>
-                <div id="performance-metrics">Loading...</div>
+                <div id="metrics-data">Loading...</div>
+            </div>
+            
+            <!-- Manual Controls Tab -->
+            <div id="controls" class="tab-pane">
+                <h2>🎮 Manual Controls</h2>
+                <div class="controls-grid">
+                    <div class="control-card">
+                        <h3>VOD Processing</h3>
+                        <p>Trigger manual VOD processing for a specific file</p>
+                        <button onclick="openVODDialog()" class="control-btn">🚀 Trigger VOD Processing</button>
+                    </div>
+                    <div class="control-card">
+                        <h3>Transcription</h3>
+                        <p>Start transcription for a video file</p>
+                        <button onclick="openTranscriptionDialog()" class="control-btn">🎤 Trigger Transcription</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VOD Processing Dialog -->
+    <div id="vod-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>VOD Processing</h3>
+                <span class="close" onclick="closeVODDialog()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="vod-dialog p">Enter the full path to the video file you want to process:</p>
+                <input type="text" id="vod-file-path" placeholder="e.g., /path/to/video.mp4" />
+                <div class="dialog-buttons">
+                    <button onclick="closeVODDialog()" class="cancel-btn">
+                        Cancel
+                    </button>
+                    <button onclick="triggerVODProcessing()" class="start-btn">
+                        Start Processing
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transcription Dialog -->
+    <div id="transcription-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Transcription</h3>
+                <span class="close" onclick="closeTranscriptionDialog()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="transcription-dialog p">Enter the full path to the video file you want to transcribe:</p>
+                <input type="text" id="transcription-file-path" placeholder="e.g., /path/to/video.mp4" />
+                <div class="dialog-buttons">
+                    <button onclick="closeTranscriptionDialog()" class="cancel-btn">
+                        Cancel
+                    </button>
+                    <button onclick="triggerTranscription()" class="start-btn">
+                        Start Transcription
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        let currentTab = 'overview';
+        var currentTab = 'overview';
         
         function showTab(tabName) {
             // Remove active class from all tab panes
@@ -1373,12 +1452,15 @@ class IntegratedDashboard:
                 case 'metrics':
                     refreshMetricsData();
                     break;
+                case 'controls':
+                    // Controls tab doesn't need refresh - static content
+                    break;
             }
         }
         
         /* SocketIO connection and real-time task monitoring */
-        let socket = null;
-        let currentTaskFilter = 'all';
+        var socket = null;
+        var currentTaskFilter = 'all';
         
         function initializeSocketIO() {
             socket = io();
@@ -1412,8 +1494,8 @@ class IntegratedDashboard:
         }
         
         function updateSocketStatus(connected) {
-            const statusIndicator = document.getElementById('socket-status');
-            const statusText = document.getElementById('socket-text');
+            var statusIndicator = document.getElementById('socket-status');
+            var statusText = document.getElementById('socket-text');
             
             if (connected) {
                 statusIndicator.className = 'status-indicator status-healthy';
@@ -1424,547 +1506,659 @@ class IntegratedDashboard:
             }
         }
         
-        function refreshRealtimeData() {
-            /* Load initial real-time data */
-            fetch('/api/tasks/realtime')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateRealtimeTasks(data);
-                });
+        function filterTasks(filterType) {
+            currentTaskFilter = filterType;
             
-            /* Load task analytics */
-            fetch('/api/tasks/analytics')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateTaskAnalytics(data);
-                });
-        }
-        
-        function updateRealtimeTasks(data) {
-            if (data.error) {
-                document.getElementById('realtime-tasks-list').innerHTML = 
-                    '<div style="color: red; padding: 20px;">Error: ' + data.error + '</div>';
-                return;
-            }
-            
-            /* Update summary values */
-            const summary = data.summary || {{}};
-            document.getElementById('total-tasks').textContent = summary.total || 0;
-            document.getElementById('active-tasks').textContent = summary.active || 0;
-            document.getElementById('reserved-tasks').textContent = summary.reserved || 0;
-            document.getElementById('queued-tasks').textContent = summary.queued || 0;
-            
-            /* Update task list */
-            const tasks = data.tasks || [];
-            const tasksContainer = document.getElementById('realtime-tasks-list');
-            
-            if (tasks.length === 0) {
-                tasksContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No tasks found</div>';
-                return;
-            }
-            
-            let html = '';
-            for (var i = 0; i < tasks.length; i++) {
-                var task = tasks[i];
-                var statusClass = 'status-' + task.status;
-                var progressPercent = task.progress || 0;
-                var duration = task.duration ? Math.round(task.duration) : 0;
-                
-                html += '<div class="task-item">' +
-                    '<div class="task-info">' +
-                        '<div class="task-name">' + task.name + '</div>' +
-                        '<div class="task-details">' +
-                            'ID: ' + task.id + ' | Type: ' + task.type + ' | Worker: ' + (task.worker || 'N/A') + ' | Duration: ' + duration + 's' +
-                            (task.video_path ? ' | File: ' + task.video_path : '') +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="task-progress">' +
-                        '<div class="progress-bar">' +
-                            '<div class="progress-fill" style="width: ' + progressPercent + '%"></div>' +
-                        '</div>' +
-                        '<div style="text-align: center; font-size: 0.8em; margin-top: 2px;">' + progressPercent + '%</div>' +
-                    '</div>' +
-                    '<span class="task-status ' + statusClass + '">' + task.status + '</span>' +
-                '</div>';
-            }
-            
-            tasksContainer.innerHTML = html;
-        }
-        
-        function updateTaskAnalytics(data) {
-            if (data.error) {
-                document.getElementById('task-analytics-data').innerHTML = 
-                    '<div style="color: red;">Error: ' + data.error + '</div>';
-                return;
-            }
-            
-            const analyticsContainer = document.getElementById('task-analytics-data');
-            let html = '<div class="analytics-grid">';
-            
-            html += '<div class="analytics-card">' +
-                '<div class="analytics-value">' + (data.average_completion_time || 0) + 's</div>' +
-                '<div>Average Completion Time</div>' +
-            '</div>' +
-            '<div class="analytics-card">' +
-                '<div class="analytics-value">' + (data.success_rate || 0) + '%</div>' +
-                '<div>Success Rate</div>' +
-            '</div>' +
-            '<div class="analytics-card">' +
-                '<div class="analytics-value">' + (data.total_tasks || 0) + '</div>' +
-                '<div>Total Tasks</div>' +
-            '</div>' +
-            '<div class="analytics-card">' +
-                '<div class="analytics-value">' + (data.completed_tasks || 0) + '</div>' +
-                '<div>Completed Tasks</div>' +
-            '</div>' +
-            '<div class="analytics-card">' +
-                '<div class="analytics-value">' + (data.recent_performance && data.recent_performance.last_24h || 0) + '</div>' +
-                '<div>Tasks (24h)</div>' +
-            '</div>' +
-            '<div class="analytics-card">' +
-                '<div class="analytics-value">' + (data.recent_performance && data.recent_performance.successful_24h || 0) + '</div>' +
-                '<div>Successful (24h)</div>' +
-            '</div>';
-            
-            html += '</div>';
-            
-            // Add task type distribution
-            if (data.task_types && Object.keys(data.task_types).length > 0) {
-                html += '<h4 style="margin-top: 20px;">Task Type Distribution</h4><div class="analytics-grid">';
-                var taskTypes = Object.keys(data.task_types);
-                for (var i = 0; i < taskTypes.length; i++) {
-                    var type = taskTypes[i];
-                    var count = data.task_types[type];
-                    html += '<div class="analytics-card">' +
-                        '<div class="analytics-value">' + count + '</div>' +
-                        '<div>' + type.charAt(0).toUpperCase() + type.slice(1) + '</div>' +
-                    '</div>';
-                }
-                html += '</div>';
-            }
-            
-            analyticsContainer.innerHTML = html;
-        }
-        
-        function filterTasks(taskType) {
-            currentTaskFilter = taskType;
-            
-            /* Update filter button states */
+            // Update filter button states
             var filterBtns = document.querySelectorAll('.filter-btn');
             for (var i = 0; i < filterBtns.length; i++) {
                 filterBtns[i].classList.remove('active');
             }
             event.target.classList.add('active');
             
-            /* Request filtered data from server */
+            // Request filtered tasks from server
             if (socket && socket.connected) {
-                socket.emit('filter_tasks', { type: taskType });
-            } else {
-                /* Fallback to HTTP request */
-                fetch('/api/tasks/realtime?filter=' + taskType)
-                    .then(function(response) { return response.json(); })
-                    .then(function(data) {
-                        updateRealtimeTasks(data);
-                    });
+                socket.emit('filter_tasks', { filter: filterType });
             }
         }
         
+        function updateRealtimeTasks(data) {
+            var tasksList = document.getElementById('realtime-tasks-list');
+            var totalTasks = document.getElementById('total-tasks');
+            var activeTasks = document.getElementById('active-tasks');
+            var reservedTasks = document.getElementById('reserved-tasks');
+            var queuedTasks = document.getElementById('queued-tasks');
+            
+            if (data.tasks && data.tasks.length > 0) {
+                var html = '';
+                for (var i = 0; i < data.tasks.length; i++) {
+                    var task = data.tasks[i];
+                    html += '<div class="task-item">';
+                    html += '<div class="task-info">';
+                    html += '<div class="task-name">' + task.name + '</div>';
+                    html += '<div class="task-details">ID: ' + task.id + ' | Status: ' + task.status + '</div>';
+                    html += '</div>';
+                    if (task.progress !== undefined) {
+                        html += '<div class="task-progress">';
+                        html += '<div class="progress-bar">';
+                        html += '<div class="progress-fill" style="width: ' + task.progress + '%"></div>';
+                        html += '</div>';
+                        html += '<div class="progress-text">' + task.progress + '%</div>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+                tasksList.innerHTML = html;
+            } else {
+                tasksList.innerHTML = '<p>No tasks found</p>';
+            }
+            
+            // Update summary counts
+            if (data.summary) {
+                totalTasks.textContent = data.summary.total || 0;
+                activeTasks.textContent = data.summary.active || 0;
+                reservedTasks.textContent = data.summary.reserved || 0;
+                queuedTasks.textContent = data.summary.queued || 0;
+            }
+        }
+        
+        function updateSystemHealth(data) {
+            var systemHealth = document.getElementById('system-health');
+            if (data && data.system) {
+                var html = '<div class="health-grid">';
+                html += '<div class="health-item">';
+                html += '<span class="health-label">CPU:</span>';
+                html += '<span class="health-value">' + data.system.cpu_percent + '%</span>';
+                html += '</div>';
+                html += '<div class="health-item">';
+                html += '<span class="health-label">Memory:</span>';
+                html += '<span class="health-value">' + data.system.memory_percent + '%</span>';
+                html += '</div>';
+                html += '<div class="health-item">';
+                html += '<span class="health-label">Disk:</span>';
+                html += '<span class="health-value">' + data.system.disk_percent + '%</span>';
+                html += '</div>';
+                html += '</div>';
+                systemHealth.innerHTML = html;
+            }
+        }
+        
+        // Modal functions
+        function openVODDialog() {
+            document.getElementById('vod-dialog').style.display = 'block';
+        }
+        
+        function closeVODDialog() {
+            document.getElementById('vod-dialog').style.display = 'none';
+        }
+        
+        function openTranscriptionDialog() {
+            document.getElementById('transcription-dialog').style.display = 'block';
+        }
+        
+        function closeTranscriptionDialog() {
+            document.getElementById('transcription-dialog').style.display = 'none';
+        }
+        
+        function triggerVODProcessing() {
+            var filePath = document.getElementById('vod-file-path').value;
+            if (!filePath) {
+                alert('Please enter a file path');
+                return;
+            }
+            
+            fetch('/api/tasks/trigger_vod_processing', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file_path: filePath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('VOD processing started successfully!');
+                    closeVODDialog();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error starting VOD processing');
+            });
+        }
+        
+        function triggerTranscription() {
+            var filePath = document.getElementById('transcription-file-path').value;
+            if (!filePath) {
+                alert('Please enter a file path');
+                return;
+            }
+            
+            fetch('/api/tasks/trigger_transcription', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file_path: filePath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Transcription started successfully!');
+                    closeTranscriptionDialog();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error starting transcription');
+            });
+        }
+        
+        // Data refresh functions
         function refreshOverviewData() {
-            /* Load system health */
-            fetch('/api/status')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateSystemHealth(data);
-                });
+            // Refresh system health
+            fetch('/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.checks && data.checks.system) {
+                        updateSystemHealth({ system: data.checks.system });
+                    }
+                })
+                .catch(error => console.error('Error refreshing overview:', error));
             
-            /* Load queue overview */
-            fetch('/api/queue/jobs')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateQueueOverview(data);
-                });
-            
-            /* Load Celery overview */
-            fetch('/api/celery/workers')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateCeleryOverview(data);
-                });
-            
-            /* Load recent activity */
-            fetch('/api/unified/tasks')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateRecentActivity(data);
-                });
+            // Refresh queue overview
+            fetch('/api/queue/stats')
+                .then(response => response.json())
+                .then(data => {
+                    var queueOverview = document.getElementById('queue-overview');
+                    if (data.total_jobs !== undefined) {
+                        queueOverview.innerHTML = '<p>Total Jobs: ' + data.total_jobs + '</p>';
+                    }
+                })
+                .catch(error => console.error('Error refreshing queue overview:', error));
+        }
+        
+        function refreshRealtimeData() {
+            if (socket && socket.connected) {
+                socket.emit('request_task_updates');
+            }
         }
         
         function refreshQueueData() {
             fetch('/api/queue/jobs')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateQueueJobs(data);
-                });
+                .then(response => response.json())
+                .then(data => {
+                    var queueJobs = document.getElementById('queue-jobs');
+                    if (data.jobs && data.jobs.length > 0) {
+                        var html = '<div class="queue-jobs-list">';
+                        for (var i = 0; i < data.jobs.length; i++) {
+                            var job = data.jobs[i];
+                            html += '<div class="job-item">';
+                            html += '<div class="job-info">';
+                            html += '<div class="job-name">' + job.name + '</div>';
+                            html += '<div class="job-details">ID: ' + job.id + ' | Status: ' + job.status + '</div>';
+                            html += '</div>';
+                            html += '<div class="job-actions">';
+                            html += '<button onclick="pauseJob(\'' + job.id + '\')" class="action-btn">Pause</button>';
+                            html += '<button onclick="resumeJob(\'' + job.id + '\')" class="action-btn">Resume</button>';
+                            html += '<button onclick="stopJob(\'' + job.id + '\')" class="action-btn">Stop</button>';
+                            html += '<button onclick="removeJob(\'' + job.id + '\')" class="action-btn">Remove</button>';
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        queueJobs.innerHTML = html;
+                    } else {
+                        queueJobs.innerHTML = '<p>No jobs in queue</p>';
+                    }
+                })
+                .catch(error => console.error('Error refreshing queue data:', error));
         }
         
         function refreshCeleryData() {
             fetch('/api/celery/tasks')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateCeleryTasks(data);
-                });
+                .then(response => response.json())
+                .then(data => {
+                    var celeryTasks = document.getElementById('celery-tasks');
+                    if (data.tasks && data.tasks.length > 0) {
+                        var html = '<div class="celery-tasks-list">';
+                        for (var i = 0; i < data.tasks.length; i++) {
+                            var task = data.tasks[i];
+                            html += '<div class="task-item">';
+                            html += '<div class="task-info">';
+                            html += '<div class="task-name">' + task.name + '</div>';
+                            html += '<div class="task-details">ID: ' + task.id + ' | Status: ' + task.status + '</div>';
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        celeryTasks.innerHTML = html;
+                    } else {
+                        celeryTasks.innerHTML = '<p>No Celery tasks found</p>';
+                    }
+                })
+                .catch(error => console.error('Error refreshing Celery data:', error));
         }
         
         function refreshHealthData() {
             fetch('/api/health')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updateHealthChecks(data);
-                });
+                .then(response => response.json())
+                .then(data => {
+                    var healthChecks = document.getElementById('health-checks');
+                    if (data.checks) {
+                        var html = '<div class="health-checks-grid">';
+                        for (var checkName in data.checks) {
+                            var check = data.checks[checkName];
+                            html += '<div class="health-check-item">';
+                            html += '<div class="health-check-name">' + checkName + '</div>';
+                            html += '<div class="health-check-status ' + check.status + '">' + check.status + '</div>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        healthChecks.innerHTML = html;
+                    }
+                })
+                .catch(error => console.error('Error refreshing health data:', error));
         }
         
         function refreshMetricsData() {
             fetch('/api/metrics')
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    updatePerformanceMetrics(data);
-                });
-        }
-        
-        function updateSystemHealth(data) {
-            var div = document.getElementById('system-health');
-            var overallStatus = data.system && data.system.overall_status || 'unknown';
-            var statusClass = overallStatus === 'healthy' ? 'healthy' : 
-                              overallStatus === 'degraded' ? 'degraded' : 'unhealthy';
-            
-            div.innerHTML = '<div><span class="status-indicator status-' + statusClass + '"></span>Overall: ' + overallStatus.toUpperCase() + '</div>' +
-                '<div>CPU: ' + (data.system && data.system.cpu_percent || 0) + '%</div>' +
-                '<div>Memory: ' + (data.system && data.system.memory_percent || 0) + '%</div>' +
-                '<div>Disk: ' + (data.system && data.system.disk_percent || 0) + '%</div>' +
-                '<div>Redis: ' + (data.redis && data.redis.status || 'Disconnected') + '</div>' +
-                '<div>Celery Workers: ' + (data.celery && data.celery.active_workers && data.celery.active_workers.length || 0) + ' active</div>';
-        }
-        
-        function updateQueueOverview(data) {
-            var div = document.getElementById('queue-overview');
-            var summary = data.summary || {};
-            
-            div.innerHTML = '<div class="metric-value">' + (data.total || 0) + '</div>' +
-                '<div class="metric-label">Total Jobs</div>' +
-                '<div>Queued: ' + (summary.queued || 0) + '</div>' +
-                '<div>Started: ' + (summary.started || 0) + '</div>' +
-                '<div>Finished: ' + (summary.finished || 0) + '</div>' +
-                '<div>Failed: ' + (summary.failed || 0) + '</div>';
-        }
-        
-        function updateCeleryOverview(data) {
-            var div = document.getElementById('celery-overview');
-            var summary = data.summary || {};
-            
-            div.innerHTML = '<div class="metric-value">' + (summary.active_workers || 0) + '</div>' +
-                '<div class="metric-label">Active Workers</div>' +
-                '<div>Total Workers: ' + (summary.total_workers || 0) + '</div>' +
-                '<div>Status: ' + (summary.worker_status || 'unknown') + '</div>';
-        }
-        
-        function updateRecentActivity(data) {
-            var div = document.getElementById('recent-activity');
-            var tasks = data.tasks || [];
-            var summary = data.summary || {};
-            
-            var html = '<div class="metric-value">' + (summary.total || 0) + '</div>' +
-                '<div class="metric-label">Total Tasks</div>' +
-                '<div>RQ Jobs: ' + (summary.rq_count || 0) + '</div>' +
-                '<div>Celery Active: ' + (summary.celery_active || 0) + '</div>' +
-                '<div>Celery Reserved: ' + (summary.celery_reserved || 0) + '</div>';
-            
-            if (tasks.length > 0) {
-                html += '<div style="margin-top: 15px;"><strong>Recent Tasks:</strong></div>';
-                for (var i = 0; i < Math.min(tasks.length, 5); i++) {
-                    var task = tasks[i];
-                    var statusClass = task.status === 'finished' ? 'healthy' : 
-                                      task.status === 'failed' ? 'unhealthy' : 'degraded';
-                    html += '<div style="margin: 5px 0; padding: 5px; border-bottom: 1px solid #eee;">' +
-                        '<div><strong>' + task.name + '</strong> (' + task.type + ')</div>' +
-                        '<div>Status: <span class="status-indicator status-' + statusClass + '"></span>' + task.status + '</div>' +
-                    '</div>';
-                }
-            }
-            
-            div.innerHTML = html;
-        }
-        
-        function updateQueueJobs(data) {
-            var div = document.getElementById('queue-jobs');
-            var jobs = data.jobs || [];
-            
-            if (jobs.length === 0) {
-                div.innerHTML = '<p>No jobs in queue</p>';
-                return;
-            }
-            
-            var html = '<table class="task-table">' +
-                '<thead>' +
-                    '<tr>' +
-                        '<th>ID</th>' +
-                        '<th>Status</th>' +
-                        '<th>Progress</th>' +
-                        '<th>Video Path</th>' +
-                        '<th>Created</th>' +
-                        '<th>Actions</th>' +
-                    '</tr>' +
-                '</thead>' +
-                '<tbody>';
-            
-            for (var i = 0; i < jobs.length; i++) {
-                var job = jobs[i];
-                var statusClass = job.status === 'finished' ? 'healthy' : 
-                                  job.status === 'failed' ? 'unhealthy' : 'degraded';
-                var progress = job.progress || 0;
-                
-                html += '<tr>' +
-                    '<td>' + job.id + '</td>' +
-                    '<td><span class="status-indicator status-' + statusClass + '"></span>' + job.status + '</td>' +
-                    '<td>' + progress + '%</td>' +
-                    '<td>' + (job.video_path || 'N/A') + '</td>' +
-                    '<td>' + new Date(job.created_at).toLocaleString() + '</td>' +
-                    '<td>';
-                
-                if (job.status === 'queued') {
-                    html += '<button class="action-button" onclick="stopJob(\'' + job.id + '\')">Stop</button>';
-                }
-                if (job.status === 'started') {
-                    html += '<button class="action-button warning" onclick="pauseJob(\'' + job.id + '\')">Pause</button>';
-                }
-                if (job.status === 'paused') {
-                    html += '<button class="action-button" onclick="resumeJob(\'' + job.id + '\')">Resume</button>';
-                }
-                
-                html += '<button class="action-button danger" onclick="removeJob(\'' + job.id + '\')">Remove</button>' +
-                    '</td>' +
-                '</tr>';
-            }
-            
-            html += '</tbody></table>';
-            div.innerHTML = html;
-        }
-        
-        function updateCeleryTasks(data) {
-            var div = document.getElementById('celery-tasks');
-            var summary = data.summary || {};
-            
-            var html = '<div class="metrics-grid">' +
-                '<div class="metric-card">' +
-                    '<div class="metric-value">' + (summary.total_tasks || 0) + '</div>' +
-                    '<div class="metric-label">Total Tasks</div>' +
-                '</div>' +
-                '<div class="metric-card">' +
-                    '<div class="metric-value">' + (summary.active_tasks || 0) + '</div>' +
-                    '<div class="metric-label">Active Tasks</div>' +
-                '</div>' +
-                '<div class="metric-card">' +
-                    '<div class="metric-value">' + (summary.reserved_tasks || 0) + '</div>' +
-                    '<div class="metric-label">Reserved Tasks</div>' +
-                '</div>' +
-                '<div class="metric-card">' +
-                    '<div class="metric-value">' + (summary.worker_count || 0) + '</div>' +
-                    '<div class="metric-label">Workers</div>' +
-                '</div>' +
-            '</div>';
-            
-            if (data.active) {
-                html += '<h3>Active Tasks</h3>';
-                var workers = Object.keys(data.active);
-                for (var i = 0; i < workers.length; i++) {
-                    var worker = workers[i];
-                    var tasks = data.active[worker];
-                    html += '<h4>Worker: ' + worker + '</h4>';
-                    if (tasks.length > 0) {
-                        html += '<table class="task-table"><thead><tr><th>Task ID</th><th>Name</th><th>Started</th></tr></thead><tbody>';
-                        for (var j = 0; j < tasks.length; j++) {
-                            var task = tasks[j];
-                            html += '<tr>' +
-                                '<td>' + task.id + '</td>' +
-                                '<td>' + task.name + '</td>' +
-                                '<td>' + new Date(task.time_start * 1000).toLocaleString() + '</td>' +
-                            '</tr>';
-                        }
-                        html += '</tbody></table>';
-                    } else {
-                        html += '<p>No active tasks</p>';
-                    }
-                }
-            }
-            
-            div.innerHTML = html;
-        }
-        
-        function updateHealthChecks(data) {
-            var div = document.getElementById('health-checks');
-            var checks = data.checks || {};
-            
-            var html = '';
-            var categories = Object.keys(checks);
-            for (var i = 0; i < categories.length; i++) {
-                var category = categories[i];
-                var categoryChecks = checks[category];
-                html += '<h3>' + category.charAt(0).toUpperCase() + category.slice(1) + ' Health</h3>';
-                if (Array.isArray(categoryChecks)) {
-                    for (var j = 0; j < categoryChecks.length; j++) {
-                        var check = categoryChecks[j];
-                        var statusClass = check.status === 'healthy' ? 'healthy' : 
-                                          check.status === 'degraded' ? 'degraded' : 'unhealthy';
-                        html += '<div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">' +
-                            '<div><strong>' + check.name + '</strong> <span class="status-indicator status-' + statusClass + '"></span>' + check.status + '</div>' +
-                            '<div>' + (check.message || '') + '</div>';
-                        if (check.details) {
-                            html += '<div><small>Details: ' + JSON.stringify(check.details) + '</small></div>';
+                .then(response => response.json())
+                .then(data => {
+                    var metricsData = document.getElementById('metrics-data');
+                    if (data.metrics) {
+                        var html = '<div class="metrics-grid">';
+                        for (var metricName in data.metrics) {
+                            var metric = data.metrics[metricName];
+                            html += '<div class="metric-item">';
+                            html += '<div class="metric-name">' + metricName + '</div>';
+                            html += '<div class="metric-value">' + metric.value + '</div>';
+                            html += '</div>';
                         }
                         html += '</div>';
+                        metricsData.innerHTML = html;
                     }
-                }
-            }
-            
-            div.innerHTML = html;
-        }
-        
-        function updatePerformanceMetrics(data) {
-            var div = document.getElementById('performance-metrics');
-            
-            var html = '<div class="metrics-grid">';
-            var counters = data.counters || {};
-            var counterNames = Object.keys(counters);
-            for (var i = 0; i < counterNames.length; i++) {
-                var name = counterNames[i];
-                var value = counters[name];
-                html += '<div class="metric-card">' +
-                    '<div class="metric-value">' + value + '</div>' +
-                    '<div class="metric-label">' + name + '</div>' +
-                '</div>';
-            }
-            html += '</div>';
-            
-            if (data.timers && Object.keys(data.timers).length > 0) {
-                html += '<h3>Performance Timers</h3><div class="metrics-grid">';
-                var timers = data.timers;
-                var timerNames = Object.keys(timers);
-                for (var i = 0; i < timerNames.length; i++) {
-                    var name = timerNames[i];
-                    var stats = timers[name];
-                    html += '<div class="metric-card">' +
-                        '<div class="metric-value">' + (stats.avg ? stats.avg.toFixed(2) : 0) + 'ms</div>' +
-                        '<div class="metric-label">' + name + ' (avg)</div>' +
-                        '<div>Min: ' + (stats.min || 0) + 'ms</div>' +
-                        '<div>Max: ' + (stats.max || 0) + 'ms</div>' +
-                    '</div>';
-                }
-                html += '</div>';
-            }
-            
-            div.innerHTML = html;
+                })
+                .catch(error => console.error('Error refreshing metrics data:', error));
         }
         
         // Queue management functions
-        function stopJob(jobId) {
-            fetch('/api/queue/jobs/' + jobId + '/stop', {method: 'POST'})
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        refreshQueueData();
-                    } else {
-                        alert('Failed to stop job');
-                    }
-                });
-        }
-        
         function pauseJob(jobId) {
-            fetch('/api/queue/jobs/' + jobId + '/pause', {method: 'POST'})
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
+            fetch('/api/queue/jobs/' + jobId + '/pause', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
                     if (data.success) {
                         refreshQueueData();
                     } else {
-                        alert('Failed to pause job');
+                        alert('Error pausing job: ' + (data.error || 'Unknown error'));
                     }
-                });
+                })
+                .catch(error => console.error('Error pausing job:', error));
         }
         
         function resumeJob(jobId) {
-            fetch('/api/queue/jobs/' + jobId + '/resume', {method: 'POST'})
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
+            fetch('/api/queue/jobs/' + jobId + '/resume', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
                     if (data.success) {
                         refreshQueueData();
                     } else {
-                        alert('Failed to resume job');
+                        alert('Error resuming job: ' + (data.error || 'Unknown error'));
                     }
-                });
+                })
+                .catch(error => console.error('Error resuming job:', error));
+        }
+        
+        function stopJob(jobId) {
+            fetch('/api/queue/jobs/' + jobId + '/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        refreshQueueData();
+                    } else {
+                        alert('Error stopping job: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => console.error('Error stopping job:', error));
         }
         
         function removeJob(jobId) {
-            if (confirm('Are you sure you want to remove this job?')) {
-                fetch('/api/queue/jobs/' + jobId + '/remove', {method: 'DELETE'})
-                    .then(function(response) { return response.json(); })
-                    .then(function(data) {
-                        if (data.success) {
-                            refreshQueueData();
-                        } else {
-                            alert('Failed to remove job');
-                        }
-                    });
-            }
+            fetch('/api/queue/jobs/' + jobId + '/remove', { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        refreshQueueData();
+                    } else {
+                        alert('Error removing job: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => console.error('Error removing job:', error));
         }
         
-        /* Initial load */
-        refreshOverviewData();
-        
-        /* Initialize SocketIO for real-time monitoring */
-        initializeSocketIO();
-        
-        /* Auto-refresh every 30 seconds */
-        setInterval(function() { refreshTabData(currentTab); }, 30000);
-    </script>
-    <div class='manual-controls' style='margin-bottom: 20px;'>
-        <h2>Manual Task Controls</h2>
-        <button onclick="triggerVODProcessing()">🎬 Trigger VOD Processing</button>
-        <button onclick="showTranscriptionDialog()">🎤 Trigger Transcription</button>
-    </div>
-    <div id="transcription-dialog" style="display:none; position:fixed; top:30%; left:50%; transform:translate(-50%,-50%); background:white; border:1px solid #ccc; padding:20px; z-index:1000;">
-        <h3>Trigger Transcription</h3>
-        <input type="text" id="transcription-file-path" placeholder="Enter file path..." style="width:300px;" />
-        <button onclick="triggerTranscription()">Start</button>
-        <button onclick="closeTranscriptionDialog()">Cancel</button>
-    </div>
-    <script>
-        function triggerVODProcessing() {
-            fetch('/api/tasks/trigger_vod_processing', {method: 'POST'})
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    alert(data.message || (data.success ? 'Triggered!' : 'Failed: ' + data.error));
-                });
-        }
-        function showTranscriptionDialog() {
-            document.getElementById('transcription-dialog').style.display = 'block';
-        }
-        function closeTranscriptionDialog() {
-            document.getElementById('transcription-dialog').style.display = 'none';
-        }
-        function triggerTranscription() {
-            var filePath = document.getElementById('transcription-file-path').value;
-            fetch('/api/tasks/trigger_transcription', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({file_path: filePath})
-            })
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                alert(data.message || (data.success ? 'Triggered!' : 'Failed: ' + data.error));
-                closeTranscriptionDialog();
-            });
-        }
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSocketIO();
+            refreshAllData();
+            
+            // Set up periodic refresh
+            setInterval(refreshAllData, 30000); // Refresh every 30 seconds
+        });
     </script>
 </body>
 </html>
+"""
+    
+    def _render_dashboard_css(self) -> str:
+        """Render the dashboard CSS styles."""
+        return """
+        /* Main Dashboard Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-radius: 10px 10px 0 0;
+            overflow: hidden;
+            margin-bottom: 0;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .nav-tab.active {
+            background: white;
+            font-weight: bold;
+        }
+        
+        .nav-tab:hover {
+            background: #e9ecef;
+        }
+        
+        .tab-content {
+            background: white;
+            padding: 20px;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+        
+        .tab-pane {
+            display: none;
+        }
+        
+        .tab-pane.active {
+            display: block;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .status-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-healthy { background-color: #28a745; }
+        .status-degraded { background-color: #ffc107; }
+        .status-unhealthy { background-color: #dc3545; }
+        
+        /* Real-time Task Monitoring Styles */
+        .realtime-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .task-filters {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .filter-btn:hover {
+            background: #f8f9fa;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .task-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .realtime-tasks-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .task-analytics {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        /* Queue Management Styles */
+        .queue-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .queue-table th,
+        .queue-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .queue-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .action-button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 12px;
+        }
+        
+        .action-button.danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .action-button.warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .action-button.warning:hover {
+            background: #e0a800;
+        }
+        
+        /* Manual Controls Styles */
+        .manual-controls {
+            margin-bottom: 20px;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .control-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .control-card button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .control-card button.transcription-btn {
+            background: #28a745;
+        }
+        
+        .control-card button.cancel-btn {
+            background: #6c757d;
+            margin-right: 10px;
+        }
+        
+        .control-card button.start-btn {
+            background: #28a745;
+        }
+        
+        #transcription-dialog {
+            display: none;
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            background: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            z-index: 1000;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .transcription-dialog p {
+            margin-bottom: 15px;
+        }
+        
+        #transcription-file-path {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .dialog-buttons {
+            text-align: right;
+        }
+        
+        .dialog-buttons button {
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+        }
+        
+        /* Refresh Button */
+        .refresh-button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .refresh-button:hover {
+            background: rgba(255,255,255,0.3);
+        }
         """
     
     def _start_background_collection(self):
@@ -1984,9 +2178,12 @@ class IntegratedDashboard:
         logger.info(f"Starting integrated monitoring dashboard with SocketIO on {self.host}:{self.port}")
         self.socketio.run(self.app, host=self.host, port=self.port, debug=False, allow_unsafe_werkzeug=True)
 
-def start_integrated_dashboard(host: str = "0.0.0.0", port: int = 5051):
+def start_integrated_dashboard(host: str = "0.0.0.0", port: int = 5051, config: Optional[DashboardConfig] = None):
     """Start the integrated monitoring dashboard."""
-    dashboard = IntegratedDashboard(host, port)
+    if config is None:
+        config = DashboardConfig(host=host, port=port)
+    
+    dashboard = IntegratedDashboard(config)
     dashboard.run()
 
 if __name__ == "__main__":

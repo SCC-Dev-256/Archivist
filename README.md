@@ -260,8 +260,6 @@ SUMMARIZATION_CHUNK_SIZE=10
 
 ```bash
 # Cablecast API Configuration
-CABLECAST_API_URL=https://your-cablecast-instance.com/api
-CABLECAST_API_KEY=your_api_key_here
 CABLECAST_LOCATION_ID=1
 CABLECAST_USER_ID=your_user_id
 CABLECAST_PASSWORD=your_password
