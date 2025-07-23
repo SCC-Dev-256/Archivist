@@ -217,13 +217,14 @@ class SecurityManager:
     
     def _check_json_suspicious_patterns(self, data, path=""):
         """Recursively check JSON data for suspicious patterns."""
+        logger.debug(f"[SECURITY] Checking JSON data at {path}: {data}")
         if isinstance(data, dict):
             for key, value in data.items():
                 current_path = f"{path}.{key}" if path else key
                 if isinstance(value, (dict, list)):
                     self._check_json_suspicious_patterns(value, current_path)
                 elif isinstance(value, str) and self._contains_suspicious_pattern(value):
-                    logger.warning(f"Suspicious pattern in JSON data at {current_path}: {value}")
+                    logger.debug(f"[SECURITY] Suspicious pattern in JSON data at {current_path}: {value}")
                     abort(400, description="Invalid request data")
         elif isinstance(data, list):
             for i, item in enumerate(data):
@@ -231,7 +232,7 @@ class SecurityManager:
                 if isinstance(item, (dict, list)):
                     self._check_json_suspicious_patterns(item, current_path)
                 elif isinstance(item, str) and self._contains_suspicious_pattern(item):
-                    logger.warning(f"Suspicious pattern in JSON data at {current_path}: {item}")
+                    logger.debug(f"[SECURITY] Suspicious pattern in JSON data at {current_path}: {item}")
                     abort(400, description="Invalid request data")
     
     def _contains_suspicious_pattern(self, value: str) -> bool:
@@ -460,11 +461,14 @@ def validate_json_input(schema_class):
             try:
                 if request.is_json:
                     data = request.get_json()
+                    logger.debug(f"[VALIDATION] Validating input for {schema_class.__name__}: {data}")
                     validated_data = schema_class(**data)
                     g.validated_data = validated_data
                 else:
+                    logger.debug("[VALIDATION] Content-Type is not application/json")
                     abort(400, description="Content-Type must be application/json")
             except Exception as e:
+                logger.debug(f"[VALIDATION] Invalid JSON data: {e}")
                 abort(400, description=f"Invalid JSON data: {str(e)}")
             return f(*args, **kwargs)
         return decorated_function

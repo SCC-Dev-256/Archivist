@@ -1,6 +1,6 @@
 """Transcription API endpoints for Archivist application."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from flask_restx import Namespace, Resource, fields
 from flask_limiter import Limiter
 from loguru import logger
@@ -57,11 +57,13 @@ def create_transcribe_blueprint(limiter):
     @bp.route('/transcribe/batch', methods=['POST'])
     @limiter.limit(TRANSCRIBE_RATE_LIMIT)
     @require_csrf_token
+    @validate_json_input(BatchTranscribeRequest)
     def transcribe_batch():
         """Transcribe multiple video files using Celery batch processing."""
         try:
-            data = request.get_json()
-            video_paths = data.get('paths', [])
+            # Use validated data from Pydantic model
+            validated_data = g.validated_data
+            video_paths = validated_data.paths
             
             if not video_paths:
                 return jsonify({'error': 'No video paths provided'}), 400

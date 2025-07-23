@@ -97,29 +97,55 @@ class QueueService:
             Dictionary containing queue status
         """
         try:
-            inspect = self.queue_manager.control.inspect()
-            active = inspect.active() or {}
-            reserved = inspect.reserved() or {}
-            scheduled = inspect.scheduled() or {}
+            import signal
+            
+            # Set a timeout for Celery inspect operations
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Queue status check timed out")
+            
+            # Set 5 second timeout for queue operations
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(5)
+            
+            try:
+                inspect = self.queue_manager.control.inspect()
+                active = inspect.active() or {}
+                reserved = inspect.reserved() or {}
+                scheduled = inspect.scheduled() or {}
+                
+                signal.alarm(0)  # Cancel the alarm
+                
+                running_jobs = sum(len(tasks) for tasks in active.values())
+                queued_jobs = (
+                    sum(len(tasks) for tasks in reserved.values()) +
+                    sum(len(tasks) for tasks in scheduled.values())
+                )
+                total_jobs = running_jobs + queued_jobs
 
-            running_jobs = sum(len(tasks) for tasks in active.values())
-            queued_jobs = (
-                sum(len(tasks) for tasks in reserved.values()) +
-                sum(len(tasks) for tasks in scheduled.values())
-            )
-            total_jobs = running_jobs + queued_jobs
+                status = {
+                    'total_jobs': total_jobs,
+                    'running_jobs': running_jobs,
+                    'queued_jobs': queued_jobs,
+                    'failed_jobs': 0,
+                    'completed_jobs': 0,
+                    'status': 'healthy' if total_jobs >= 0 else 'error'
+                }
 
-            status = {
-                'total_jobs': total_jobs,
-                'running_jobs': running_jobs,
-                'queued_jobs': queued_jobs,
-                'failed_jobs': 0,
-                'completed_jobs': 0,
-                'status': 'healthy' if total_jobs >= 0 else 'error'
-            }
-
-            logger.info(f"Retrieved queue status: {total_jobs} total jobs")
-            return status
+                logger.info(f"Retrieved queue status: {total_jobs} total jobs")
+                return status
+                
+            except TimeoutError:
+                logger.warning("Queue status check timed out, returning basic status")
+                return {
+                    'total_jobs': 0,
+                    'running_jobs': 0,
+                    'queued_jobs': 0,
+                    'failed_jobs': 0,
+                    'completed_jobs': 0,
+                    'status': 'timeout'
+                }
+            finally:
+                signal.alarm(0)  # Ensure alarm is cancelled
             
         except Exception as e:
             logger.error(f"Failed to get queue status: {e}")
@@ -132,69 +158,88 @@ class QueueService:
             List of job dictionaries
         """
         try:
-            inspect = self.queue_manager.control.inspect()
-            active = inspect.active() or {}
-            reserved = inspect.reserved() or {}
-            scheduled = inspect.scheduled() or {}
+            import signal
             
-            jobs = []
+            # Set a timeout for Celery inspect operations
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Job retrieval timed out")
             
-            # Process active jobs
-            for worker_name, worker_tasks in active.items():
-                for task in worker_tasks:
-                    jobs.append({
-                        'id': task['id'],
-                        'name': task['name'],
-                        'status': 'processing',
-                        'progress': 0,  # Celery doesn't provide progress by default
-                        'status_message': 'Processing...',
-                        'video_path': task.get('args', [''])[0] if task.get('args') else '',
-                        'worker': worker_name,
-                        'created_at': task.get('time_start'),
-                        'started_at': task.get('time_start')
-                    })
+            # Set 5 second timeout for queue operations
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(5)
             
-            # Process reserved jobs
-            for worker_name, worker_tasks in reserved.items():
-                for task in worker_tasks:
-                    jobs.append({
-                        'id': task['id'],
-                        'name': task['name'],
-                        'status': 'queued',
-                        'progress': 0,
-                        'status_message': 'Waiting to start...',
-                        'video_path': task.get('args', [''])[0] if task.get('args') else '',
-                        'worker': worker_name,
-                        'created_at': task.get('time_start')
-                    })
-            
-            # Process scheduled jobs
-            for worker_name, worker_tasks in scheduled.items():
-                for task in worker_tasks:
-                    jobs.append({
-                        'id': task['id'],
-                        'name': task['name'],
-                        'status': 'scheduled',
-                        'progress': 0,
-                        'status_message': 'Scheduled for later...',
-                        'video_path': task.get('args', [''])[0] if task.get('args') else '',
-                        'worker': worker_name,
-                        'created_at': task.get('eta')
-                    })
-            
-            # Get additional status info for each job
-            for job in jobs:
-                try:
-                    result = AsyncResult(job['id'], app=self.queue_manager)
-                    if result.info and isinstance(result.info, dict):
-                        job['progress'] = result.info.get('progress', job['progress'])
-                        job['status_message'] = result.info.get('status_message', job['status_message'])
-                        job['video_path'] = result.info.get('video_path', job['video_path'])
-                except Exception as e:
-                    logger.debug(f"Could not get additional info for job {job['id']}: {e}")
-            
-            logger.info(f"Retrieved {len(jobs)} jobs from queue")
-            return jobs
+            try:
+                inspect = self.queue_manager.control.inspect()
+                active = inspect.active() or {}
+                reserved = inspect.reserved() or {}
+                scheduled = inspect.scheduled() or {}
+                
+                signal.alarm(0)  # Cancel the alarm
+                
+                jobs = []
+                
+                # Process active jobs
+                for worker_name, worker_tasks in active.items():
+                    for task in worker_tasks:
+                        jobs.append({
+                            'id': task['id'],
+                            'name': task['name'],
+                            'status': 'processing',
+                            'progress': 0,  # Celery doesn't provide progress by default
+                            'status_message': 'Processing...',
+                            'video_path': task.get('args', [''])[0] if task.get('args') else '',
+                            'worker': worker_name,
+                            'created_at': task.get('time_start'),
+                            'started_at': task.get('time_start')
+                        })
+                
+                # Process reserved jobs
+                for worker_name, worker_tasks in reserved.items():
+                    for task in worker_tasks:
+                        jobs.append({
+                            'id': task['id'],
+                            'name': task['name'],
+                            'status': 'queued',
+                            'progress': 0,
+                            'status_message': 'Waiting to start...',
+                            'video_path': task.get('args', [''])[0] if task.get('args') else '',
+                            'worker': worker_name,
+                            'created_at': task.get('time_start')
+                        })
+                
+                # Process scheduled jobs
+                for worker_name, worker_tasks in scheduled.items():
+                    for task in worker_tasks:
+                        jobs.append({
+                            'id': task['id'],
+                            'name': task['name'],
+                            'status': 'scheduled',
+                            'progress': 0,
+                            'status_message': 'Scheduled for later...',
+                            'video_path': task.get('args', [''])[0] if task.get('args') else '',
+                            'worker': worker_name,
+                            'created_at': task.get('eta')
+                        })
+                
+                # Get additional status info for each job (with individual timeouts)
+                for job in jobs:
+                    try:
+                        result = AsyncResult(job['id'], app=self.queue_manager)
+                        if result.info and isinstance(result.info, dict):
+                            job['progress'] = result.info.get('progress', job['progress'])
+                            job['status_message'] = result.info.get('status_message', job['status_message'])
+                            job['video_path'] = result.info.get('video_path', job['video_path'])
+                    except Exception as e:
+                        logger.debug(f"Could not get additional info for job {job['id']}: {e}")
+                
+                logger.info(f"Retrieved {len(jobs)} jobs from queue")
+                return jobs
+                
+            except TimeoutError:
+                logger.warning("Job retrieval timed out, returning empty list")
+                return []
+            finally:
+                signal.alarm(0)  # Ensure alarm is cancelled
             
         except Exception as e:
             logger.error(f"Failed to get all jobs: {e}")

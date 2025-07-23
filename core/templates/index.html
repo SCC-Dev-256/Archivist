@@ -12,6 +12,43 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
+    <script>
+        // Global CSRF token variable
+        let csrfToken = null;
+        
+        // Function to get CSRF token
+        async function getCSRFToken() {
+            try {
+                const response = await fetch('/api/csrf-token');
+                const data = await response.json();
+                csrfToken = data.csrf_token;
+                console.log('CSRF token obtained:', csrfToken ? 'Success' : 'Failed');
+            } catch (error) {
+                console.error('Error getting CSRF token:', error);
+            }
+        }
+        
+        // Function to make authenticated API requests
+        async function apiRequest(url, options = {}) {
+            // Ensure we have a CSRF token
+            if (!csrfToken) {
+                await getCSRFToken();
+            }
+            
+            // Add CSRF token to headers for state-changing operations
+            if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
+                options.headers = {
+                    ...options.headers,
+                    'X-CSRF-Token': csrfToken
+                };
+            }
+            
+            return fetch(url, options);
+        }
+        
+        // Get CSRF token when page loads
+        document.addEventListener('DOMContentLoaded', getCSRFToken);
+    </script>
     <div class="container mx-auto px-4 py-8">
         <header class="mb-8">
             <h1 class="text-3xl font-bold mb-2">Archivist</h1>
@@ -589,7 +626,7 @@
 
         // Start transcription for single file
         function transcribe(path) {
-            fetch('/api/transcribe', {
+            apiRequest('/api/transcribe', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -756,7 +793,7 @@
                 return;
             }
             
-            fetch('/api/transcribe/batch', {
+            apiRequest('/api/transcribe/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ paths: paths })
@@ -804,7 +841,7 @@
                 return;
             }
             
-            fetch(`/api/queue/remove/${jobId}`, {
+            apiRequest(`/api/queue/remove/${jobId}`, {
                 method: 'POST'
             })
             .then(response => {
@@ -833,7 +870,7 @@
                 return;
             }
             
-            fetch(`/api/transcriptions/${transcriptionId}/remove`, {
+            apiRequest(`/api/transcriptions/${transcriptionId}/remove`, {
                 method: 'DELETE'
             })
             .then(response => {

@@ -17,7 +17,7 @@ def api_metrics():
     """Get comprehensive system metrics including performance, queue, and connection data."""
     try:
         # System metrics
-        cpu_percent = psutil.cpu_percent(interval=0.1)
+        cpu_percent = psutil.cpu_percent()  # Remove interval parameter to avoid blocking
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
         
@@ -139,7 +139,7 @@ def api_health():
         
         # System health
         try:
-            cpu_percent = psutil.cpu_percent(interval=0.1)
+            cpu_percent = psutil.cpu_percent()  # Remove interval parameter to avoid blocking
             memory = psutil.virtual_memory()
             health['checks']['system'] = {
                 'cpu_usage': cpu_percent,

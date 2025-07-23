@@ -49,14 +49,36 @@ class FileService:
             items = []
             for entry in os.listdir(path):
                 full_path = os.path.join(path, entry)
-                items.append({
-                    'name': entry,
-                    'is_dir': os.path.isdir(full_path),
-                    'size': os.path.getsize(full_path) if os.path.isfile(full_path) else None,
-                    'modified_at': datetime.fromtimestamp(os.path.getmtime(full_path)).isoformat(),
-                    'path': os.path.relpath(full_path, file_manager.base_path)
-                })
-            logger.info(f"Browsed directory: {path}")
+                try:
+                    # Get basic file info without blocking operations
+                    is_dir = os.path.isdir(full_path)
+                    modified_time = os.path.getmtime(full_path)
+                    
+                    # Only get file size for regular files, and only if it's fast
+                    file_size = None
+                    if not is_dir:
+                        try:
+                            # Use a quick stat call instead of getsize for better performance
+                            stat_info = os.stat(full_path)
+                            file_size = stat_info.st_size
+                        except (OSError, IOError) as e:
+                            # If we can't get size (e.g., network issues), skip it
+                            logger.debug(f"Could not get size for {full_path}: {e}")
+                            file_size = None
+                    
+                    items.append({
+                        'name': entry,
+                        'is_dir': is_dir,
+                        'size': file_size,
+                        'modified_at': datetime.fromtimestamp(modified_time).isoformat(),
+                        'path': os.path.relpath(full_path, file_manager.base_path)
+                    })
+                except (OSError, IOError) as e:
+                    # Skip files we can't access
+                    logger.debug(f"Could not access {full_path}: {e}")
+                    continue
+                    
+            logger.info(f"Browsed directory: {path} (found {len(items)} items)")
             return {'path': path, 'items': items}
         except Exception as e:
             logger.error(f"Failed to browse directory {path}: {e}")

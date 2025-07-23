@@ -204,16 +204,36 @@ def create_browse_blueprint(limiter):
     @limiter.limit(BROWSE_RATE_LIMIT)
     def browse():
         """Browse files and directories. If path is empty, return NAS root."""
+        import signal
+        
         path = request.args.get('path', '')
         # If path is empty, use NAS_PATH as root
         browse_path = NAS_PATH if not path else os.path.join(NAS_PATH, path)
+        
         # Validate path to prevent directory traversal
         if not security_manager.validate_path(browse_path, NAS_PATH):
             logger.warning(f"Invalid path access attempt: {browse_path}")
             return jsonify({'error': 'Invalid path'}), 400
+        
         try:
-            contents = FileService().browse_directory(browse_path)
-            return jsonify(sanitize_output(contents)), 200
+            # Set a timeout for the browse operation to prevent hanging
+            def timeout_handler(signum, frame):
+                raise TimeoutError("Browse operation timed out")
+            
+            # Set 10 second timeout for browse operations
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(10)
+            
+            try:
+                contents = FileService().browse_directory(browse_path)
+                signal.alarm(0)  # Cancel the alarm
+                return jsonify(sanitize_output(contents)), 200
+            except TimeoutError:
+                logger.error(f"Browse operation timed out for {browse_path}")
+                return jsonify({'error': 'Browse operation timed out. Please try again.'}), 408
+            finally:
+                signal.alarm(0)  # Ensure alarm is cancelled
+                
         except Exception as e:
             logger.error(f"Error browsing directory {browse_path}: {e}")
             return jsonify({'error': 'Internal server error'}), 500
