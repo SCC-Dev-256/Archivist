@@ -5,244 +5,281 @@ This module provides the main administrative interface that embeds the monitorin
 dashboard via iframe and provides additional administrative functions.
 """
 
-from flask import Flask, render_template, jsonify, request, Blueprint
-from flask_cors import CORS
 import threading
 import time
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
-from loguru import logger
+from core.config import MEMBER_CITIES
 from core.monitoring.integrated_dashboard import IntegratedDashboard
 from core.task_queue import QueueManager
 from core.tasks import celery_app
-from core.config import MEMBER_CITIES
+from flask import Blueprint, Flask, jsonify, render_template, request
+from flask_cors import CORS
+from loguru import logger
+
 
 class AdminUI:
     """Main administrative interface for the VOD processing system."""
-    
-    def __init__(self, host: str = "0.0.0.0", port: int = 8080, dashboard_port: int = 5051):
+
+    def __init__(
+        self, host: str = "0.0.0.0", port: int = 8080, dashboard_port: int = 5051
+    ):
         self.host = host
         self.port = port
         self.dashboard_port = dashboard_port
         self.app = Flask(__name__)
         self.queue_manager = QueueManager()
-        
+
         # Enable CORS
         CORS(self.app)
-        
+
         # Register routes
         self._register_routes()
-        
+
         # Start embedded dashboard
         self._start_embedded_dashboard()
-    
+
     def _register_routes(self):
         """Register all admin UI routes."""
-        
-        @self.app.route('/')
+
+        @self.app.route("/")
         def admin_dashboard():
             """Main admin dashboard with embedded monitoring."""
             return self._render_admin_dashboard()
-        
-        @self.app.route('/api/admin/status')
+
+        @self.app.route("/api/admin/status")
         def api_admin_status():
             """Get overall system status."""
             return jsonify(self._get_system_status())
-        
-        @self.app.route('/api/admin/cities')
+
+        @self.app.route("/api/admin/cities")
         def api_admin_cities():
             """Get member cities information."""
-            return jsonify({
-                'cities': MEMBER_CITIES,
-                'total': len(MEMBER_CITIES)
-            })
-        
-        @self.app.route('/api/admin/queue/summary')
+            return jsonify({"cities": MEMBER_CITIES, "total": len(MEMBER_CITIES)})
+
+        @self.app.route("/api/admin/queue/summary")
         def api_admin_queue_summary():
             """Get queue summary for admin view."""
             try:
                 jobs = self.queue_manager.get_all_jobs()
                 summary = {
-                    'total_jobs': len(jobs),
-                    'queued': len([j for j in jobs if j['status'] == 'queued']),
-                    'started': len([j for j in jobs if j['status'] == 'started']),
-                    'finished': len([j for j in jobs if j['status'] == 'finished']),
-                    'failed': len([j for j in jobs if j['status'] == 'failed']),
-                    'paused': len([j for j in jobs if j['status'] == 'paused'])
+                    "total_jobs": len(jobs),
+                    "queued": len([j for j in jobs if j["status"] == "queued"]),
+                    "started": len([j for j in jobs if j["status"] == "started"]),
+                    "finished": len([j for j in jobs if j["status"] == "finished"]),
+                    "failed": len([j for j in jobs if j["status"] == "failed"]),
+                    "paused": len([j for j in jobs if j["status"] == "paused"]),
                 }
                 return jsonify(summary)
             except Exception as e:
                 logger.error(f"Error getting queue summary: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/admin/celery/summary')
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/admin/celery/summary")
         def api_admin_celery_summary():
             """Get Celery summary for admin view."""
             try:
                 inspect = celery_app.control.inspect()
                 stats = inspect.stats()
                 ping = inspect.ping()
-                
+
                 summary = {
-                    'active_workers': len(ping) if ping else 0,
-                    'total_workers': len(stats) if stats else 0,
-                    'worker_status': 'healthy' if (ping and len(ping) > 0) else 'unhealthy'
+                    "active_workers": len(ping) if ping else 0,
+                    "total_workers": len(stats) if stats else 0,
+                    "worker_status": (
+                        "healthy" if (ping and len(ping) > 0) else "unhealthy"
+                    ),
                 }
                 return jsonify(summary)
             except Exception as e:
                 logger.error(f"Error getting Celery summary: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/admin/tasks/trigger/<task_name>', methods=['POST'])
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/admin/tasks/trigger/<task_name>", methods=["POST"])
         def api_admin_trigger_task(task_name):
             """Trigger a specific Celery task."""
             try:
                 data = request.get_json() or {}
-                
-                if task_name == 'process_recent_vods':
-                    task = celery_app.send_task('vod_processing.process_recent_vods')
-                elif task_name == 'cleanup_temp_files':
-                    task = celery_app.send_task('vod_processing.cleanup_temp_files')
-                elif task_name == 'check_captions':
-                    task = celery_app.send_task('caption_checks.check_latest_vod_captions')
+
+                if task_name == "process_recent_vods":
+                    task = celery_app.send_task("vod_processing.process_recent_vods")
+                elif task_name == "cleanup_temp_files":
+                    task = celery_app.send_task("vod_processing.cleanup_temp_files")
+                elif task_name == "check_captions":
+                    task = celery_app.send_task(
+                        "caption_checks.check_latest_vod_captions"
+                    )
                 else:
-                    return jsonify({'error': f'Unknown task: {task_name}'}), 400
-                
-                return jsonify({
-                    'success': True,
-                    'task_id': task.id,
-                    'task_name': task_name,
-                    'message': f'Task {task_name} triggered successfully'
-                })
+                    return jsonify({"error": f"Unknown task: {task_name}"}), 400
+
+                return jsonify(
+                    {
+                        "success": True,
+                        "task_id": task.id,
+                        "task_name": task_name,
+                        "message": f"Task {task_name} triggered successfully",
+                    }
+                )
             except Exception as e:
                 logger.error(f"Error triggering task {task_name}: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/admin/queue/cleanup', methods=['POST'])
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/admin/queue/cleanup", methods=["POST"])
         def api_admin_queue_cleanup():
             """Clean up failed jobs in the queue."""
             try:
                 self.queue_manager.cleanup_failed_jobs()
-                return jsonify({
-                    'success': True,
-                    'message': 'Failed jobs cleaned up successfully'
-                })
+                return jsonify(
+                    {"success": True, "message": "Failed jobs cleaned up successfully"}
+                )
             except Exception as e:
                 logger.error(f"Error cleaning up queue: {e}")
-                return jsonify({'error': str(e)}), 500
-        
+                return jsonify({"error": str(e)}), 500
+
         # Register unified queue routes
         try:
-            from core.api.unified_queue_routes import register_unified_queue_routes
+            from core.api.unified_queue_routes import \
+                register_unified_queue_routes
+
             register_unified_queue_routes(self.app)
             logger.info("Successfully registered unified queue routes in admin UI")
         except Exception as e:
             logger.error(f"Failed to register unified queue routes: {e}")
-        
+
         # Register dashboard API endpoints for testing compatibility
         self._register_dashboard_api_routes()
-    
+
     def _register_dashboard_api_routes(self):
         """Register dashboard API endpoints for testing compatibility."""
-        
-        @self.app.route('/api/metrics')
+
+        @self.app.route("/api/metrics")
         def api_metrics():
             """Get current metrics data."""
             try:
                 from core.monitoring.metrics import get_metrics_collector
+
                 metrics_collector = get_metrics_collector()
                 return jsonify(metrics_collector.export_metrics())
             except Exception as e:
                 logger.error(f"Error getting metrics: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/health')
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/health")
         def api_health():
             """Get health check data."""
             try:
                 from core.monitoring.health_checks import get_health_manager
+
                 health_manager = get_health_manager()
                 return jsonify(health_manager.get_health_status())
             except Exception as e:
                 logger.error(f"Error getting health status: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/queue/jobs')
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/health/quick")
+        def api_health_quick():
+            """Lightweight health check that avoids slow operations."""
+            try:
+                return jsonify(
+                    {"status": "ok", "timestamp": datetime.now().isoformat()}
+                )
+            except Exception as e:
+                logger.error(f"Error getting quick health: {e}")
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/queue/jobs")
         def api_queue_jobs():
             """Get all queue jobs."""
             try:
                 jobs = self.queue_manager.get_all_jobs()
-                return jsonify({
-                    'jobs': jobs,
-                    'total': len(jobs),
-                    'status_counts': self._count_job_statuses(jobs)
-                })
+                return jsonify(
+                    {
+                        "jobs": jobs,
+                        "total": len(jobs),
+                        "status_counts": self._count_job_statuses(jobs),
+                    }
+                )
             except Exception as e:
                 logger.error(f"Error getting queue jobs: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/celery/tasks')
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/celery/tasks")
         def api_celery_tasks():
             """Get Celery task statistics."""
             try:
                 from core.tasks import celery_app
+
                 inspect = celery_app.control.inspect()
                 stats = inspect.stats()
                 active = inspect.active()
                 reserved = inspect.reserved()
-                
-                return jsonify({
-                    'stats': stats,
-                    'active': active,
-                    'reserved': reserved,
-                    'summary': self._summarize_celery_tasks(stats, active, reserved)
-                })
+
+                return jsonify(
+                    {
+                        "stats": stats,
+                        "active": active,
+                        "reserved": reserved,
+                        "summary": self._summarize_celery_tasks(
+                            stats, active, reserved
+                        ),
+                    }
+                )
             except Exception as e:
                 logger.error(f"Error getting Celery tasks: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/celery/workers')
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/celery/workers")
         def api_celery_workers():
             """Get Celery worker status."""
             try:
                 from core.tasks import celery_app
+
                 inspect = celery_app.control.inspect()
                 stats = inspect.stats()
                 ping = inspect.ping()
-                
-                return jsonify({
-                    'workers': stats,
-                    'ping': ping,
-                    'summary': self._summarize_celery_workers(stats, ping)
-                })
+
+                return jsonify(
+                    {
+                        "workers": stats,
+                        "ping": ping,
+                        "summary": self._summarize_celery_workers(stats, ping),
+                    }
+                )
             except Exception as e:
                 logger.error(f"Error getting Celery workers: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/unified/tasks')
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/unified/tasks")
         def api_unified_tasks():
             """Get unified task view (RQ + Celery)."""
             try:
                 from core.tasks import celery_app
-                from core.unified_queue_manager import get_unified_queue_manager
-                
+                from core.unified_queue_manager import \
+                    get_unified_queue_manager
+
                 queue_manager = get_unified_queue_manager()
                 tasks = queue_manager.get_all_tasks()
-                
-                return jsonify({
-                    'tasks': tasks,
-                    'summary': {
-                        'total': len(tasks),
-                        'rq_tasks': len([t for t in tasks if t.get('queue_type') == 'rq']),
-                        'celery_tasks': len([t for t in tasks if t.get('queue_type') == 'celery'])
+
+                return jsonify(
+                    {
+                        "tasks": tasks,
+                        "summary": {
+                            "total": len(tasks),
+                            "rq_tasks": len(
+                                [t for t in tasks if t.get("queue_type") == "rq"]
+                            ),
+                            "celery_tasks": len(
+                                [t for t in tasks if t.get("queue_type") == "celery"]
+                            ),
+                        },
                     }
-                })
+                )
             except Exception as e:
                 logger.error(f"Error getting unified tasks: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/docs')
+                return jsonify({"error": str(e)}), 500
+
+        @self.app.route("/api/docs")
         def api_docs():
             """Main API documentation page."""
             return f"""
@@ -384,43 +421,47 @@ class AdminUI:
 </body>
 </html>
             """
-    
+
     def _count_job_statuses(self, jobs: List[Dict]) -> Dict[str, int]:
         """Count jobs by status."""
         counts = {}
         for job in jobs:
-            status = job.get('status', 'unknown')
+            status = job.get("status", "unknown")
             counts[status] = counts.get(status, 0) + 1
         return counts
-    
-    def _summarize_celery_tasks(self, stats: Dict, active: Dict, reserved: Dict) -> Dict[str, Any]:
+
+    def _summarize_celery_tasks(
+        self, stats: Dict, active: Dict, reserved: Dict
+    ) -> Dict[str, Any]:
         """Summarize Celery task statistics."""
         total_active = sum(len(tasks) for tasks in active.values()) if active else 0
-        total_reserved = sum(len(tasks) for tasks in reserved.values()) if reserved else 0
-        
+        total_reserved = (
+            sum(len(tasks) for tasks in reserved.values()) if reserved else 0
+        )
+
         return {
-            'total_active': total_active,
-            'total_reserved': total_reserved,
-            'total_tasks': total_active + total_reserved,
-            'workers_with_tasks': len(active) if active else 0
+            "total_active": total_active,
+            "total_reserved": total_reserved,
+            "total_tasks": total_active + total_reserved,
+            "workers_with_tasks": len(active) if active else 0,
         }
-    
+
     def _summarize_celery_workers(self, stats: Dict, ping: Dict) -> Dict[str, Any]:
         """Summarize Celery worker statistics."""
         total_workers = len(stats) if stats else 0
         online_workers = len(ping) if ping else 0
-        
+
         return {
-            'total_workers': total_workers,
-            'online_workers': online_workers,
-            'offline_workers': total_workers - online_workers,
-            'health_status': 'healthy' if online_workers > 0 else 'unhealthy'
+            "total_workers": total_workers,
+            "online_workers": online_workers,
+            "offline_workers": total_workers - online_workers,
+            "health_status": "healthy" if online_workers > 0 else "unhealthy",
         }
-    
+
     def _render_admin_dashboard(self) -> str:
         """Render the main admin dashboard HTML with embedded monitoring."""
         dashboard_url = f"http://localhost:{self.dashboard_port}"
-        
+
         return f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -767,77 +808,90 @@ class AdminUI:
 </body>
 </html>
         """
-    
+
     def _get_system_status(self) -> Dict:
         """Get overall system status."""
         try:
             # Get queue status
             queue_jobs = self.queue_manager.get_all_jobs()
             queue_summary = {
-                'total_jobs': len(queue_jobs),
-                'queued': len([j for j in queue_jobs if j['status'] == 'queued']),
-                'started': len([j for j in queue_jobs if j['status'] == 'started']),
-                'finished': len([j for j in queue_jobs if j['status'] == 'finished']),
-                'failed': len([j for j in queue_jobs if j['status'] == 'failed']),
-                'paused': len([j for j in queue_jobs if j['status'] == 'paused'])
+                "total_jobs": len(queue_jobs),
+                "queued": len([j for j in queue_jobs if j["status"] == "queued"]),
+                "started": len([j for j in queue_jobs if j["status"] == "started"]),
+                "finished": len([j for j in queue_jobs if j["status"] == "finished"]),
+                "failed": len([j for j in queue_jobs if j["status"] == "failed"]),
+                "paused": len([j for j in queue_jobs if j["status"] == "paused"]),
             }
-            
+
             # Get Celery status
             inspect = celery_app.control.inspect()
             stats = inspect.stats()
             ping = inspect.ping()
-            
+
             celery_summary = {
-                'active_workers': len(ping) if ping else 0,
-                'total_workers': len(stats) if stats else 0,
-                'worker_status': 'healthy' if (ping and len(ping) > 0) else 'unhealthy'
+                "active_workers": len(ping) if ping else 0,
+                "total_workers": len(stats) if stats else 0,
+                "worker_status": "healthy" if (ping and len(ping) > 0) else "unhealthy",
             }
-            
+
             return {
-                'timestamp': datetime.now().isoformat(),
-                'queue': queue_summary,
-                'celery': celery_summary,
-                'cities': {
-                    'total': len(MEMBER_CITIES),
-                    'cities': MEMBER_CITIES
-                },
-                'overall_status': 'healthy' if (celery_summary['worker_status'] == 'healthy' and queue_summary['failed'] == 0) else 'degraded'
+                "timestamp": datetime.now().isoformat(),
+                "queue": queue_summary,
+                "celery": celery_summary,
+                "cities": {"total": len(MEMBER_CITIES), "cities": MEMBER_CITIES},
+                "overall_status": (
+                    "healthy"
+                    if (
+                        celery_summary["worker_status"] == "healthy"
+                        and queue_summary["failed"] == 0
+                    )
+                    else "degraded"
+                ),
             }
         except Exception as e:
             logger.error(f"Error getting system status: {e}")
             return {
-                'timestamp': datetime.now().isoformat(),
-                'error': str(e),
-                'overall_status': 'unhealthy'
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e),
+                "overall_status": "unhealthy",
             }
-    
+
     def _start_embedded_dashboard(self):
         """Start the embedded monitoring dashboard in a separate thread."""
+
         def start_dashboard():
             try:
-                dashboard = IntegratedDashboard(host="0.0.0.0", port=self.dashboard_port)
+                dashboard = IntegratedDashboard(
+                    host="0.0.0.0", port=self.dashboard_port
+                )
                 dashboard.run()
             except Exception as e:
                 logger.error(f"Failed to start embedded dashboard: {e}")
-        
+
         # Start dashboard in background thread
         dashboard_thread = threading.Thread(target=start_dashboard, daemon=True)
         dashboard_thread.start()
-        
+
         # Wait a moment for dashboard to start
         time.sleep(2)
-        logger.info(f"Embedded monitoring dashboard started on port {self.dashboard_port}")
-    
+        logger.info(
+            f"Embedded monitoring dashboard started on port {self.dashboard_port}"
+        )
+
     def run(self):
         """Run the admin UI server."""
         logger.info(f"Starting admin UI on {self.host}:{self.port}")
-        logger.info(f"Monitoring dashboard embedded at http://localhost:{self.dashboard_port}")
+        logger.info(
+            f"Monitoring dashboard embedded at http://localhost:{self.dashboard_port}"
+        )
         self.app.run(host=self.host, port=self.port, debug=False, threaded=True)
+
 
 def start_admin_ui(host: str = "0.0.0.0", port: int = 8080, dashboard_port: int = 5051):
     """Start the main admin UI with embedded monitoring dashboard."""
     admin_ui = AdminUI(host, port, dashboard_port)
     admin_ui.run()
 
+
 if __name__ == "__main__":
-    start_admin_ui() 
+    start_admin_ui()
