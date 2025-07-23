@@ -23,6 +23,7 @@ from core.exceptions import FileError, handle_file_error
 from core.file_manager import file_manager
 from core.check_mounts import verify_critical_mounts, list_mount_contents
 from core.config import MOUNT_POINTS, NAS_PATH
+from datetime import datetime
 
 class FileService:
     """Service for handling file operations."""
@@ -33,25 +34,52 @@ class FileService:
     
     @handle_file_error
     def browse_directory(self, path: str, user: str = "default", location: str = "default") -> Dict:
-        """Browse a directory and return its contents.
-        
-        Args:
-            path: Directory path to browse
-            user: User requesting the browse operation
-            location: Location context for access control
-            
-        Returns:
-            Dictionary containing directory contents
-        """
+        """Browse a directory and return its contents."""
         try:
-            # Use the existing file manager
+            # Use the existing file manager for context
             file_manager.user = user
             file_manager.location = location
-            
-            contents = file_manager.browse_directory(path)
-            logger.info(f"Browsed directory: {path}")
-            return contents
-            
+
+            # Directory listing logic (since file_manager has no browse_directory)
+            if not os.path.exists(path):
+                raise FileError(f"Directory not found: {path}")
+            if not os.path.isdir(path):
+                raise FileError(f"Not a directory: {path}")
+
+            items = []
+            for entry in os.listdir(path):
+                full_path = os.path.join(path, entry)
+                try:
+                    # Get basic file info without blocking operations
+                    is_dir = os.path.isdir(full_path)
+                    modified_time = os.path.getmtime(full_path)
+                    
+                    # Only get file size for regular files, and only if it's fast
+                    file_size = None
+                    if not is_dir:
+                        try:
+                            # Use a quick stat call instead of getsize for better performance
+                            stat_info = os.stat(full_path)
+                            file_size = stat_info.st_size
+                        except (OSError, IOError) as e:
+                            # If we can't get size (e.g., network issues), skip it
+                            logger.debug(f"Could not get size for {full_path}: {e}")
+                            file_size = None
+                    
+                    items.append({
+                        'name': entry,
+                        'is_dir': is_dir,
+                        'size': file_size,
+                        'modified_at': datetime.fromtimestamp(modified_time).isoformat(),
+                        'path': os.path.relpath(full_path, file_manager.base_path)
+                    })
+                except (OSError, IOError) as e:
+                    # Skip files we can't access
+                    logger.debug(f"Could not access {full_path}: {e}")
+                    continue
+                    
+            logger.info(f"Browsed directory: {path} (found {len(items)} items)")
+            return {'path': path, 'items': items}
         except Exception as e:
             logger.error(f"Failed to browse directory {path}: {e}")
             raise FileError(f"Directory browse failed: {str(e)}")

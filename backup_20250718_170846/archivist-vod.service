@@ -1,0 +1,37 @@
+[Unit]
+Description=Archivist VOD Processing System
+After=network.target redis.service postgresql.service
+Wants=redis.service postgresql.service
+
+[Service]
+Type=simple
+User=schum
+Group=schum
+WorkingDirectory=/opt/Archivist
+Environment=PATH=/opt/Archivist/venv_py311/bin
+Environment=PYTHONPATH=/opt/Archivist
+Environment=FLASK_ENV=production
+Environment=FLASK_DEBUG=false
+Environment=VOD_PROCESSING_TIME=19:00
+Environment=ADMIN_HOST=0.0.0.0
+Environment=ADMIN_PORT=8080
+Environment=DASHBOARD_PORT=5051
+ExecStart=/opt/Archivist/venv_py311/bin/python3 /opt/Archivist/scripts/deployment/start_complete_system.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/Archivist/logs /opt/Archivist/output /mnt/flex-1 /mnt/flex-2 /mnt/flex-3 /mnt/flex-4 /mnt/flex-5 /tmp
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target 

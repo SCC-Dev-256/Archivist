@@ -16,9 +16,13 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 from core.logging_config import setup_logging
 from core.database import db
-from core.web_app import register_routes
 from core.security import security_manager
 from loguru import logger
+from flask_socketio import SocketIO
+from core.monitoring.middleware import performance_middleware
+from core.monitoring.socket_tracker import socket_tracker
+from core.services.queue_analytics import queue_analytics
+from core.database_health import init_db_health_checker
 
 # Initialize extensions
 migrate = Migrate()
@@ -86,11 +90,34 @@ def create_app(testing=False):
     )
     
     # Initialize security manager with HTTPS enforcement based on environment
-    force_https = os.getenv('FLASK_ENV') == 'production' or os.getenv('FORCE_HTTPS', 'false').lower() == 'true'
+    # Only enforce HTTPS in production or if FORCE_HTTPS is explicitly true
+    force_https = (os.getenv('FLASK_ENV') == 'production' or os.getenv('FORCE_HTTPS', 'false').lower() == 'true')
     security_manager.init_app(app, force_https=force_https)
     
     # Register routes from web_app
+    from core.api.routes import register_routes
     register_routes(app, limiter)
+    # Initialize SocketIO
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    app.socketio = socketio
+    # Register real-time event handlers
+    from core.realtime import register_realtime_events
+    register_realtime_events(app)
+    
+    # Initialize database health checker
+    with app.app_context():
+        try:
+            init_db_health_checker(db.session)
+            logger.info("Database health checker initialized successfully")
+        except Exception as e:
+            logger.warning(f"Database health checker initialization failed: {e}")
+    
+    # Initialize performance monitoring middleware
+    try:
+        performance_middleware.init_app(app)
+        logger.info("Performance monitoring middleware initialized successfully")
+    except Exception as e:
+        logger.warning(f"Performance monitoring middleware initialization failed: {e}")
     
     # Log application startup (without sensitive details)
     if testing:
@@ -113,5 +140,10 @@ def create_app_with_config(config_object=None):
 # Create the default app instance
 app = create_app(testing=os.getenv("TESTING", "false").lower() == "true")
 
+# Add route to render the main GUI
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5050, debug=True) 
+    app.socketio.run(app, host="0.0.0.0", port=5050, debug=True) 

@@ -59,7 +59,7 @@ except Exception as e:
 
 # Verify task registration
 registered_tasks = celery_app.tasks.keys()
-vod_tasks = [task for task in registered_tasks if 'vod_processing' in task]
+vod_tasks = [task for task in registered_tasks if any(vod_task in task for vod_task in ['process_recent_vods', 'download_vod_content', 'generate_vod_captions', 'retranscode_vod', 'upload_captioned_vod', 'validate_vod_quality', 'cleanup_temp_files'])]
 transcription_tasks = [task for task in registered_tasks if 'transcription' in task]
 logger.info(f"Registered VOD processing tasks: {len(vod_tasks)}")
 logger.info(f"Registered transcription tasks: {len(transcription_tasks)}")

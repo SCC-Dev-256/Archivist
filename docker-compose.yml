@@ -1,168 +1,210 @@
 version: '3.8'
 
 services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/nginx/ssl
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    depends_on:
-      - web
-    networks:
-      - archivist_net
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.web
-    expose:
-      - "5000"
-    env_file:
-      - .env
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: archivist-postgres
     environment:
-      - DATABASE_URL=postgresql://archivist:archivist_password@db:5432/archivist
+      POSTGRES_DB: archivist
+      POSTGRES_USER: archivist
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-archivist_password}
     volumes:
-      - ./logs:/app/logs
-      - ./uploads:/app/uploads
-      - ./outputs:/app/outputs
-      #- ./.env:/app/.env
-    depends_on:
-      redis:
-        condition: service_healthy
-      db:
-        condition: service_healthy
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - archivist-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://:5000/health"]
+      test: ["CMD-SHELL", "pg_isready -U archivist"]
       interval: 30s
       timeout: 10s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-        reservations:
-          memory: 2G
-    networks:
-      - archivist_net
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    env_file:
-      - .env
-    volumes:
-      - ./logs:/app/logs
-      - ./uploads:/app/uploads
-      - ./outputs:/app/outputs
-    depends_on:
-      redis:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 8G
-        reservations:
-          memory: 4G
-    networks:
-      - archivist_net
-
+  # Redis for caching and queue management
   redis:
     image: redis:7-alpine
-    expose:
-      - "6379"
+    container_name: archivist-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - archivist-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-    networks:
-      - archivist_net
 
-  db:
-    image: postgres:15-alpine
-    env_file:
-      - .env
+  # Celery Worker for background tasks
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: archivist-celery-worker
+    command: celery -A core.tasks worker --loglevel=info --concurrency=4
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - POSTGRES_DB=${POSTGRES_DB:-archivist}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=archivist
+      - POSTGRES_USER=archivist
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-archivist_password}
+      - PYTHONPATH=/opt/Archivist
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-archivist}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - ./:/opt/Archivist
+      - vod_storage:/mnt/vod
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - archivist-network
+    restart: unless-stopped
     deploy:
       resources:
         limits:
           memory: 2G
-    networks:
-      - archivist_net
+        reservations:
+          memory: 1G
 
+  # Celery Beat for scheduled tasks
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: archivist-celery-beat
+    command: celery -A core.tasks beat --loglevel=info
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=archivist
+      - POSTGRES_USER=archivist
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-archivist_password}
+      - PYTHONPATH=/opt/Archivist
+    volumes:
+      - ./:/opt/Archivist
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - archivist-network
+    restart: unless-stopped
+
+  # Flask API and Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: archivist-dashboard
+    command: gunicorn --bind 0.0.0.0:8080 --workers 4 --worker-class gevent --worker-connections 1000 --timeout 120 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100 core.monitoring.integrated_dashboard:start_integrated_dashboard
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=archivist
+      - POSTGRES_USER=archivist
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-archivist_password}
+      - DASHBOARD_SECRET_KEY=${DASHBOARD_SECRET_KEY:-archivist-dashboard-secret-2025}
+      - PYTHONPATH=/opt/Archivist
+    ports:
+      - "8080:8080"
+      - "5051:5051"
+    volumes:
+      - ./:/opt/Archivist
+      - vod_storage:/mnt/vod
+    depends_on:
+      - redis
+      - postgres
+      - celery-worker
+    networks:
+      - archivist-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: archivist-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - dashboard
+    networks:
+      - archivist-network
+    restart: unless-stopped
+
+  # Prometheus for metrics collection
   prometheus:
     image: prom/prometheus:latest
-    volumes:
-      - ./prometheus:/etc/prometheus
-      - prometheus_data:/prometheus
+    container_name: archivist-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-    expose:
-      - "9090"
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     networks:
-      - archivist_net
+      - archivist-network
+    restart: unless-stopped
 
+  # Grafana for metrics visualization
   grafana:
     image: grafana/grafana:latest
-    volumes:
-      - grafana_data:/var/lib/grafana
+    container_name: archivist-grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
-    expose:
-      - "3000"
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus
-    deploy:
-      resources:
-        limits:
-          memory: 1G
     networks:
-      - archivist_net
+      - archivist-network
+    restart: unless-stopped
 
 volumes:
-  redis_data:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
   prometheus_data:
+    driver: local
   grafana_data:
+    driver: local
+  vod_storage:
+    driver: local
 
 networks:
-  archivist_net:
-    driver: bridge 
+  archivist-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

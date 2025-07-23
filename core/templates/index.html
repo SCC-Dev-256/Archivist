@@ -8,86 +8,196 @@
     <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <!-- Socket.IO client must be loaded first for io() to be defined -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
+    <script>
+        // Global CSRF token variable
+        let csrfToken = null;
+        
+        // Function to get CSRF token
+        async function getCSRFToken() {
+            try {
+                const response = await fetch('/api/csrf-token');
+                const data = await response.json();
+                csrfToken = data.csrf_token;
+                console.log('CSRF token obtained:', csrfToken ? 'Success' : 'Failed');
+            } catch (error) {
+                console.error('Error getting CSRF token:', error);
+            }
+        }
+        
+        // Function to make authenticated API requests
+        async function apiRequest(url, options = {}) {
+            // Ensure we have a CSRF token
+            if (!csrfToken) {
+                await getCSRFToken();
+            }
+            
+            // Add CSRF token to headers for state-changing operations
+            if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
+                options.headers = {
+                    ...options.headers,
+                    'X-CSRF-Token': csrfToken
+                };
+            }
+            
+            return fetch(url, options);
+        }
+        
+        // Get CSRF token when page loads
+        document.addEventListener('DOMContentLoaded', getCSRFToken);
+    </script>
     <div class="container mx-auto px-4 py-8">
         <header class="mb-8">
             <h1 class="text-3xl font-bold mb-2">Archivist</h1>
             <p class="text-gray-400">Video Transcription System</p>
+            <!-- Live System Metrics Panel -->
+            <div id="live-metrics" class="mt-4 bg-gray-700 rounded p-4 flex flex-wrap gap-6 text-sm">
+                <div><span class="font-semibold">CPU:</span> <span id="metric-cpu">-</span>%</div>
+                <div><span class="font-semibold">Memory:</span> <span id="metric-mem">-</span>%</div>
+                <div><span class="font-semibold">Disk:</span> <span id="metric-disk">-</span>%</div>
+                <div><span class="font-semibold">Redis:</span> <span id="metric-redis">-</span></div>
+            </div>
         </header>
 
-        <!-- Search Bar -->
-        <div class="mb-6">
-            <div class="flex gap-4">
-                <input type="text" id="search-input" placeholder="Search files or transcriptions..." 
-                       class="flex-1 bg-gray-700 text-white px-4 py-2 rounded">
-                <select id="search-type" class="bg-gray-700 text-white px-4 py-2 rounded">
-                    <option value="files">Files</option>
-                    <option value="transcriptions">Transcriptions</option>
-                </select>
-            </div>
-        </div>
+        <!-- Navigation Tabs -->
+        <nav class="mb-6">
+            <ul class="flex gap-4 border-b border-gray-700" id="main-tabs">
+                <li><button class="tab-btn active" data-tab="tab-browser">File Browser</button></li>
+                <li><button class="tab-btn" data-tab="tab-analytics">Analytics</button></li>
+                <li><button class="tab-btn" data-tab="tab-realtime">Real-Time Tasks</button></li>
+                <li><button class="tab-btn" data-tab="tab-controls">Controls</button></li>
+            </ul>
+        </nav>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <!-- File Browser -->
-            <div class="bg-gray-800 rounded-lg p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">File Browser</h2>
-                    <div class="flex gap-2">
-                        <button onclick="refreshFiles()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+        <!-- Tab Content Containers -->
+        <div id="tab-browser" class="tab-content">
+            <!-- Search Bar -->
+            <div class="mb-6">
+                <div class="flex gap-4">
+                    <input type="text" id="search-input" placeholder="Search files or transcriptions..." 
+                           class="flex-1 bg-gray-700 text-white px-4 py-2 rounded">
+                    <select id="search-type" class="bg-gray-700 text-white px-4 py-2 rounded">
+                        <option value="files">Files</option>
+                        <option value="transcriptions">Transcriptions</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <!-- Real-Time Analytics Panel -->
+                <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Task Analytics</h2>
+                        <button id="refresh-analytics-btn" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">Refresh Analytics</button>
+                    </div>
+                    <div id="analytics-panel" class="space-y-2 text-sm">
+                        <!-- Analytics will be rendered here -->
+                    </div>
+                </div>
+                <!-- Filtered Tasks Panel -->
+                <div class="bg-gray-800 rounded-lg p-6 mb-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Filtered Tasks</h2>
+                        <div class="flex gap-2">
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="filterTasks('all')">All</button>
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="filterTasks('vod')">VOD</button>
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="filterTasks('transcription')">Transcription</button>
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="filterTasks('cleanup')">Cleanup</button>
+                        </div>
+                    </div>
+                    <div id="filtered-tasks-list" class="space-y-2 text-sm">
+                        <!-- Filtered tasks will be rendered here -->
+                    </div>
+                </div>
+                <!-- File Browser -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">File Browser</h2>
+                        <div class="flex gap-2">
+                            <button onclick="refreshFiles()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                                Refresh
+                            </button>
+                            <button onclick="showFileDetails()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                                Details
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="flex gap-2">
+                            <input type="text" id="current-path" class="flex-1 bg-gray-700 text-white px-4 py-2 rounded" readonly>
+                            <button onclick="navigateUp()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                                Up
+                            </button>
+                        </div>
+                    </div>
+                    <div id="file-list" class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Files will be listed here -->
+                    </div>
+                    <div class="mt-4">
+                        <button id="queue-selected-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="queueSelectedFiles()">
+                            Queue Selected for Transcription
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Queue Status -->
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Transcription Queue</h2>
+                        <button onclick="updateQueue()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
                             Refresh
                         </button>
-                        <button onclick="showFileDetails()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
-                            Details
-                        </button>
                     </div>
-                </div>
-                <div class="mb-4">
-                    <div class="flex gap-2">
-                        <input type="text" id="current-path" class="flex-1 bg-gray-700 text-white px-4 py-2 rounded" readonly>
-                        <button onclick="navigateUp()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-                            Up
-                        </button>
+                    <div id="queue-list" class="space-y-4 max-h-96 overflow-y-auto">
+                        <!-- Queue items will be listed here -->
                     </div>
-                </div>
-                <div id="file-list" class="space-y-2 max-h-96 overflow-y-auto">
-                    <!-- Files will be listed here -->
-                </div>
-                <div class="mt-4">
-                    <button id="queue-selected-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="queueSelectedFiles()">
-                        Queue Selected for Transcription
-                    </button>
                 </div>
             </div>
 
-            <!-- Queue Status -->
+            <!-- Completed Transcriptions -->
             <div class="bg-gray-800 rounded-lg p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold">Transcription Queue</h2>
-                    <button onclick="updateQueue()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
-                        Refresh
-                    </button>
+                    <h2 class="text-xl font-semibold">Completed Transcriptions</h2>
+                    <div class="flex gap-2">
+                        <input type="text" id="transcription-search" placeholder="Search transcriptions..." 
+                               class="bg-gray-700 text-white px-4 py-2 rounded">
+                        <button onclick="loadCompletedTranscriptions()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                            Refresh
+                        </button>
+                    </div>
                 </div>
-                <div id="queue-list" class="space-y-4 max-h-96 overflow-y-auto">
-                    <!-- Queue items will be listed here -->
+                <div id="completed-list" class="space-y-4 max-h-96 overflow-y-auto">
+                    <!-- Completed transcriptions will be listed here -->
                 </div>
             </div>
         </div>
-
-        <!-- Completed Transcriptions -->
-        <div class="bg-gray-800 rounded-lg p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">Completed Transcriptions</h2>
-                <div class="flex gap-2">
-                    <input type="text" id="transcription-search" placeholder="Search transcriptions..." 
-                           class="bg-gray-700 text-white px-4 py-2 rounded">
-                    <button onclick="loadCompletedTranscriptions()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
-                        Refresh
-                    </button>
-                </div>
+        <div id="tab-analytics" class="tab-content hidden">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Analytics</h2>
+                <canvas id="system-metrics-chart" width="400" height="200"></canvas>
+                <div id="system-info" class="mt-6 text-sm text-gray-400"></div>
+                <div id="service-status" class="mt-4 text-sm text-gray-400"></div>
+                <div id="queue-metrics" class="mt-4 text-sm text-gray-400"></div>
+                <div id="redis-metrics" class="mt-4 text-sm text-gray-400"></div>
+                <div id="performance-metrics" class="mt-4 text-sm text-gray-400"></div>
+                <div id="socket-io-metrics" class="mt-4 text-sm text-gray-400"></div>
+                <div id="queue-analytics" class="mt-4 text-sm text-gray-400"></div>
+                <div id="database-health" class="mt-4 text-sm text-gray-400"></div>
             </div>
-            <div id="completed-list" class="space-y-4 max-h-96 overflow-y-auto">
-                <!-- Completed transcriptions will be listed here -->
+        </div>
+        <div id="tab-realtime" class="tab-content hidden">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Real-Time Tasks</h2>
+                <div id="realtime-tasks-list" class="space-y-2 text-sm text-gray-200">Waiting for updates...</div>
+            </div>
+        </div>
+        <div id="tab-controls" class="tab-content hidden">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Controls (Coming Soon)</h2>
+                <div id="controls-placeholder" class="text-gray-400">Manual controls for VOD/transcription will appear here.</div>
             </div>
         </div>
     </div>
@@ -105,27 +215,116 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // Cache-busting: Updated queue response handling - v1.1
         let currentPath = '';
         let queueUpdateInterval;
         let selectedFiles = new Set(); // Track multiple selected files
+        let systemMetricsChart;
 
         // Initialize
+        let socket;
         document.addEventListener('DOMContentLoaded', function() {
             loadFiles();
             updateQueue();
             loadCompletedTranscriptions();
             queueUpdateInterval = setInterval(updateQueue, 5000);
+
+            // Initialize Socket.IO connection
+            socket = io();
+            socket.on('connect', function() {
+                console.log('[Socket.IO] Connected:', socket.id);
+            });
+            socket.on('connected', function(data) {
+                console.log('[Socket.IO] Server acknowledged connection:', data);
+            });
+            socket.on('system_metrics', function(data) {
+                console.log('[Socket.IO] System metrics:', data);
+                // Update UI with real-time metrics
+                if (data) {
+                    document.getElementById('metric-cpu').textContent = data.cpu_percent ?? '-';
+                    document.getElementById('metric-mem').textContent = data.memory_percent ?? '-';
+                    document.getElementById('metric-disk').textContent = data.disk_percent ?? '-';
+                    document.getElementById('metric-redis').textContent = data.redis && data.redis.status === 'connected' ? 'OK' : 'Error';
+                }
+            });
+            // Example: request system metrics on connect
+            socket.on('connect', function() {
+                socket.emit('request_system_metrics');
+            });
+            socket.on('task_updates', function(data) {
+                console.log('[Socket.IO] Task updates:', data);
+                if (data && data.jobs) {
+                    updateQueueUI(data.jobs);
+                }
+                if (!document.getElementById('tab-realtime').classList.contains('hidden')) {
+                    renderRealtimeTasks(data.jobs || []);
+                }
+            });
+            document.getElementById('refresh-analytics-btn').addEventListener('click', function() {
+                socket.emit('request_task_analytics');
+            });
+            socket.on('task_analytics', function(data) {
+                console.log('[Socket.IO] Task analytics:', data);
+                const panel = document.getElementById('analytics-panel');
+                if (data) {
+                    panel.innerHTML = `
+                        <div><strong>Total Jobs:</strong> ${data.total_jobs}</div>
+                        <div><strong>Average Progress:</strong> ${data.average_progress.toFixed(1)}%</div>
+                        <div><strong>Status Counts:</strong> ${Object.entries(data.status_counts).map(([k,v]) => `${k}: ${v}`).join(', ')}</div>
+                    `;
+                }
+            });
+            socket.on('filtered_tasks', function(data) {
+                console.log('[Socket.IO] Filtered tasks:', data);
+                const list = document.getElementById('filtered-tasks-list');
+                if (data && data.jobs) {
+                    list.innerHTML = data.jobs.map(job => `
+                        <div class="bg-gray-700 rounded p-2 flex justify-between items-center">
+                            <span>${job.name || 'Job'} (${job.status})</span>
+                            <span>${job.progress !== undefined ? job.progress.toFixed(1) + '%' : ''}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div class="text-gray-400">No tasks found</div>';
+                }
+            });
+
+            // Tab switching logic
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const tab = btn.getAttribute('data-tab');
+                    tabContents.forEach(tc => {
+                        if (tc.id === tab) {
+                            tc.classList.remove('hidden');
+                        } else {
+                            tc.classList.add('hidden');
+                        }
+                    });
+                    if (tab === 'tab-analytics') {
+                        fetchAndRenderSystemMetrics();
+                    }
+                });
+            });
         });
 
         // Search functionality
+        let searchTimeout;
         document.getElementById('search-input').addEventListener('input', function(e) {
-            const searchType = document.getElementById('search-type').value;
-            if (searchType === 'files') {
-                searchFiles(e.target.value);
-            } else {
-                searchTranscriptions(e.target.value);
-            }
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const searchType = document.getElementById('search-type').value;
+                if (searchType === 'files') {
+                    searchFiles(e.target.value);
+                } else {
+                    searchTranscriptions(e.target.value);
+                }
+            }, 300);
         });
 
         // Search functions
@@ -159,10 +358,8 @@
         function loadFiles() {
             const path = currentPath || '';
             const fileList = document.getElementById('file-list');
-            
             // Show loading state
             fileList.innerHTML = '<div class="text-gray-400 p-4 text-center">Loading...</div>';
-            
             fetch(`/api/browse?path=${encodeURIComponent(path)}`)
                 .then(response => {
                     if (!response.ok) {
@@ -170,21 +367,19 @@
                     }
                     return response.json();
                 })
-                .then(items => {
-                    if (!Array.isArray(items)) {
+                .then(data => {
+                    if (!data || !Array.isArray(data.items)) {
                         throw new Error('Invalid response format');
                     }
-                    
+                    const items = data.items;
                     document.getElementById('current-path').value = path;
                     selectedFiles.clear(); // Clear selection when loading new directory
-                    
                     if (items.length === 0) {
                         fileList.innerHTML = '<div class="text-gray-400 p-4 text-center">No files found</div>';
                         return;
                     }
-                    
                     fileList.innerHTML = items.map(item => {
-                        if (item.type === 'directory') {
+                        if (item.is_dir) {
                             return `
                                 <div class="file-item flex items-center justify-between p-2 hover:bg-gray-700 rounded cursor-pointer" onclick="navigate('${item.path}')">
                                     <div class="flex items-center gap-2">
@@ -431,7 +626,7 @@
 
         // Start transcription for single file
         function transcribe(path) {
-            fetch('/api/transcribe', {
+            apiRequest('/api/transcribe', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -467,7 +662,10 @@
                     }
                     return response.json();
                 })
-                .then(jobs => {
+                .then(data => {
+                    // Handle both old format (array) and new format (object with jobs property)
+                    const jobs = Array.isArray(data) ? data : (data.jobs || []);
+                    
                     if (!Array.isArray(jobs)) {
                         throw new Error('Invalid response format');
                     }
@@ -478,47 +676,101 @@
                         return;
                     }
                     
-                    queueList.innerHTML = jobs.map(job => `
-                        <div class="bg-gray-700 rounded p-4">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <h3 class="font-semibold">${job.video_path ? job.video_path.split('/').pop() : 'Unknown file'}</h3>
-                                    <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
+                    queueList.innerHTML = jobs.map(job => {
+                        const fileName = job.video_path ? job.video_path.split('/').pop() : (job.name || 'Unknown task');
+                        const statusClass = job.status === 'completed' ? 'bg-green-600' :
+                                          job.status === 'failed' ? 'bg-red-600' :
+                                          job.status === 'processing' || job.status === 'started' || job.status === 'active' ? 'bg-blue-600' :
+                                          job.status === 'queued' || job.status === 'reserved' ? 'bg-yellow-600' :
+                                          'bg-gray-600';
+                        
+                        return `
+                            <div class="bg-gray-700 rounded p-4">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h3 class="font-semibold">${fileName}</h3>
+                                        <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
+                                        ${job.worker ? `<p class="text-xs text-gray-500">Worker: ${job.worker}</p>` : ''}
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <span class="px-2 py-1 rounded text-sm ${statusClass}">${job.status}</span>
+                                        ${job.status !== 'completed' && job.status !== 'failed' ? `
+                                            <button onclick="cancelJob('${job.id}')" 
+                                                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                                                Cancel
+                                            </button>
+                                        ` : ''}
+                                    </div>
                                 </div>
-                                <div class="flex gap-2">
-                                    <span class="px-2 py-1 rounded text-sm ${
-                                        job.status === 'completed' ? 'bg-green-600' :
-                                        job.status === 'failed' ? 'bg-red-600' :
-                                        job.status === 'processing' || job.status === 'started' ? 'bg-blue-600' :
-                                        'bg-yellow-600'
-                                    }">${job.status}</span>
-                                    ${job.status !== 'completed' && job.status !== 'failed' ? `
-                                        <button onclick="cancelJob('${job.id}')" 
-                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
-                                            Cancel
-                                        </button>
-                                    ` : ''}
-                                </div>
+                                ${job.progress !== null && job.progress !== undefined && job.progress > 0 ? `
+                                    <div class="w-full bg-gray-600 rounded-full h-2 mb-2">
+                                        <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: ${job.progress}%"></div>
+                                    </div>
+                                    <p class="text-sm text-gray-400">${job.progress.toFixed(1)}% complete</p>
+                                ` : ''}
+                                ${job.time_remaining ? `
+                                    <p class="text-sm text-gray-400 mt-2">
+                                        Estimated time remaining: ${formatTimeRemaining(job.time_remaining)}
+                                    </p>
+                                ` : ''}
+                                ${job.created_at ? `
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Created: ${new Date(job.created_at * 1000).toLocaleString()}
+                                    </p>
+                                ` : ''}
                             </div>
-                            ${job.progress !== null && job.progress !== undefined ? `
-                                <div class="w-full bg-gray-600 rounded-full h-2 mb-2">
-                                    <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: ${job.progress}%"></div>
-                                </div>
-                                <p class="text-sm text-gray-400">${job.progress.toFixed(1)}% complete</p>
-                            ` : ''}
-                            ${job.time_remaining ? `
-                                <p class="text-sm text-gray-400 mt-2">
-                                    Estimated time remaining: ${formatTimeRemaining(job.time_remaining)}
-                                </p>
-                            ` : ''}
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 })
                 .catch(error => {
                     console.error('Error updating queue:', error);
                     document.getElementById('queue-list').innerHTML = 
                         '<div class="text-red-400 p-4 text-center">Error loading queue</div>';
                 });
+        }
+
+        // Add a function to update the queue UI from real-time data
+        function updateQueueUI(jobs) {
+            const queueList = document.getElementById('queue-list');
+            if (!Array.isArray(jobs) || jobs.length === 0) {
+                queueList.innerHTML = '<div class="text-gray-400 p-4 text-center">No jobs in queue</div>';
+                return;
+            }
+            queueList.innerHTML = jobs.map(job => `
+                <div class="bg-gray-700 rounded p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="font-semibold">${job.video_path ? job.video_path.split('/').pop() : 'Unknown file'}</h3>
+                            <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="px-2 py-1 rounded text-sm ${
+                                job.status === 'completed' ? 'bg-green-600' :
+                                job.status === 'failed' ? 'bg-red-600' :
+                                job.status === 'processing' || job.status === 'started' ? 'bg-blue-600' :
+                                'bg-yellow-600'
+                            }">${job.status}</span>
+                            ${job.status !== 'completed' && job.status !== 'failed' ? `
+                                <button onclick="cancelJob('${job.id}')" 
+                                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                                    Cancel
+                                </button>
+                        ` : ''}
+                        </div>
+                    </div>
+                    ${job.progress !== null && job.progress !== undefined ? `
+                        <div class="w-full bg-gray-600 rounded-full h-2 mb-2">
+                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: ${job.progress}%"></div>
+                        </div>
+                        <p class="text-sm text-gray-400">${job.progress.toFixed(1)}% complete</p>
+                    ` : ''}
+                    ${job.time_remaining ? `
+                        <p class="text-sm text-gray-400 mt-2">
+                            Estimated time remaining: ${formatTimeRemaining(job.time_remaining)}
+                        </p>
+                    ` : ''}
+                </div>
+            `).join('');
         }
 
         // Format time remaining
@@ -541,7 +793,7 @@
                 return;
             }
             
-            fetch('/api/transcribe/batch', {
+            apiRequest('/api/transcribe/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ paths: paths })
@@ -555,7 +807,10 @@
             .then(data => {
                 let message = '';
                 if (data.queued && data.queued.length > 0) {
-                    message += `Successfully queued ${data.queued.length} file(s) for transcription.`;
+                    message += `Successfully queued ${data.queued.length} file(s) for transcription and captioning.`;
+                    if (data.batch_task_id) {
+                        message += ` Batch task ID: ${data.batch_task_id}`;
+                    }
                     updateQueue();
                     
                     // Clear selections after successful queueing
@@ -568,7 +823,11 @@
                     message += `However, ${data.errors.length} file(s) could not be queued.`;
                     console.error('Queueing errors:', data.errors);
                 }
-                showNotification(message, data.errors && data.errors.length > 0 ? 'warning' : 'success');
+                if (data.invalid_paths && data.invalid_paths.length > 0) {
+                    if (message) message += ' ';
+                    message += ` ${data.invalid_paths.length} file(s) had invalid paths.`;
+                }
+                showNotification(message, (data.errors && data.errors.length > 0) || (data.invalid_paths && data.invalid_paths.length > 0) ? 'warning' : 'success');
             })
             .catch(error => {
                 console.error('Error queueing files:', error);
@@ -582,7 +841,7 @@
                 return;
             }
             
-            fetch(`/api/queue/stop/${jobId}`, {
+            apiRequest(`/api/queue/remove/${jobId}`, {
                 method: 'POST'
             })
             .then(response => {
@@ -592,7 +851,7 @@
                 return response.json();
             })
             .then(data => {
-                if (data.status === 'success') {
+                if (data.message) {
                     showNotification('Job cancelled successfully', 'success');
                     updateQueue();
                 } else {
@@ -611,7 +870,7 @@
                 return;
             }
             
-            fetch(`/api/transcriptions/${transcriptionId}/remove`, {
+            apiRequest(`/api/transcriptions/${transcriptionId}/remove`, {
                 method: 'DELETE'
             })
             .then(response => {
@@ -632,6 +891,435 @@
                 console.error('Error removing transcription:', error);
                 showNotification('Error removing transcription: ' + error.message, 'error');
             });
+        }
+
+        // Add a simple sanitization function
+        function sanitizeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function filterTasks(type) {
+            socket.emit('filter_tasks', { type: type });
+        }
+
+        function renderSystemMetricsChart(data) {
+            const ctx = document.getElementById('system-metrics-chart').getContext('2d');
+            if (systemMetricsChart) {
+                systemMetricsChart.destroy();
+            }
+            
+            // Enhanced chart with more metrics
+            const labels = ['CPU %', 'Memory %', 'Disk %'];
+            const values = [
+                data.system?.cpu_percent || 0,
+                data.system?.memory_percent || 0,
+                data.system?.disk_percent || 0
+            ];
+            
+            systemMetricsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'System Usage',
+                        data: values,
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(234, 179, 8, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(59, 130, 246, 1)',
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(234, 179, 8, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Usage Percentage'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'System Resource Usage'
+                        }
+                    }
+                }
+            });
+            
+            // Update service status indicators
+            updateServiceStatus(data.services);
+            
+            // Update queue metrics
+            updateQueueMetrics(data.queue);
+            
+            // Update Redis metrics
+            updateRedisMetrics(data.redis);
+            
+            // Update performance metrics
+            updatePerformanceMetrics(data.performance);
+            
+            // Update Socket.IO metrics
+            updateSocketIOMetrics(data.socket_io);
+            
+            // Update queue analytics
+            updateQueueAnalytics(data.queue_analytics);
+            
+            // Update database health
+            updateDatabaseHealth(data.database);
+        }
+        
+        function updateServiceStatus(services) {
+            const statusContainer = document.getElementById('service-status');
+            if (!statusContainer) return;
+            
+            const statusHtml = Object.entries(services).map(([service, status]) => {
+                const color = status === 'healthy' ? 'text-green-500' : 
+                             status === 'degraded' ? 'text-yellow-500' : 'text-red-500';
+                const icon = status === 'healthy' ? '✓' : 
+                            status === 'degraded' ? '⚠' : '✗';
+                return `<div class="flex items-center space-x-2">
+                    <span class="${color}">${icon}</span>
+                    <span class="text-sm">${service}</span>
+                    <span class="text-xs text-gray-400">${status}</span>
+                </div>`;
+            }).join('');
+            
+            statusContainer.innerHTML = statusHtml;
+        }
+        
+        function updateQueueMetrics(queueData) {
+            const queueContainer = document.getElementById('queue-metrics');
+            if (!queueContainer || !queueData) return;
+            
+            if (queueData.error) {
+                queueContainer.innerHTML = `<div class="text-red-500 text-sm">Queue Error: ${queueData.error}</div>`;
+                return;
+            }
+            
+            const queueHtml = `
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div class="bg-gray-700 p-2 rounded">
+                        <div class="text-gray-400">Active Jobs</div>
+                        <div class="text-lg font-semibold">${queueData.active_jobs || 0}</div>
+                    </div>
+                    <div class="bg-gray-700 p-2 rounded">
+                        <div class="text-gray-400">Scheduled</div>
+                        <div class="text-lg font-semibold">${queueData.scheduled_jobs || 0}</div>
+                    </div>
+                    <div class="bg-gray-700 p-2 rounded">
+                        <div class="text-gray-400">Reserved</div>
+                        <div class="text-lg font-semibold">${queueData.reserved_jobs || 0}</div>
+                    </div>
+                    <div class="bg-gray-700 p-2 rounded">
+                        <div class="text-gray-400">Total</div>
+                        <div class="text-lg font-semibold">${queueData.total_jobs || 0}</div>
+                    </div>
+                </div>
+            `;
+            
+            queueContainer.innerHTML = queueHtml;
+        }
+        
+        function updateRedisMetrics(redisData) {
+            const redisContainer = document.getElementById('redis-metrics');
+            if (!redisContainer || !redisData) return;
+            
+            if (redisData.status === 'disconnected') {
+                redisContainer.innerHTML = `<div class="text-red-500 text-sm">Redis: Disconnected</div>`;
+                return;
+            }
+            
+            const redisHtml = `
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Status:</span>
+                        <span class="text-green-500">${redisData.status}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Version:</span>
+                        <span>${redisData.version}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Clients:</span>
+                        <span>${redisData.connected_clients}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Memory:</span>
+                        <span>${redisData.used_memory_human}</span>
+                    </div>
+                </div>
+            `;
+            
+            redisContainer.innerHTML = redisHtml;
+        }
+        
+        function updatePerformanceMetrics(perfData) {
+            const perfContainer = document.getElementById('performance-metrics');
+            if (!perfContainer || !perfData) return;
+            
+            if (perfData.error) {
+                perfContainer.innerHTML = `<div class="text-red-500 text-sm">Performance Error: ${perfData.error}</div>`;
+                return;
+            }
+            
+            const perfHtml = `
+                <div class="space-y-3 text-sm">
+                    <div class="bg-gray-700 p-3 rounded">
+                        <h4 class="font-semibold mb-2">API Performance</h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <span class="text-gray-400">Avg Response:</span>
+                                <span class="font-mono">${perfData.avg_response_time || 0}s</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Max Response:</span>
+                                <span class="font-mono">${perfData.max_response_time || 0}s</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Requests/min:</span>
+                                <span class="font-mono">${perfData.requests_per_minute || 0}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Active Requests:</span>
+                                <span class="font-mono">${perfData.active_requests || 0}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Error Rate:</span>
+                                <span class="font-mono">${perfData.error_rate || 0}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            perfContainer.innerHTML = perfHtml;
+        }
+        
+        function updateSocketIOMetrics(socketData) {
+            const socketContainer = document.getElementById('socket-io-metrics');
+            if (!socketContainer || !socketData) return;
+            
+            if (socketData.error) {
+                socketContainer.innerHTML = `<div class="text-red-500 text-sm">Socket.IO Error: ${socketData.error}</div>`;
+                return;
+            }
+            
+            const socketHtml = `
+                <div class="space-y-3 text-sm">
+                    <div class="bg-gray-700 p-3 rounded">
+                        <h4 class="font-semibold mb-2">Socket.IO Connections</h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <span class="text-gray-400">Active:</span>
+                                <span class="font-mono">${socketData.active_connections || 0}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Total Connects:</span>
+                                <span class="font-mono">${socketData.total_connects || 0}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Events Sent:</span>
+                                <span class="font-mono">${socketData.total_events_sent || 0}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Events Received:</span>
+                                <span class="font-mono">${socketData.total_events_received || 0}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Avg Duration:</span>
+                                <span class="font-mono">${Math.round(socketData.avg_connection_duration || 0)}s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            socketContainer.innerHTML = socketHtml;
+        }
+        
+        function updateQueueAnalytics(analyticsData) {
+            const analyticsContainer = document.getElementById('queue-analytics');
+            if (!analyticsContainer || !analyticsData) return;
+            
+            if (analyticsData.error) {
+                analyticsContainer.innerHTML = `<div class="text-red-500 text-sm">Queue Analytics Error: ${analyticsData.error}</div>`;
+                return;
+            }
+            
+            const summary = analyticsData.summary || {};
+            const taskStats = analyticsData.task_statistics || {};
+            
+            const analyticsHtml = `
+                <div class="space-y-3 text-sm">
+                    <div class="bg-gray-700 p-3 rounded">
+                        <h4 class="font-semibold mb-2">Queue Analytics</h4>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div>
+                                <span class="text-gray-400">Total Jobs:</span>
+                                <span class="font-mono">${summary.total_jobs || 0}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Recent (24h):</span>
+                                <span class="font-mono">${summary.recent_jobs_24h || 0}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Success Rate:</span>
+                                <span class="font-mono">${summary.overall_success_rate || 0}%</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Task Types:</span>
+                                <span class="font-mono">${summary.active_task_types || 0}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <h5 class="font-medium">Task Performance:</h5>
+                            ${Object.entries(taskStats).map(([task, stats]) => `
+                                <div class="bg-gray-600 p-2 rounded text-xs">
+                                    <div class="font-medium">${task}</div>
+                                    <div class="grid grid-cols-3 gap-1 mt-1">
+                                        <span>Success: ${stats.success_rate}%</span>
+                                        <span>Avg: ${stats.avg_duration}s</span>
+                                        <span>Jobs: ${stats.total_jobs}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            analyticsContainer.innerHTML = analyticsHtml;
+        }
+        
+        function updateDatabaseHealth(dbData) {
+            const dbContainer = document.getElementById('database-health');
+            if (!dbContainer || !dbData) return;
+            
+            if (dbData.status === 'error') {
+                dbContainer.innerHTML = `<div class="text-red-500 text-sm">Database Error: ${dbData.error}</div>`;
+                return;
+            }
+            
+            const connectivity = dbData.connectivity || {};
+            const performance = dbData.performance || {};
+            const metrics = dbData.metrics || {};
+            
+            const dbHtml = `
+                <div class="space-y-3 text-sm">
+                    <div class="bg-gray-700 p-3 rounded">
+                        <h4 class="font-semibold mb-2">Database Health</h4>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div>
+                                <span class="text-gray-400">Status:</span>
+                                <span class="${dbData.status === 'healthy' ? 'text-green-500' : 'text-red-500'}">${dbData.status}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Response Time:</span>
+                                <span class="font-mono">${connectivity.response_time || 0}s</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Avg Query Time:</span>
+                                <span class="font-mono">${metrics.avg_response_time || 0}s</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Active Connections:</span>
+                                <span class="font-mono">${performance.active_connections || 0}</span>
+                            </div>
+                        </div>
+                        
+                        ${performance.database_size ? `
+                        <div class="text-xs text-gray-400">
+                            Database Size: ${performance.database_size.formatted}
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            dbContainer.innerHTML = dbHtml;
+        }
+        
+        function fetchAndRenderSystemMetrics() {
+            fetch('/api/metrics')
+                .then(res => res.json())
+                .then(data => {
+                    renderSystemMetricsChart(data);
+                    
+                    // Update system info display
+                    updateSystemInfo(data.system);
+                })
+                .catch(error => {
+                    console.error('Error fetching metrics:', error);
+                    // Show error state
+                    const chartContainer = document.getElementById('system-metrics-chart');
+                    if (chartContainer) {
+                        chartContainer.innerHTML = '<div class="text-red-500 text-center p-4">Failed to load metrics</div>';
+                    }
+                });
+        }
+        
+        function updateSystemInfo(systemData) {
+            const systemContainer = document.getElementById('system-info');
+            if (!systemContainer || !systemData) return;
+            
+            const systemHtml = `
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <div class="text-gray-400">Memory</div>
+                        <div>${systemData.memory_available_gb}GB / ${systemData.memory_total_gb}GB</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-400">Disk</div>
+                        <div>${systemData.disk_free_gb}GB free</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-400">Network Sent</div>
+                        <div>${formatBytes(systemData.network_bytes_sent)}</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-400">Network Recv</div>
+                        <div>${formatBytes(systemData.network_bytes_recv)}</div>
+                    </div>
+                </div>
+            `;
+            
+            systemContainer.innerHTML = systemHtml;
+        }
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function renderRealtimeTasks(jobs) {
+            const list = document.getElementById('realtime-tasks-list');
+            if (!Array.isArray(jobs) || jobs.length === 0) {
+                list.innerHTML = '<div class="text-gray-400">No active tasks</div>';
+                return;
+            }
+            list.innerHTML = jobs.map(job => `
+                <div class="bg-gray-700 rounded p-2 flex justify-between items-center">
+                    <span>${job.name || 'Job'} (${job.status})</span>
+                    <span>${job.progress !== undefined ? job.progress.toFixed(1) + '%' : ''}</span>
+                </div>
+            `).join('');
         }
     </script>
 </body>

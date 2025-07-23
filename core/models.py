@@ -44,7 +44,7 @@ class BrowseRequest(BaseModel):
             raise ValueError('Invalid path: cannot contain ".."')
         
         # Check for suspicious characters
-        suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$', '(', ')']
+        suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$']
         if any(char in v for char in suspicious_chars):
             raise ValueError('Invalid path: contains suspicious characters')
         
@@ -98,7 +98,7 @@ class TranscribeRequest(BaseModel):
             raise ValueError('Invalid path: cannot contain ".."')
         
         # Check for suspicious characters
-        suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$', '(', ')']
+        suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$']
         if any(char in v for char in suspicious_chars):
             raise ValueError('Invalid path: contains suspicious characters')
         
@@ -171,7 +171,7 @@ class BatchTranscribeRequest(BaseModel):
             if '..' in path:
                 raise ValueError(f'Invalid path: cannot contain ".." - {path}')
             
-            suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$', '(', ')']
+            suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$']
             if any(char in path for char in suspicious_chars):
                 raise ValueError(f'Invalid path: contains suspicious characters - {path}')
             

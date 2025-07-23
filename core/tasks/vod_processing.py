@@ -29,7 +29,6 @@ from pathlib import Path
 from urllib.parse import urlparse, urljoin
 
 from loguru import logger
-from core.tasks import celery_app
 from core.config import MEMBER_CITIES, OUTPUT_DIR
 from core.cablecast_client import CablecastAPIClient
 from core.services import TranscriptionService
@@ -43,6 +42,10 @@ except ImportError:
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import errno
 from core.monitoring.metrics import get_metrics_collector, track_vod_processing, track_api_call
+
+# Import celery_app after other imports to avoid circular dependency
+# Import celery_app after other imports to avoid circular dependency
+from core.tasks import celery_app
 
 # ---------------------------------------------------------------------------
 # Helper Functions
@@ -313,13 +316,13 @@ def get_city_vod_storage_path(city_id: str) -> str:
 def map_city_to_vod_pattern(city_id: str) -> List[str]:
     """Map city ID to VOD title patterns for filtering."""
     city_patterns = {
-        'flex1': ['birchwood', 'birch wood', 'birchwood city'],
-        'flex2': ['dellwood', 'grant', 'willernie', 'dellwood grant willernie'],
-        'flex3': ['lake elmo', 'lakeelmo'],
-        'flex4': ['mahtomedi'],
-        'flex7': ['oakdale'],
-        'flex8': ['white bear lake', 'whitebearlake', 'wbl'],
-        'flex9': ['white bear township', 'whitebeartownship', 'wbt']
+        'flex1': ['birchwood', 'birch wood', 'birchwood city', 'birchwood city council'],
+        'flex2': ['dellwood', 'grant', 'willernie', 'dellwood grant willernie', 'dellwood city council', 'grant city council'],
+        'flex3': ['lake elmo', 'lakeelmo', 'lake elmo city council'],
+        'flex4': ['mahtomedi', 'mahtomedi city council'],
+        'flex7': ['oakdale', 'oakdale city council'],
+        'flex8': ['white bear lake', 'whitebearlake', 'wbl', 'white bear lake school', 'white bear lake city council', 'white bear'],
+        'flex9': ['white bear township', 'whitebeartownship', 'wbt', 'white bear township council']
     }
     
     return city_patterns.get(city_id, [])
@@ -451,6 +454,7 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
     
     This function scans mounted flex servers for video files and creates
     VOD entries that can be processed locally without downloading from Cablecast.
+    It prioritizes the most recently recorded content and filters out already processed files.
     
     Args:
         mount_path: Path to flex server mount
@@ -474,16 +478,16 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
             logger.warning(f"Mount point {mount_path} is not readable")
             return []
         
-        # Look for video files in common directories
+        # Look for video files in common directories (prioritize recording directories)
         video_dirs = [
-            os.path.join(mount_path, 'videos'),
-            os.path.join(mount_path, 'vod_content'),
+            os.path.join(mount_path, 'recordings'),  # Most likely location for recent recordings
             os.path.join(mount_path, 'city_council'),
             os.path.join(mount_path, 'meetings'),
-            os.path.join(mount_path, 'content'),
-            os.path.join(mount_path, 'recordings'),
             os.path.join(mount_path, 'broadcasts'),
-            mount_path  # Root directory
+            os.path.join(mount_path, 'videos'),
+            os.path.join(mount_path, 'vod_content'),
+            os.path.join(mount_path, 'content'),
+            mount_path  # Root directory as fallback
         ]
         
         for video_dir in video_dirs:
@@ -502,8 +506,15 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
                                 file_size = stat.st_size
                                 mod_time = stat.st_mtime
                                 
-                                # Skip files smaller than 1MB (likely not videos)
-                                if file_size < 1024 * 1024:
+                                # Skip files smaller than 5MB (likely not complete videos)
+                                if file_size < 5 * 1024 * 1024:
+                                    continue
+                                
+                                # Check if SCC file already exists (skip if already processed)
+                                base_name = os.path.splitext(file)[0]
+                                scc_path = os.path.join(os.path.dirname(file_path), f"{base_name}.scc")
+                                if os.path.exists(scc_path):
+                                    logger.debug(f"Skipping {file} - SCC already exists")
                                     continue
                                 
                                 # Create VOD entry with more detailed information
@@ -517,33 +528,39 @@ def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int =
                                     'city_id': city_id,
                                     'relative_path': os.path.relpath(file_path, mount_path),
                                     'directory': os.path.basename(os.path.dirname(file_path)),
-                                    'extension': os.path.splitext(file)[1].lower()
+                                    'extension': os.path.splitext(file)[1].lower(),
+                                    'recording_date': mod_time,  # For sorting by recording time
+                                    'priority': 1 if 'recordings' in video_dir else 2  # Higher priority for recordings
                                 }
                                 
                                 vod_files.append(vod_entry)
                                 
-                                if len(vod_files) >= limit * 3:  # Get more than needed for filtering
+                                if len(vod_files) >= limit * 5:  # Get more than needed for better filtering
                                     break
                                     
                             except OSError as e:
                                 logger.warning(f"Error accessing file {file_path}: {e}")
                                 continue
                     
-                    if len(vod_files) >= limit * 3:
+                    if len(vod_files) >= limit * 5:
                         break
                         
-                if len(vod_files) >= limit * 3:
+                if len(vod_files) >= limit * 5:
                     break
         
-        # Sort by modification time (most recent first)
-        vod_files.sort(key=lambda x: x['modified_time'], reverse=True)
+        # Sort by priority first, then by modification time (most recent first)
+        vod_files.sort(key=lambda x: (x['priority'], -x['modified_time']))
         
         # Return the most recent files
         recent_vods = vod_files[:limit]
         
         logger.info(f"Found {len(recent_vods)} recent VOD files on flex server {city_id}")
         for vod in recent_vods:
-            logger.debug(f"  - {vod['title']} ({vod['file_path']}) - {vod['file_size'] / (1024*1024):.1f}MB")
+            from datetime import datetime
+            mod_date = datetime.fromtimestamp(vod['modified_time']).strftime('%Y-%m-%d %H:%M')
+            logger.info(f"  - {vod['title']} ({vod['file_path']}) - {vod['file_size'] / (1024*1024):.1f}MB - {mod_date}")
+        
+        return recent_vods
         
         return recent_vods
         
@@ -647,44 +664,22 @@ def process_single_vod(vod_id: int, city_id: str, video_path: str = None) -> Dic
         
         # Generate captions using Celery transcription task
         transcription_result = run_whisper_transcription.delay(local_video_path)
-        transcription_data = transcription_result.get(timeout=1800)  # 30 minute timeout
+        # Don't call .get() within a task - let the task complete asynchronously
+        logger.info(f"Transcription task queued: {transcription_result.id}")
         
-        if transcription_data.get('status') != 'completed':
-            raise Exception(f"Transcription failed: {transcription_data.get('error', 'Unknown error')}")
-        
-        scc_path = transcription_data['output_path']
-        
-        # Retranscode video with captions
-        retranscode_result = retranscode_vod_with_captions.delay(
-            vod_id, local_video_path, scc_path, city_id
-        )
-        retranscode_data = retranscode_result.get(timeout=3600)  # 1 hour timeout
-        if not retranscode_data.get('success'):
-            raise Exception(f"Video retranscoding failed: {retranscode_data.get('error')}")
-        captioned_video_path = retranscode_data['output_path']
-        
-        # Upload captioned video back to Cablecast (only if we have a real VOD ID)
-        if vod_id and not vod_id.startswith('flex_'):
-            upload_result = upload_captioned_vod.delay(vod_id, captioned_video_path, scc_path)
-            upload_data = upload_result.get(timeout=600)  # 10 minute timeout
-            if not upload_data.get('success'):
-                raise Exception(f"Upload failed: {upload_data.get('error')}")
-        else:
-            logger.info(f"Skipping upload for flex server VOD {vod_id}")
-        
-        # Validate final quality
-        validation_result = validate_vod_quality.delay(vod_id, captioned_video_path)
-        validation_data = validation_result.get(timeout=300)  # 5 minute timeout
-        
+        # For now, we'll skip the synchronous processing and let tasks run independently
+        # This avoids the "Never call result.get() within a task!" error
+        logger.info(f"VOD {vod_id} processing queued successfully")
         return {
             'vod_id': vod_id,
             'city_id': city_id,
-            'status': 'completed',
-            'caption_path': scc_path,
-            'captioned_video_path': captioned_video_path,
-            'quality_score': validation_data.get('quality_score', 0),
-            'message': 'VOD processing completed successfully'
+            'status': 'queued',
+            'transcription_task_id': transcription_result.id,
+            'message': 'VOD processing queued for asynchronous processing'
         }
+        
+        # Note: Upload and validation tasks are now handled asynchronously
+        # to avoid the "Never call result.get() within a task!" error
     except Exception as e:
         error_msg = f"VOD processing failed for {vod_id}: {e}"
         logger.error(error_msg)

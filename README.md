@@ -260,8 +260,6 @@ SUMMARIZATION_CHUNK_SIZE=10
 
 ```bash
 # Cablecast API Configuration
-CABLECAST_API_URL=https://your-cablecast-instance.com/api
-CABLECAST_API_KEY=your_api_key_here
 CABLECAST_LOCATION_ID=1
 CABLECAST_USER_ID=your_user_id
 CABLECAST_PASSWORD=your_password
@@ -911,3 +909,87 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Improved Performance**: Faster processing without download overhead
 - **Enhanced Reliability**: More reliable file access through direct filesystem access
 - **Comprehensive Discovery**: Intelligent file discovery and matching 
+
+## 📊 Web Interfaces
+
+The Archivist system provides two canonical web GUIs:
+
+| Role                | URL                        | How to Start                              | Description                                 |
+|---------------------|----------------------------|-------------------------------------------|---------------------------------------------|
+| Admin UI            | http://localhost:8080      | `python -m core.admin_ui`                 | Main admin interface, embeds dashboard      |
+| Monitoring Dashboard| http://localhost:5051      | `python start_integrated_dashboard.py`    | Real-time monitoring, analytics, task queue |
+
+**Deprecated/Removed GUIs:**
+- All legacy dashboards, `core/web_app.py`, and `core/web_interface.py` are deprecated. All features are being merged into the integrated dashboard.
+
+### How to Access
+
+- **Admin UI:**  
+  Open [http://localhost:8080](http://localhost:8080) in your browser for queue management, task triggers, and city configuration.
+
+- **Monitoring Dashboard:**  
+  Open [http://localhost:5051](http://localhost:5051) for real-time system health, Celery worker status, flex mount health, and task analytics.
+
+### API Endpoints
+
+- **Monitoring Dashboard:**  
+  - `/api/health` - System health
+  - `/api/tasks/realtime` - Real-time task data
+  - `/api/tasks/analytics` - Task analytics
+  - `/api/celery/tasks` - Celery task stats
+
+- **Admin UI:**  
+  - `/api/admin/status` - Admin UI health/status
+  - `/api/unified/tasks` - Unified queue/task view
+
+### Deployment
+
+Deployment scripts (`start_complete_system.py`, `start_integrated_system.py`, etc.) have been updated to only start the canonical GUIs.
+
+---
+
+## 🛑 Legacy GUIs
+
+- The following files and scripts are deprecated and should not be used:
+  - `core/web_app.py`
+  - `core/web_interface.py`
+  - `core/monitoring/dashboard.py`
+  - `scripts/monitoring/monitoring_dashboard.py`
+  - `start_web_server.py`
+  - Any direct use of `core/web_app` for serving GUIs
+
+All features from these have been or are being merged into the integrated dashboard.
+
+---
+
+## 🛑 Deprecated GUIs
+
+- All GUIs on port 5000 and legacy dashboards are deprecated.
+- All features are being consolidated into the above interfaces.
+
+---
+
+### **Begin Merging Features from `core/web_interface.py` into the Integrated Dashboard**
+
+#### **Features to Merge:**
+
+- **System Metrics API:** `/api/status` (already present as `/api/metrics` and `/api/health` in dashboard, but can add any missing fields)
+- **Manual Task Triggers:**
+  - `/api/tasks/trigger_vod_processing` (not present in dashboard, should be added)
+  - `/api/tasks/trigger_transcription` (not present in dashboard, should be added)
+- **Active Tasks API:** `/api/tasks/active` (already present as part of `/api/celery/tasks` and `/api/unified/tasks`, but can add for compatibility)
+- **WebSocket Event:** `system_metrics` (already present as real-time task updates, but can add system metrics event if needed)
+- **Dashboard HTML:** If any unique UI elements exist, merge them into the dashboard template.
+
+#### **Next Steps:**
+
+1. **Add `/api/tasks/trigger_vod_processing` and `/api/tasks/trigger_transcription` endpoints to `core/monitoring/integrated_dashboard.py`.**
+2. **Optionally add `/api/status` as an alias for `/api/metrics` or `/api/health`.**
+3. **Ensure all system metrics (CPU, memory, disk, Redis, Celery) are available in the dashboard's API.**
+4. **If any unique WebSocket events exist, merge them into the dashboard's SocketIO events.**
+5. **Update the dashboard UI to include manual task trigger controls if not already present.**
+
+---
+
+**Would you like me to proceed with step 1 and add the manual task trigger endpoints to the integrated dashboard now?**  
+Or do you want a full migration plan for all features first? 
