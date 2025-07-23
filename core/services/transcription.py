@@ -22,7 +22,7 @@ from loguru import logger
 from core.exceptions import TranscriptionError, handle_transcription_error
 # Removed circular import - will use direct WhisperX implementation
 from core.scc_summarizer import summarize_scc
-from core.config import WHISPER_MODEL, USE_GPU, LANGUAGE
+from core.config import WHISPER_MODEL, USE_GPU, LANGUAGE, OUTPUT_DIR
 
 class TranscriptionService:
     """Service for handling transcription operations."""
@@ -45,13 +45,8 @@ class TranscriptionService:
             raise TranscriptionError(f"File not found: {file_path}")
         logger.info(f"Starting transcription of {file_path}")
         try:
-            # Call the direct transcription function to avoid circular imports
-            from core.transcription import _transcribe_with_faster_whisper
-
-            result = _transcribe_with_faster_whisper(file_path)
-            output_path = result.get('srt_path') or result.get('output_path', '')
             return {
-                'output_path': output_path,
+                'output_path': result.get('output_path', ''),
                 'status': 'completed',
                 'segments': result.get('segments', 0),
                 'duration': result.get('duration', 0)
