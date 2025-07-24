@@ -3,7 +3,7 @@ from __future__ import annotations
 """Celery beat scheduler for periodic Archivist tasks."""
 
 import os
-from celery.schedules import crontab
+from celery import crontab
 from core.tasks import celery_app
 from loguru import logger
 

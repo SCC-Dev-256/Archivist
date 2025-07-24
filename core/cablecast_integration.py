@@ -1,9 +1,9 @@
 # Add to core/cablecast_integration.py
 from typing import Dict, List, Optional
 from loguru import logger
-from core.models import CablecastShowORM, CablecastVODORM, CablecastVODChapterORM
-from core.app import db
+from core import CablecastShowORM, CablecastVODORM, CablecastVODChapterORM
 from core.config import CABLECAST_BASE_URL, CABLECAST_API_KEY, CABLECAST_LOCATION_ID
+from core.app import db
 from datetime import datetime
 from core.cablecast_client import CablecastAPIClient
 

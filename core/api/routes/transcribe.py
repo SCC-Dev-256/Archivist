@@ -6,9 +6,7 @@ from flask_limiter import Limiter
 from loguru import logger
 import os
 
-from core.services import TranscriptionService, FileService, QueueService
-from core.models import TranscribeRequest, BatchTranscribeRequest
-from core.security import validate_json_input, sanitize_output, require_csrf_token
+from core import TranscribeRequest, BatchTranscribeRequest, validate_json_input, sanitize_output, require_csrf_token
 from core.tasks.transcription import batch_transcription
 
 # Rate limiting configuration

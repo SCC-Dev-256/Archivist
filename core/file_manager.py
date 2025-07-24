@@ -28,7 +28,7 @@ from typing import Any, Dict, List
 import magic
 from loguru import logger
 
-from .config import FLEX_PATHS, LOCATIONS, MOUNT_POINTS, NAS_PATH
+from core.config import FLEX_PATHS, LOCATIONS, MOUNT_POINTS, NAS_PATH
 
 
 class FileManager:

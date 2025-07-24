@@ -7,10 +7,9 @@ from pathlib import Path
 
 from flask_restx import Namespace, Resource, fields
 
-from core.config import NAS_PATH, OUTPUT_DIR
+from core.config import NAS_PATH, OUTPUT_DIR, MEMBER_CITIES
+from core import BrowseRequest, TranscriptionResultORM, sanitize_output, security_manager
 from core.database import db
-from core.models import BrowseRequest, TranscriptionResultORM
-from core.security import sanitize_output, security_manager
 from core.services import FileService
 from flask import Blueprint, jsonify, request, send_file
 from flask_limiter import Limiter
@@ -104,7 +103,6 @@ def create_browse_blueprint(limiter):
     def get_member_cities():
         """Get information about all member cities and their storage locations."""
         try:
-            from core.config import MEMBER_CITIES
             return jsonify({
                 'success': True,
                 'data': {
@@ -121,8 +119,6 @@ def create_browse_blueprint(limiter):
     def get_member_city_info(city_id):
         """Get information about a specific member city."""
         try:
-            from core.config import MEMBER_CITIES
-
             city_info = MEMBER_CITIES.get(city_id)
 
             if not city_info:

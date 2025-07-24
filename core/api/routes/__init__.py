@@ -5,7 +5,7 @@ from flask_restx import Api, Resource, fields
 from flask_limiter import Limiter
 from loguru import logger
 
-from core.security import get_csrf_token
+from core import get_csrf_token
 from .browse import create_browse_blueprint
 from .transcribe import create_transcribe_blueprint
 from .queue import create_queue_blueprint

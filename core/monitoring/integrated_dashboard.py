@@ -35,9 +35,13 @@ import os
 from loguru import logger
 from core.monitoring.metrics import get_metrics_collector
 from core.monitoring.health_checks import get_health_manager
-from core.task_queue import QueueManager
+try:
+    from core.services.queue import QueueService as QueueManager
+except ImportError:
+    QueueManager = None
 from core.tasks import celery_app
 from core.monitoring.socket_tracker import socket_tracker
+from core import TranscriptionResultORM
 
 @dataclass
 class DashboardConfig:
@@ -654,7 +658,6 @@ class IntegratedDashboard:
                 from core.vod_automation import get_transcription_link_status
                 
                 # Get recent transcriptions and their link status
-                from core.models import TranscriptionResultORM
                 recent_transcriptions = TranscriptionResultORM.query.order_by(
                     TranscriptionResultORM.completed_at.desc()
                 ).limit(20).all()

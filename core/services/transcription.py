@@ -30,7 +30,7 @@ from core.config import (
     USE_GPU,
     WHISPER_MODEL
 )
-from core.exceptions import TranscriptionError, handle_transcription_error
+from core import TranscriptionError, handle_transcription_error
 from core.scc_summarizer import summarize_scc
 
 

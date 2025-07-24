@@ -1,3 +1,16 @@
+"""
+Celery compatibility layer for Archivist.
+Exports:
+- Celery (class)
+- celery (singleton)
+- current_task (singleton)
+- crontab (function, from celery.schedules)
+- AsyncResult (class, from celery.result)
+"""
+
+from .schedules import crontab
+from .result import AsyncResult
+
 class Celery:
     def __init__(self, *args, **kwargs):
         self.control = type('Control', (), {'inspect': lambda self: type('I', (), {'active': lambda self: {}, 'reserved': lambda self: {}, 'scheduled': lambda self: {}, 'stats': lambda self: {}, 'ping': lambda self: {}})(), 'revoke': lambda self, *a, **k: None, 'purge': lambda self: None})()
@@ -19,15 +32,7 @@ class Celery:
             id = 'dummy'
         return Result()
     def AsyncResult(self, id):
-        class Result:
-            status = 'PENDING'
-            info = {}
-            result = None
-            def failed(self):
-                return False
-            def successful(self):
-                return False
-        return Result()
+        return AsyncResult(id)
 celery = Celery()
 
 class _Task:

@@ -20,7 +20,7 @@ from typing import Dict, Optional, List
 from datetime import datetime
 from loguru import logger
 from core.cablecast_client import CablecastAPIClient
-from core.models import TranscriptionResultORM, CablecastShowORM
+from core import TranscriptionResultORM, CablecastShowORM
 from core.app import db
 
 class CablecastTranscriptionLinker:

@@ -21,9 +21,9 @@ import json
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 from loguru import logger
-from core.models import TranscriptionResultORM, CablecastShowORM, CablecastVODORM
-from core.app import db
+from core import TranscriptionResultORM, CablecastShowORM, CablecastVODORM
 from core.config import CABLECAST_LOCATION_ID, VOD_DEFAULT_QUALITY
+from core.app import db
 from core.cablecast_client import CablecastAPIClient
 
 class VODContentManager:

@@ -20,6 +20,13 @@ from datetime import datetime, timedelta
 from flask import Flask, jsonify
 from werkzeug.datastructures import FileStorage
 from io import BytesIO
+import types
+import sys
+
+# Patch limiter in web.api.cablecast before importing create_app
+sys.modules.setdefault('web.api.cablecast', MagicMock())
+sys.modules['web.api.cablecast'].limiter = MagicMock()
+sys.modules['web.api.cablecast'].limiter.limit = lambda *a, **k: (lambda f: f)
 
 from core.security import (
     SecurityManager, security_manager, validate_json_input,
@@ -30,6 +37,14 @@ from core.models import (
     BatchTranscribeRequest, SecurityConfig, AuditLogEntry
 )
 from core.app import create_app
+
+class DummyLimiter:
+    def limit(self, *args, **kwargs):
+        def decorator(f):
+            return f
+        return decorator
+
+pytest.limiter = DummyLimiter()
 
 @pytest.fixture
 def app():
