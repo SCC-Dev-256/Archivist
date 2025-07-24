@@ -180,7 +180,7 @@ class TranscriptionService:
         try:
             # Use the direct transcription function
             result = self._transcribe_with_faster_whisper(file_path)
-            
+            # The function now generates SCC captions and returns the output path.
             return {
                 'output_path': result.get('output_path', ''),
                 'status': 'completed',
@@ -231,33 +231,26 @@ class TranscriptionService:
             video_path: Path to the video file
             scc_path: Path to the SCC file
             output_path: Not used (kept for API compatibility)
-            
+        
         Returns:
             Path to the SCC sidecar file
         """
         if not os.path.exists(video_path):
             raise TranscriptionError(f"Video file not found: {video_path}")
-        
         if not os.path.exists(scc_path):
             raise TranscriptionError(f"SCC file not found: {scc_path}")
-        
         logger.info(f"Validating SCC sidecar file for {video_path}")
-        
         try:
             # Validate SCC file format
             self._validate_scc_file(scc_path)
-            
             # Ensure SCC file is in the same directory as video
             video_dir = os.path.dirname(video_path)
             scc_dir = os.path.dirname(scc_path)
-            
             if video_dir != scc_dir:
                 logger.warning(f"SCC file not in same directory as video: {scc_path}")
                 logger.info(f"Video directory: {video_dir}, SCC directory: {scc_dir}")
-            
             logger.info(f"SCC sidecar file validated: {scc_path}")
             return scc_path
-            
         except Exception as e:
             logger.error(f"SCC validation failed for {video_path}: {e}")
             raise TranscriptionError(f"SCC validation failed: {str(e)}")

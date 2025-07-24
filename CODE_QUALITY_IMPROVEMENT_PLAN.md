@@ -203,7 +203,6 @@ import time
 3. **Add proper logging configuration**
 
 #### **Day 5-7: Incomplete Implementations**
-1. **Implement captioning functionality**
 2. **Add queue analytics calculations**
 3. **Remove or complete TODO items**
 
