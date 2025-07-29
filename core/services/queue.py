@@ -19,7 +19,7 @@ Example:
 import os
 from typing import Dict, List, Optional
 
-from celery import AsyncResult
+from celery.result import AsyncResult
 from core.exceptions import QueueError
 from core.tasks import celery_app
 from core.tasks.transcription import run_whisper_transcription

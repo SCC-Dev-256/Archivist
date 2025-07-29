@@ -1158,7 +1158,8 @@ class IntegratedDashboard:
     def _get_task_progress(self, task_id: str) -> float:
         """Get task progress from Celery result backend."""
         try:
-            result = celery_app.AsyncResult(task_id)
+            from celery.result import AsyncResult
+            result = AsyncResult(task_id, app=celery_app)
             if result.state == 'PROGRESS':
                 return result.info.get('progress', 0)
             elif result.state == 'SUCCESS':

@@ -43,6 +43,7 @@ def create_browse_blueprint(limiter):
         try:
             # Simple browse operation without signal-based timeout
             contents = FileService().browse_directory(browse_path)
+            # Return the full structure with items array for frontend compatibility
             return jsonify(sanitize_output(contents)), 200
                 
         except Exception as e:
