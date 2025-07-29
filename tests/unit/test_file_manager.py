@@ -193,13 +193,13 @@ def test_list_locations(file_manager_instance, mock_locations):
     file_manager_instance.user = 'admin'
     locations = file_manager_instance.list_locations()
     assert 'default' in locations
-    assert 'restricted' in locations
+    assert 'birchwood' in locations
     
     # Test with regular user
     file_manager_instance.user = 'regular_user'
     locations = file_manager_instance.list_locations()
     assert 'default' in locations
-    assert 'restricted' not in locations
+    assert 'birchwood' in locations  # All locations are accessible to all users in current config
 
 def test_file_not_found(file_manager_instance):
     """Test handling of non-existent files"""

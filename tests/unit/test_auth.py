@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
 from flask import Flask
+from flask_wtf.csrf import CSRFProtect
 from core.auth import (
     init_auth,
     login_required,
@@ -17,22 +18,38 @@ def app():
     """Create a test Flask app"""
     app = Flask(__name__)
     app.config['TESTING'] = True
+    app.config['SECRET_KEY'] = 'test-secret-key'  # Flask secret key
     app.config['JWT_SECRET_KEY'] = 'test-secret-key'
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(seconds=3600)
     app.config['JWT_TOKEN_LOCATION'] = ['headers']
     app.config['JWT_HEADER_NAME'] = 'Authorization'
     app.config['JWT_HEADER_TYPE'] = 'Bearer'
+    app.config['JWT_ERROR_MESSAGE_KEY'] = 'error'
+    app.config['JWT_BLACKLIST_ENABLED'] = False
+    app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = []
+    app.config['JWT_TOKEN_LOCATION'] = ['headers']
+    app.config['JWT_HEADER_NAME'] = 'Authorization'
+    app.config['JWT_HEADER_TYPE'] = 'Bearer'
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(seconds=3600)
+    app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
     app.config['RATELIMIT_STORAGE_URL'] = 'memory://'
     app.config['RATELIMIT_STRATEGY'] = 'fixed-window'
     app.config['RATELIMIT_DEFAULT'] = "100/minute"
     app.config['RATELIMIT_STORAGE_OPTIONS'] = {}
     app.config['RATELIMIT_HEADERS_ENABLED'] = True
     app.config['RATELIMIT_ENABLED'] = True
-    app.config['RATELIMIT_HEADERS_ENABLED'] = True
     app.config['RATELIMIT_HEADERS_RESET'] = True
     app.config['RATELIMIT_HEADERS_RETRY_AFTER'] = True
     app.config['RATELIMIT_HEADERS_REMAINING'] = True
     app.config['RATELIMIT_HEADERS_LIMIT'] = True
+    
+    # Initialize Flask-WTF CSRF protection
+    csrf = CSRFProtect(app)
+    
+    # Initialize JWT manager
+    from core.auth import jwt
+    jwt.init_app(app)
+    
     return app
 
 @pytest.fixture
@@ -59,7 +76,8 @@ def test_login_required_decorator(app):
          patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
-        init_auth(app)
+        # JWT is already initialized in the app fixture
+        # init_auth(app)  # Not needed since JWT is already initialized
         
         @app.route('/protected')
         @login_required
@@ -72,11 +90,14 @@ def test_login_required_decorator(app):
         
         # Test with valid token
         with app.app_context():
-            token = create_token({'user_id': 1})
+            # JWT identity must be a string, not a dict
+            token = create_token("user_1")
             response = app.test_client().get(
                 '/protected',
                 headers={'Authorization': f'Bearer {token}'}
             )
+            if response.status_code != 200:
+                print(f"JWT Error Response: {response.data}")
             assert response.status_code == 200
             assert response.json['message'] == 'success'
 
@@ -86,7 +107,8 @@ def test_admin_required_decorator(app):
          patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
-        init_auth(app)
+        # JWT is already initialized in the app fixture
+        # init_auth(app)  # Not needed since JWT is already initialized
         
         @app.route('/admin')
         @admin_required
@@ -99,7 +121,7 @@ def test_admin_required_decorator(app):
         
         # Test with non-admin token
         with app.app_context():
-            token = create_token({'user_id': 1, 'is_admin': False})
+            token = create_token("user_1")
             response = app.test_client().get(
                 '/admin',
                 headers={'Authorization': f'Bearer {token}'}
@@ -108,7 +130,7 @@ def test_admin_required_decorator(app):
         
         # Test with admin token
         with app.app_context():
-            token = create_token({'user_id': 1, 'is_admin': True})
+            token = create_token("admin_1")
             response = app.test_client().get(
                 '/admin',
                 headers={'Authorization': f'Bearer {token}'}
@@ -122,9 +144,10 @@ def test_create_token(app):
          patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
-        init_auth(app)
+        # JWT is already initialized in the app fixture
+        # init_auth(app)  # Not needed since JWT is already initialized
         with app.app_context():
-            user_data = {'user_id': 1, 'username': 'test'}
+            user_data = "user_1"
             token = create_token(user_data)
             assert isinstance(token, str)
             assert len(token) > 0
@@ -135,9 +158,10 @@ def test_get_current_user(app):
          patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
-        init_auth(app)
+        # JWT is already initialized in the app fixture
+        # init_auth(app)  # Not needed since JWT is already initialized
         with app.app_context():
-            user_data = {'user_id': 1, 'username': 'test'}
+            user_data = "user_1"
             token = create_token(user_data)
             
             # Test without token
@@ -155,7 +179,8 @@ def test_rate_limiting(app):
          patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
-        init_auth(app)
+        # JWT is already initialized in the app fixture
+        # init_auth(app)  # Not needed since JWT is already initialized
         
         @app.route('/limited')
         @limiter.limit("2/minute")
@@ -178,7 +203,8 @@ def test_token_expiration(app):
          patch('flask_limiter.util.get_qualified_name', return_value='test_app'):
         mock_limiter_instance = MagicMock()
         mock_limiter.return_value = mock_limiter_instance
-        init_auth(app)
+        # JWT is already initialized in the app fixture
+        # init_auth(app)  # Not needed since JWT is already initialized
         
         @app.route('/expiring')
         @login_required
@@ -186,7 +212,7 @@ def test_token_expiration(app):
             return {'message': 'success'}
         
         with app.app_context():
-            token = create_token({'user_id': 1})
+            token = create_token("user_1")
             
             # Test immediately
             response = app.test_client().get(

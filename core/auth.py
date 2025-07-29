@@ -60,7 +60,8 @@ def admin_required(f):
     @jwt_required()
     def decorated_function(*args, **kwargs):
         current_user = get_jwt_identity()
-        if not current_user.get('is_admin', False):
+        # Check if user identity starts with 'admin_' to indicate admin role
+        if not isinstance(current_user, str) or not current_user.startswith('admin_'):
             return jsonify({'error': 'Admin access required'}), 403
         return f(*args, **kwargs)
     return decorated_function
