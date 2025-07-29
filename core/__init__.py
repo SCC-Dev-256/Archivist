@@ -5,6 +5,9 @@ Centralizes main classes, singletons, and helpers for easy import.
 This is the single source of truth for all core imports.
 """
 
+# Import database first (no dependencies)
+from .database import db
+
 # Import exceptions first (no dependencies)
 from .exceptions import (
     ArchivistException, TranscriptionError, WhisperModelError, FileError, FileNotFoundError,
@@ -48,22 +51,20 @@ from .config import MEMBER_CITIES
 # Import admin UI (depends on security)
 from .admin_ui import AdminUI, start_admin_ui
 
-# Import individual services directly to avoid circular imports
-from .services.transcription import TranscriptionService
-from .services.vod import VODService
-from .services.file import FileService
-from .services.queue import QueueService
-
-# Create singleton instances for services
-transcription_service = TranscriptionService()
-vod_service = VODService()
-file_service = FileService()
-queue_service = QueueService()
+# Import services with centralized instances
+from .services import (
+    TranscriptionService, VODService, FileService, QueueService,
+    transcription_service, vod_service, file_service, queue_service,
+    get_all_jobs, get_queue_status, get_job_status
+)
 
 # Import app last (depends on everything above)
 from .app import app, create_app, create_app_with_config
 
 __all__ = [
+    # Database
+    "db",
+    
     # Exceptions
     "ArchivistException", "TranscriptionError", "WhisperModelError", "FileError", "FileNotFoundError",
     "FilePermissionError", "FileFormatError", "NetworkError", "APIError", "DatabaseError",
@@ -83,6 +84,7 @@ __all__ = [
     "FileManager", "file_manager", "VODContentManager", "UnifiedQueueManager",
     "TranscriptionService", "VODService", "FileService", "QueueService",
     "transcription_service", "vod_service", "file_service", "queue_service",
+    "get_all_jobs", "get_queue_status", "get_job_status",
     
     # Monitoring and Tasks
     "IntegratedDashboard", "celery_app",

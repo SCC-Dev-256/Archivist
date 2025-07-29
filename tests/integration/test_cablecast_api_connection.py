@@ -126,7 +126,8 @@ def test_database_integration():
     logger.info("Testing database integration...")
     
     try:
-        from core.app import create_app, db
+        from core.app import create_app
+        from core import db
         from core.models import CablecastShowORM
         
         # Create Flask app context

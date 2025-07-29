@@ -4,6 +4,9 @@ import psutil
 import threading
 import time
 
+# Import centralized queue utilities to avoid circular imports
+from core.services import get_all_jobs
+
 # Example: import celery_app, queue manager, etc. as needed
 # from core.tasks import celery_app
 # from core.task_queue import QueueManager
@@ -36,7 +39,6 @@ def register_realtime_events(app):
     @socketio.on('request_task_updates')
     def handle_request_task_updates(data=None):
         try:
-            from core.api.routes.queue import get_all_jobs  # Adjust import as needed
             jobs = get_all_jobs()
             socketio.emit('task_updates', {'jobs': jobs}, room=request.sid)
         except Exception as e:
@@ -45,7 +47,6 @@ def register_realtime_events(app):
     def broadcast_task_updates():
         while True:
             try:
-                from core.api.routes.queue import get_all_jobs  # Adjust import as needed
                 jobs = get_all_jobs()
                 socketio.emit('task_updates', {'jobs': jobs})
             except Exception as e:
@@ -59,7 +60,6 @@ def register_realtime_events(app):
     def handle_filter_tasks(data):
         try:
             task_type = data.get('type', 'all') if data else 'all'
-            from core.api.routes.queue import get_all_jobs  # Adjust import as needed
             jobs = get_all_jobs()
             if task_type == 'all':
                 filtered = jobs
@@ -72,7 +72,6 @@ def register_realtime_events(app):
     @socketio.on('request_task_analytics')
     def handle_request_task_analytics():
         try:
-            from core.api.routes.queue import get_all_jobs  # Adjust import as needed
             jobs = get_all_jobs()
             # Example analytics: count by status, average progress
             status_counts = {}

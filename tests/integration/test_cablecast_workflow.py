@@ -196,7 +196,7 @@ def test_database_models():
     
     try:
         from core.models import CablecastShowORM
-        from core.app import db
+        from core import db
         
         # Test model creation
         test_show = CablecastShowORM(

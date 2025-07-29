@@ -95,7 +95,7 @@ def create_app(testing=False):
     security_manager.init_app(app, force_https=force_https)
     
     # Register routes from web_app
-    from core.api.routes import register_routes
+    from core.api import register_routes
     register_routes(app, limiter)
     # Initialize SocketIO
     socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')

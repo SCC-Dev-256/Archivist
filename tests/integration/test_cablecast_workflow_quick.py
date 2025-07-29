@@ -121,7 +121,8 @@ def test_database_models():
     
     try:
         from core.models import CablecastShowORM
-        from core.app import create_app, db
+        from core.app import create_app
+        from core import db
         
         # Create Flask app context
         app = create_app()

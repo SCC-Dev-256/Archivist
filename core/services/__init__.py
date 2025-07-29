@@ -20,11 +20,37 @@ from .vod import VODService
 from .file import FileService
 from .queue import QueueService
 
+# Create singleton instances for services
+transcription_service = TranscriptionService()
+vod_service = VODService()
+file_service = FileService()
+queue_service = QueueService()
+
+# Export queue utility functions to avoid circular imports
+def get_all_jobs():
+    """Get all jobs from the queue service."""
+    return queue_service.get_all_jobs()
+
+def get_queue_status():
+    """Get queue status from the queue service."""
+    return queue_service.get_queue_status()
+
+def get_job_status(job_id: str):
+    """Get status of a specific job."""
+    return queue_service.get_job_status(job_id)
+
 __all__ = [
     'TranscriptionService',
     'VODService', 
     'FileService',
-    'QueueService'
+    'QueueService',
+    'transcription_service',
+    'vod_service',
+    'file_service',
+    'queue_service',
+    'get_all_jobs',
+    'get_queue_status',
+    'get_job_status',
 ]
 
 # Note: Singleton instances are now created in core/__init__.py to avoid circular imports 

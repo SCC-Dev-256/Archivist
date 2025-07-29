@@ -25,6 +25,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from loguru import logger
 from core.services import VODService
+from core import db
 
 # Add the core directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'core'))
