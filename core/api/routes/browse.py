@@ -7,10 +7,10 @@ from pathlib import Path
 
 from flask_restx import Namespace, Resource, fields
 
-from core.config import NAS_PATH, OUTPUT_DIR, MEMBER_CITIES
 from core import BrowseRequest, TranscriptionResultORM, sanitize_output, security_manager
+from core.config import NAS_PATH
 from core.database import db
-from core.services import FileService
+from core.services.file import FileService
 from flask import Blueprint, jsonify, request, send_file
 from flask_limiter import Limiter
 from loguru import logger
@@ -31,8 +31,6 @@ def create_browse_blueprint(limiter):
     @limiter.limit(BROWSE_RATE_LIMIT)
     def browse():
         """Browse files and directories. If path is empty, return NAS root."""
-        import signal
-        
         path = request.args.get('path', '')
         # If path is empty, use NAS_PATH as root
         browse_path = NAS_PATH if not path else os.path.join(NAS_PATH, path)
@@ -43,23 +41,9 @@ def create_browse_blueprint(limiter):
             return jsonify({'error': 'Invalid path'}), 400
         
         try:
-            # Set a timeout for the browse operation to prevent hanging
-            def timeout_handler(signum, frame):
-                raise TimeoutError("Browse operation timed out")
-            
-            # Set 10 second timeout for browse operations
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(10)
-            
-            try:
-                contents = FileService().browse_directory(browse_path)
-                signal.alarm(0)  # Cancel the alarm
-                return jsonify(sanitize_output(contents)), 200
-            except TimeoutError:
-                logger.error(f"Browse operation timed out for {browse_path}")
-                return jsonify({'error': 'Browse operation timed out. Please try again.'}), 408
-            finally:
-                signal.alarm(0)  # Ensure alarm is cancelled
+            # Simple browse operation without signal-based timeout
+            contents = FileService().browse_directory(browse_path)
+            return jsonify(sanitize_output(contents)), 200
                 
         except Exception as e:
             logger.error(f"Error browsing directory {browse_path}: {e}")

@@ -51,10 +51,10 @@ def register_routes(app, limiter):
     app.register_blueprint(bp_api)
     
     # Register Cablecast blueprint (if it exists)
-    try:
-        from web.api.cablecast import cablecast_bp
-        app.register_blueprint(cablecast_bp)
-    except ImportError:
-        logger.warning("Cablecast blueprint not found, skipping registration")
+    # try:
+    #     from web.api.cablecast import cablecast_bp
+    #     app.register_blueprint(cablecast_bp)
+    # except ImportError:
+    #     logger.warning("Cablecast blueprint not found, skipping registration")
 
     return api 

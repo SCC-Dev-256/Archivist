@@ -7,6 +7,7 @@ from loguru import logger
 import os
 
 from core import QueueReorderRequest, JobStatus, validate_json_input, sanitize_output, require_csrf_token
+from core.services.queue import QueueService
 
 # Rate limiting configuration
 QUEUE_RATE_LIMIT = os.getenv('QUEUE_RATE_LIMIT', '60 per minute')

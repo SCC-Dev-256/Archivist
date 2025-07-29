@@ -24,7 +24,7 @@ from loguru import logger
 from core.cablecast_show_mapper import CablecastShowMapper
 from core.cablecast_transcription_linker import CablecastTranscriptionLinker
 from core.models import TranscriptionResultORM, CablecastShowORM
-from core.app import db
+from core.database import db
 
 def auto_link_transcription_to_show(transcription_id: str) -> Dict:
     """

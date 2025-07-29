@@ -27,8 +27,4 @@ __all__ = [
     'QueueService'
 ]
 
-# Create singleton instances for easy access
-transcription_service = TranscriptionService()
-vod_service = VODService()
-file_service = FileService()
-queue_service = QueueService() 
+# Note: Singleton instances are now created in core/__init__.py to avoid circular imports 

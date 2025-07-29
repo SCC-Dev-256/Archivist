@@ -21,7 +21,7 @@ from datetime import datetime
 from loguru import logger
 from core.cablecast_client import CablecastAPIClient
 from core import TranscriptionResultORM, CablecastShowORM
-from core.app import db
+from core.database import db
 
 class CablecastTranscriptionLinker:
     """Links transcriptions to existing Cablecast shows"""

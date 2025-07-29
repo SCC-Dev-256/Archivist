@@ -10,11 +10,8 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List
 
-from core.config import MEMBER_CITIES
-from core.monitoring.integrated_dashboard import IntegratedDashboard
-from core.task_queue import QueueManager
-from core.tasks import celery_app
-from flask import Blueprint, Flask, jsonify, render_template, request
+from core import MEMBER_CITIES, IntegratedDashboard, UnifiedQueueManager, celery_app
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from loguru import logger
 
@@ -29,7 +26,7 @@ class AdminUI:
         self.port = port
         self.dashboard_port = dashboard_port
         self.app = Flask(__name__)
-        self.queue_manager = QueueManager()
+        self.queue_manager = UnifiedQueueManager()
 
         # Enable CORS
         CORS(self.app)

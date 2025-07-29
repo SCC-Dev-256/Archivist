@@ -41,7 +41,7 @@ except ImportError:
     QueueManager = None
 from core.tasks import celery_app
 from core.monitoring.socket_tracker import socket_tracker
-from core import TranscriptionResultORM
+from core.models import TranscriptionResultORM
 
 @dataclass
 class DashboardConfig:

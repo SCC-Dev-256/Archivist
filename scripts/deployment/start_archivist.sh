@@ -88,10 +88,10 @@ else
 fi
 
 # Start the web app
-start_process "gunicorn.*core:app" "Web App" "gunicorn --bind ${API_HOST}:${API_PORT} --workers ${API_WORKERS} --timeout 120 --access-logfile logs/gunicorn-access.log --error-logfile logs/gunicorn-error.log --capture-output --log-level info core:app"
+start_process "gunicorn.*core.app:app" "Web App" "gunicorn --bind ${API_HOST}:${API_PORT} --workers ${API_WORKERS} --timeout 120 --access-logfile logs/gunicorn-access.log --error-logfile logs/gunicorn-error.log --capture-output --log-level info core.app:app"
 
-# Start the RQ worker for transcription
-start_process "rq worker transcription" "Transcription Worker" "bash scripts/run_worker.sh"
+# Start the Celery worker for transcription
+start_process "celery.*worker" "Transcription Worker" "bash scripts/deployment/run_worker.sh"
 
 echo "Archivist system started successfully"
 echo "Web UI available at: http://${API_HOST}:${API_PORT}"

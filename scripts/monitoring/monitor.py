@@ -22,11 +22,11 @@ logging.basicConfig(
 class SystemMonitor:
     def __init__(self):
         self.redis_client = redis.Redis(
-            host=os.getenv("REDIS_HOST", "192.168.181.154"),
+            host=os.getenv("REDIS_HOST", "localhost"),
             port=int(os.getenv("REDIS_PORT", 6379)),
             db=int(os.getenv("REDIS_DB", 0)),
         )
-        self.base_url = f"http://{os.getenv('API_HOST', '192.168.181.154')}:{os.getenv('API_PORT', '5050')}"
+        self.base_url = f"http://{os.getenv('API_HOST', 'localhost')}:{os.getenv('API_PORT', '5050')}"
 
     def check_system_resources(self) -> Dict[str, Any]:
         """Check system resource usage"""
@@ -59,7 +59,8 @@ class SystemMonitor:
         """Check API health and response time"""
         try:
             start_time = time.time()
-            response = requests.get(f"{self.base_url}/health")
+            # Use the queue endpoint as a health check since it's always available
+            response = requests.get(f"{self.base_url}/api/queue")
             duration = time.time() - start_time
 
             return {

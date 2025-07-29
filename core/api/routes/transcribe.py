@@ -7,6 +7,8 @@ from loguru import logger
 import os
 
 from core import TranscribeRequest, BatchTranscribeRequest, validate_json_input, sanitize_output, require_csrf_token
+from core.services.file import FileService
+from core.services.queue import QueueService
 from core.tasks.transcription import batch_transcription
 
 # Rate limiting configuration

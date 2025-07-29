@@ -21,7 +21,7 @@ from loguru import logger
 from flask_socketio import SocketIO
 from core.monitoring.middleware import performance_middleware
 from core.monitoring.socket_tracker import socket_tracker
-from core.services.queue_analytics import queue_analytics
+# from core.services.queue_analytics import queue_analytics  # Temporarily commented out
 from core.database_health import init_db_health_checker
 
 # Initialize extensions

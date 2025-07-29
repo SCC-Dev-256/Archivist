@@ -23,7 +23,7 @@ from datetime import datetime
 from loguru import logger
 from core import TranscriptionResultORM, CablecastShowORM, CablecastVODORM
 from core.config import CABLECAST_LOCATION_ID, VOD_DEFAULT_QUALITY
-from core.app import db
+from core.database import db
 from core.cablecast_client import CablecastAPIClient
 
 class VODContentManager:
