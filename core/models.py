@@ -326,7 +326,7 @@ class VODPublishRequest(BaseModel):
     auto_transcribe: bool = Field(True, description="Automatically transcribe if not already done")
 
 class VODBatchPublishRequest(BaseModel):
-    transcription_ids: List[str] = Field(..., min_items=1, max_items=100, description="List of transcription IDs to publish")
+    transcription_ids: List[str] = Field(..., min_length=1, max_length=100, description="List of transcription IDs to publish")
     quality: Optional[int] = Field(1, ge=1, le=10, description="VOD quality setting")
 
 class VODSyncStatusResponse(BaseModel):

@@ -49,7 +49,9 @@ def test_init_auth(app):
         init_auth(app)
         assert app.config['JWT_SECRET_KEY'] == 'test-secret-key'
         assert app.config['JWT_ACCESS_TOKEN_EXPIRES'] == timedelta(seconds=3600)
-        assert jwt._get_app(app) is not None
+        # Check that JWT is properly initialized by checking if it's attached to the app
+        assert hasattr(app, 'extensions')
+        assert 'flask-jwt-extended' in app.extensions
 
 def test_login_required_decorator(app):
     """Test login_required decorator"""

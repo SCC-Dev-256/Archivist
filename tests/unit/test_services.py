@@ -7,6 +7,7 @@ work correctly and provide the expected functionality.
 import pytest
 from unittest.mock import patch, MagicMock
 from core.services import TranscriptionService, VODService, FileService, QueueService
+from core.services import get_transcription_service, get_vod_service, get_file_service, get_queue_service
 from core.exceptions import TranscriptionError, VODError, FileError, QueueError
 from core.config import OUTPUT_DIR
 import os
@@ -200,24 +201,27 @@ class TestServiceIntegration:
     
     def test_service_singletons(self):
         """Test that service singletons work correctly."""
-        from core.services import transcription_service, vod_service, file_service, queue_service
+        transcription_service = get_transcription_service()
+        vod_service = get_vod_service()
+        file_service = get_file_service()
+        queue_service = get_queue_service()
         
         assert transcription_service is not None
         assert vod_service is not None
         assert file_service is not None
         assert queue_service is not None
         
-        # Test that they're the same instances
-        assert transcription_service is TranscriptionService()
-        assert vod_service is VODService()
-        assert file_service is FileService()
-        assert queue_service is QueueService()
+        # Test that they're the same instances (singleton behavior)
+        assert transcription_service is get_transcription_service()
+        assert vod_service is get_vod_service()
+        assert file_service is get_file_service()
+        assert queue_service is get_queue_service()
     
     def test_service_imports(self):
         """Test that all services can be imported."""
         from core.services import (
             TranscriptionService, VODService, FileService, QueueService,
-            transcription_service, vod_service, file_service, queue_service
+            get_transcription_service, get_vod_service, get_file_service, get_queue_service
         )
         
         assert TranscriptionService is not None

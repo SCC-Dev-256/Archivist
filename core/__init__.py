@@ -54,7 +54,7 @@ from .admin_ui import AdminUI, start_admin_ui
 # Import services with centralized instances
 from .services import (
     TranscriptionService, VODService, FileService, QueueService,
-    transcription_service, vod_service, file_service, queue_service,
+    get_transcription_service, get_vod_service, get_file_service, get_queue_service,
     get_all_jobs, get_queue_status, get_job_status
 )
 
@@ -83,7 +83,7 @@ __all__ = [
     # Managers and Services
     "FileManager", "file_manager", "VODContentManager", "UnifiedQueueManager",
     "TranscriptionService", "VODService", "FileService", "QueueService",
-    "transcription_service", "vod_service", "file_service", "queue_service",
+    "get_transcription_service", "get_vod_service", "get_file_service", "get_queue_service",
     "get_all_jobs", "get_queue_status", "get_job_status",
     
     # Monitoring and Tasks

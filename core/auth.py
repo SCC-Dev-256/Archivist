@@ -41,8 +41,8 @@ def init_auth(app):
     # Initialize rate limiter with correct API
     limiter.init_app(app)
     
-    # Apply global rate limit
-    limiter.limit("100/minute")(app)
+    # Don't apply global rate limit to app object - this should be done per route
+    # limiter.limit("100/minute")(app)  # This was causing the AttributeError
     
     return app
 
