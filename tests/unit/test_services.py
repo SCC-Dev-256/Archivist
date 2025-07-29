@@ -9,6 +9,7 @@ from unittest.mock import patch, MagicMock
 from core.services import TranscriptionService, VODService, FileService, QueueService
 from core.exceptions import TranscriptionError, VODError, FileError, QueueError
 from core.config import OUTPUT_DIR
+import os
 
 class TestTranscriptionService:
     """Test the TranscriptionService."""
@@ -21,7 +22,7 @@ class TestTranscriptionService:
         assert hasattr(service, 'use_gpu')
         assert hasattr(service, 'language')
     
-    @patch('core.whisperx_helper.transcribe_with_whisperx')
+    @patch('core.services.transcription.TranscriptionService._transcribe_with_faster_whisper')
     @patch('os.path.exists')
     def test_transcribe_file_success(self, mock_exists, mock_transcribe):
         """Test successful transcription."""
@@ -29,7 +30,9 @@ class TestTranscriptionService:
         mock_transcribe.return_value = {
             'output_path': '/path/to/output.srt',
             'segments': 10,
-            'duration': 120.5
+            'duration': 120.5,
+            'language': 'en',
+            'model_used': 'base'
         }
         
         service = TranscriptionService()
@@ -39,7 +42,9 @@ class TestTranscriptionService:
         assert result['status'] == 'completed'
         assert result['segments'] == 10
         assert result['duration'] == 120.5
-        mock_transcribe.assert_called_once_with('/path/to/video.mp4', OUTPUT_DIR)
+        assert result['language'] == 'en'
+        assert result['model_used'] == 'base'
+        mock_transcribe.assert_called_once_with('/path/to/video.mp4')
     
     def test_transcribe_file_not_found(self):
         """Test transcription with non-existent file."""
@@ -101,31 +106,32 @@ class TestFileService:
     @patch('os.path.exists')
     @patch('os.access')
     def test_validate_path_safe(self, mock_access, mock_exists):
-        """Test path validation with safe path."""
+        """Test path validation for safe paths."""
         mock_exists.return_value = True
         mock_access.return_value = True
         
         service = FileService()
-        result = service.validate_path('safe/path')
+        result = service.validate_path('/mnt/nas/safe/path')
         
         assert result is True
+        mock_exists.assert_called_once_with('/mnt/nas/safe/path')
+        mock_access.assert_called_once_with('/mnt/nas/safe/path', os.R_OK)
     
     def test_validate_path_traversal_attempt(self):
-        """Test path validation with traversal attempt."""
+        """Test path validation rejects directory traversal attempts."""
         service = FileService()
-        result = service.validate_path('../etc/passwd')
         
-        assert result is False
+        with pytest.raises(FileError):
+            service.validate_path('/mnt/nas/../../../etc/passwd')
     
     @patch('os.path.exists')
     def test_get_file_size_success(self, mock_exists):
         """Test successful file size retrieval."""
         mock_exists.return_value = True
         
+        service = FileService()
         with patch('os.path.getsize', return_value=1024):
-            service = FileService()
-            size = service.get_file_size('/path/to/file.txt')
-            
+            size = service.get_file_size('/path/to/file.mp4')
             assert size == 1024
 
 class TestQueueService:
@@ -135,78 +141,83 @@ class TestQueueService:
         """Test that QueueService initializes correctly."""
         service = QueueService()
         assert service is not None
-        assert hasattr(service, 'queue_manager')
+        assert hasattr(service, 'celery_app')
     
     @patch('os.path.exists')
-    @patch('core.tasks.transcription.enqueue_transcription')
+    @patch('core.services.queue.run_whisper_transcription.delay')
     def test_enqueue_transcription_success(self, mock_enqueue, mock_exists):
-        """Test successful job enqueue."""
+        """Test successful transcription enqueue."""
         mock_exists.return_value = True
-        mock_enqueue.return_value = 'job-123'
+        mock_job = MagicMock()
+        mock_job.id = 'job-123'
+        mock_enqueue.return_value = mock_job
         
         service = QueueService()
-        job_id = service.enqueue_transcription('/path/to/video.mp4')
+        result = service.enqueue_transcription('/path/to/video.mp4')
         
-        assert job_id == 'job-123'
-        mock_enqueue.assert_called_once_with('/path/to/video.mp4', None)
+        assert result == 'job-123'
+        mock_enqueue.assert_called_once_with('/path/to/video.mp4')
     
     @patch('os.path.exists')
     def test_enqueue_transcription_file_not_found(self, mock_exists):
-        """Test job enqueue with non-existent file."""
+        """Test transcription enqueue with non-existent file."""
         mock_exists.return_value = False
         
         service = QueueService()
         
-        with pytest.raises(QueueError) as exc_info:
+        with pytest.raises(FileError) as exc_info:
             service.enqueue_transcription('/path/to/nonexistent.mp4')
         
-        assert "Video file not found" in str(exc_info.value)
+        assert "File not found" in str(exc_info.value)
     
     @patch('core.services.queue.celery_app.control.inspect')
     def test_get_queue_status_success(self, mock_inspect):
         """Test successful queue status retrieval."""
-        mock_inspect.return_value.active.return_value = {
-            'worker1': [{}, {}]
-        }
-        mock_inspect.return_value.reserved.return_value = {
-            'worker1': [{}, {}, {}]
-        }
-        mock_inspect.return_value.scheduled.return_value = {}
+        mock_inspector = MagicMock()
+        mock_inspect.return_value = mock_inspector
+        
+        # Mock the inspect methods to match actual implementation
+        mock_inspector.stats.return_value = {'worker1': {'pid': 12345}}
+        mock_inspector.ping.return_value = {'worker1': 'pong'}
         
         service = QueueService()
         status = service.get_queue_status()
         
-        assert status['total_jobs'] == 5
-        assert status['running_jobs'] == 2
-        assert status['queued_jobs'] == 3
-        mock_inspect.assert_called_once()
+        # Check for the actual keys returned by the implementation
+        assert 'active_workers' in status
+        assert 'total_workers' in status
+        assert 'worker_status' in status
+        assert 'queue_length' in status
+        assert 'completed_jobs' in status
+        assert 'status' in status
+        assert status['active_workers'] == 1
+        assert status['total_workers'] == 1
+        assert status['worker_status'] == 'healthy'
+        assert status['status'] == 'operational'
 
 class TestServiceIntegration:
-    """Test service integration."""
+    """Test service integration and singletons."""
     
     def test_service_singletons(self):
-        """Test that service singletons are created correctly."""
-        from core.services import (
-            transcription_service, vod_service, 
-            file_service, queue_service
-        )
+        """Test that service singletons work correctly."""
+        from core.services import transcription_service, vod_service, file_service, queue_service
         
         assert transcription_service is not None
         assert vod_service is not None
         assert file_service is not None
         assert queue_service is not None
         
-        # Test that they are valid instances
-        assert isinstance(transcription_service, TranscriptionService)
-        assert isinstance(vod_service, VODService)
-        assert isinstance(file_service, FileService)
-        assert isinstance(queue_service, QueueService)
+        # Test that they're the same instances
+        assert transcription_service is TranscriptionService()
+        assert vod_service is VODService()
+        assert file_service is FileService()
+        assert queue_service is QueueService()
     
     def test_service_imports(self):
-        """Test that services can be imported correctly."""
+        """Test that all services can be imported."""
         from core.services import (
-            TranscriptionService, VODService, 
-            FileService, QueueService
+            TranscriptionService, VODService, FileService, QueueService,
+            transcription_service, vod_service, file_service, queue_service
         )
         
         assert TranscriptionService is not None

@@ -69,6 +69,47 @@ def client(app):
     return app.test_client()
 
 @pytest.fixture(autouse=True)
+def mock_heavy_imports(monkeypatch):
+    """Mock heavy imports to speed up tests and prevent PyTorch loading"""
+    
+    # Use sys.modules to mock modules before they're imported
+    import sys
+    from unittest.mock import MagicMock
+    
+    # Mock PyTorch and transformers
+    mock_torch = MagicMock()
+    mock_transformers = MagicMock()
+    mock_faster_whisper = MagicMock()
+
+    # Mock WhisperModel
+    mock_whisper_model = MagicMock()
+    mock_whisper_model.transcribe.return_value = ([], {'language': 'en'})
+    mock_faster_whisper.WhisperModel.return_value = mock_whisper_model
+
+    # Mock transformers pipeline
+    mock_pipeline = MagicMock()
+    mock_transformers.pipeline.return_value = mock_pipeline
+
+    # Apply mocks using sys.modules
+    sys.modules['torch'] = mock_torch
+    sys.modules['transformers'] = mock_transformers
+    sys.modules['faster_whisper'] = mock_faster_whisper
+    sys.modules['core.whisperx_helper'] = mock_faster_whisper
+    
+    # Mock specific submodules
+    mock_torch.cuda = MagicMock()
+    mock_torch.device = MagicMock()
+    mock_transformers.pipeline = mock_pipeline
+    mock_transformers.AutoTokenizer = MagicMock()
+    mock_transformers.AutoModelForCausalLM = MagicMock()
+    
+    yield
+    
+    # Cleanup
+    for module_name in ['torch', 'transformers', 'faster_whisper', 'core.whisperx_helper']:
+        sys.modules.pop(module_name, None)
+
+@pytest.fixture(autouse=True)
 def mock_transformers(monkeypatch):
     """Mock transformers to avoid downloading models during tests"""
     import transformers

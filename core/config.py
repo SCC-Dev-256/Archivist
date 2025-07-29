@@ -242,3 +242,35 @@ SUMMARIZATION_MODEL = os.getenv("SUMMARIZATION_MODEL", "facebook/bart-large-cnn"
 SUMMARIZATION_MAX_LENGTH = int(os.getenv("SUMMARIZATION_MAX_LENGTH", "100"))
 SUMMARIZATION_MIN_LENGTH = int(os.getenv("SUMMARIZATION_MIN_LENGTH", "30"))
 SUMMARIZATION_CHUNK_SIZE = int(os.getenv("SUMMARIZATION_CHUNK_SIZE", "5"))
+
+# Add explicit exports for all required config variables
+__all__ = [
+    'NAS_PATH',
+    'OUTPUT_DIR', 
+    'MOUNT_POINTS',
+    'MEMBER_CITIES',
+    'REDIS_URL',
+    'DATABASE_URL',
+    'SECRET_KEY',
+    'DEBUG',
+    'TESTING'
+]
+
+# Ensure all variables are defined
+if 'NAS_PATH' not in globals():
+    NAS_PATH = os.environ.get('NAS_PATH', '/mnt/nas')
+
+if 'OUTPUT_DIR' not in globals():
+    OUTPUT_DIR = os.environ.get('OUTPUT_DIR', '/opt/Archivist/output')
+
+if 'MOUNT_POINTS' not in globals():
+    MOUNT_POINTS = {
+        'nas': NAS_PATH,
+        'output': OUTPUT_DIR
+    }
+
+if 'MEMBER_CITIES' not in globals():
+    MEMBER_CITIES = [
+        'flex1', 'flex2', 'flex3', 'flex4', 'flex5',
+        'flex6', 'flex7', 'flex8', 'flex9'
+    ]

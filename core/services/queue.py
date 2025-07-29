@@ -32,6 +32,7 @@ class QueueService:
     def __init__(self):
         """Initialise the queue service with Celery."""
         self.queue_manager = celery_app
+        self.celery_app = celery_app  # Add the attribute that tests expect
 
     def enqueue_transcription(
         self, video_path: str, position: Optional[int] = None

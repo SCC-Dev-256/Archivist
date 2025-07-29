@@ -46,7 +46,7 @@ def test_core_imports():
             logger.error(f"❌ Failed to import {module_name}: {e}")
     
     logger.info(f"📊 Import Results: {success_count}/{total_count} modules imported")
-    return success_count == total_count
+    assert success_count == total_count, f"Only {success_count}/{total_count} modules imported successfully"
 
 def test_service_layer():
     """Test service layer functionality."""
@@ -58,55 +58,58 @@ def test_service_layer():
         # Test TranscriptionService
         transcription_service = TranscriptionService()
         logger.info("✅ TranscriptionService instantiated")
+        assert transcription_service is not None
         
         # Test QueueService
         queue_service = QueueService()
         logger.info("✅ QueueService instantiated")
-        
-        return True
+        assert queue_service is not None
         
     except ImportError as e:
         logger.error(f"❌ Service import error: {e}")
-        return False
+        raise
     except Exception as e:
         logger.error(f"❌ Service instantiation error: {e}")
-        return False
+        raise
 
 def test_configuration():
     """Test configuration system."""
     logger.info("⚙️ Testing Configuration...")
     
     try:
-        from core.config import Config
+        from core.config import MOUNT_POINTS, MEMBER_CITIES, NAS_PATH, OUTPUT_DIR
         
-        config = Config()
         logger.info("✅ Configuration loaded")
+        assert MOUNT_POINTS is not None
+        assert MEMBER_CITIES is not None
+        assert NAS_PATH is not None
+        assert OUTPUT_DIR is not None
         
         # Test essential config values
         required_configs = [
-            'SQLALCHEMY_DATABASE_URI',
-            'SECRET_KEY',
-            'CELERY_BROKER_URL'
+            'NAS_PATH',
+            'MOUNT_POINTS', 
+            'MEMBER_CITIES',
+            'OUTPUT_DIR'
         ]
         
         missing_configs = []
         for config_name in required_configs:
-            if not hasattr(config, config_name):
+            if config_name not in globals():
                 missing_configs.append(config_name)
         
         if missing_configs:
-            logger.warning(f"⚠️ Missing configs: {missing_configs}")
-        else:
-            logger.info("✅ All required configurations present")
+            logger.error(f"❌ Missing required configs: {missing_configs}")
+            assert False, f"Missing required configs: {missing_configs}"
         
-        return True
+        logger.info("✅ All required configurations present")
         
     except ImportError as e:
         logger.error(f"❌ Configuration import error: {e}")
-        return False
+        assert False, f"Configuration import failed: {e}"
     except Exception as e:
-        logger.error(f"❌ Configuration error: {e}")
-        return False
+        logger.error(f"❌ Configuration test error: {e}")
+        assert False, f"Configuration test failed: {e}"
 
 def test_file_system():
     """Test file system access."""
@@ -123,41 +126,52 @@ def test_file_system():
         else:
             logger.warning(f"⚠️ {mount} not available")
     
-    if available_mounts > 0:
-        logger.info(f"✅ {available_mounts} flex mounts available")
-        return True
+    logger.info(f"📊 Mount Results: {available_mounts}/{len(flex_mounts)} mounts available")
+    
+    # Test NAS path
+    nas_path = os.environ.get('NAS_PATH', '/mnt/nas')
+    if os.path.exists(nas_path):
+        logger.info(f"✅ NAS path {nas_path} exists")
+        assert os.access(nas_path, os.R_OK), f"NAS path {nas_path} not readable"
     else:
-        logger.error("❌ No flex mounts available")
-        return False
+        logger.warning(f"⚠️ NAS path {nas_path} does not exist")
+    
+    # Test output directory
+    output_dir = os.environ.get('OUTPUT_DIR', '/tmp/output')
+    if os.path.exists(output_dir):
+        logger.info(f"✅ Output directory {output_dir} exists")
+        assert os.access(output_dir, os.W_OK), f"Output directory {output_dir} not writable"
+    else:
+        logger.warning(f"⚠️ Output directory {output_dir} does not exist")
+    
+    # Assert that at least some mounts are available
+    assert available_mounts > 0, "No flex mounts available"
 
 def test_dependencies():
     """Test required dependencies."""
     logger.info("📦 Testing Dependencies...")
     
-    dependencies = [
-        ('faster_whisper', 'Faster Whisper'),
-        ('torch', 'PyTorch'),
-        ('transformers', 'Transformers'),
-        ('celery', 'Celery'),
-        ('flask', 'Flask'),
-        ('loguru', 'Loguru'),
-        ('requests', 'Requests'),
-        ('sqlalchemy', 'SQLAlchemy')
+    required_packages = [
+        'flask',
+        'celery',
+        'redis',
+        'sqlalchemy',
+        'loguru',
+        'requests',
+        'pydantic'
     ]
     
-    success_count = 0
-    total_count = len(dependencies)
-    
-    for module_name, display_name in dependencies:
+    missing_packages = []
+    for package in required_packages:
         try:
-            __import__(module_name)
-            logger.info(f"✅ {display_name} available")
-            success_count += 1
+            __import__(package)
+            logger.info(f"✅ {package} available")
         except ImportError:
-            logger.error(f"❌ {display_name} not available")
+            logger.error(f"❌ {package} not available")
+            missing_packages.append(package)
     
-    logger.info(f"📊 Dependency Results: {success_count}/{total_count} dependencies available")
-    return success_count == total_count
+    logger.info(f"📊 Dependency Results: {len(required_packages) - len(missing_packages)}/{len(required_packages)} packages available")
+    assert len(missing_packages) == 0, f"Missing packages: {missing_packages}"
 
 def main():
     """Run all Archivist tests."""

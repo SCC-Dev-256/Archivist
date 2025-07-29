@@ -38,11 +38,8 @@ def init_auth(app):
     # Initialize JWT
     jwt.init_app(app)
     
-    # Initialize rate limiter with a custom key_func
-    def key_func():
-        return 'global'  # Use a fixed key for testing
-        
-    limiter.init_app(app, key_func=key_func)
+    # Initialize rate limiter with correct API
+    limiter.init_app(app)
     
     # Apply global rate limit
     limiter.limit("100/minute")(app)
