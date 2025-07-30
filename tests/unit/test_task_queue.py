@@ -30,6 +30,24 @@ def mock_job():
     return job
 
 @pytest.fixture
+def mock_celery_result():
+    """Create a mock Celery AsyncResult"""
+    result = MagicMock()
+    result.id = "test-job-123"
+    result.status = "PENDING"
+    result.info = {
+        'status': 'pending',
+        'progress': 0,
+        'status_message': 'Test message',
+        'video_path': '/test/video.mp4',
+        'created_at': datetime.now().isoformat()
+    }
+    result.failed.return_value = False
+    result.successful.return_value = False
+    result.result = None
+    return result
+
+@pytest.fixture
 def mock_queue():
     """Create a mock queue with test jobs"""
     queue = MagicMock()
@@ -59,31 +77,36 @@ def test_enqueue_transcription(mock_queue):
     with patch('core.services.queue.run_whisper_transcription.delay') as mock_task:
         # Mock the Celery task to return a job with the expected ID
         mock_job = MagicMock()
-        mock_job.id = "job-1"
+        mock_job.id = "job-123"
         mock_task.return_value = mock_job
         
         # Use a real video file from flex servers that exists and has speech content
         real_video_path = "/mnt/flex-1/20704-1-Birchwood Village Special City Meeting (20240423).mp4"
         job_id = service.enqueue_transcription(real_video_path)
-        assert job_id == "job-1"
+        assert job_id == "job-123"
         mock_task.assert_called_once_with(real_video_path)
 
-def test_get_job_status(mock_job):
+def test_get_job_status(mock_celery_result):
     """Test getting job status"""
     service = QueueService()
-    with patch.object(service, 'queue_manager') as mock_queue:
-        mock_queue.fetch_job.return_value = mock_job
+    with patch('core.services.queue.AsyncResult', return_value=mock_celery_result):
         status = service.get_job_status("test-job-123")
-        assert status["status"] == "pending"  # Celery uses 'pending' not 'queued'
+        assert status["status"] == "pending"
         assert status["progress"] == 0
-        # Note: 'position' is not returned by get_job_status
+        assert status["video_path"] == "/test/video.mp4"
 
 def test_get_all_jobs(mock_queue):
     """Test getting all jobs"""
     service = QueueService()
-    with patch.object(service, 'queue_manager', mock_queue):
+    with patch.object(service, 'queue_manager') as mock_celery:
+        # Mock Celery inspect to return job information
+        mock_inspect = MagicMock()
+        mock_celery.control.inspect.return_value = mock_inspect
+        mock_inspect.active.return_value = {}
+        mock_inspect.reserved.return_value = {}
+        mock_inspect.scheduled.return_value = {}
+        
         jobs = service.get_all_jobs()
-        # The actual implementation returns an empty list when no jobs are found
         assert isinstance(jobs, list)
 
 def test_reorder_job(mock_queue):
@@ -93,54 +116,85 @@ def test_reorder_job(mock_queue):
         result = service.reorder_job("job-1", 2)
         assert result is False  # Celery doesn't support reordering
 
-def test_pause_job(mock_job):
+def test_pause_job(mock_celery_result):
     """Test pausing a job"""
     service = QueueService()
-    with patch.object(service, 'queue_manager') as mock_queue:
-        mock_queue.fetch_job.return_value = mock_job
-        mock_job.get_status.return_value = 'started'
-        
+    with patch('core.services.queue.AsyncResult', return_value=mock_celery_result):
         result = service.pause_job("test-job-123")
         assert result is False  # Celery doesn't support pausing
 
-def test_resume_job(mock_job):
+def test_resume_job(mock_celery_result):
     """Test resuming a job"""
     service = QueueService()
-    with patch.object(service, 'queue_manager') as mock_queue:
-        mock_queue.fetch_job.return_value = mock_job
-        mock_job.meta["paused"] = True
-        
+    with patch('core.services.queue.AsyncResult', return_value=mock_celery_result):
         result = service.resume_job("test-job-123")
         assert result is False  # Celery doesn't support resuming
 
-def test_job_status_transitions(mock_job):
+def test_job_status_transitions(mock_celery_result):
     """Test job status transitions"""
     service = QueueService()
-    with patch('core.services.queue.AsyncResult') as mock_async_result:
-        # Mock AsyncResult to return different statuses
-        mock_result = MagicMock()
-        mock_async_result.return_value = mock_result
-        
-        # Test pending status (Celery's default)
-        mock_result.status = 'PENDING'
-        mock_result.info = {}
+    
+    # Test pending status
+    with patch('core.services.queue.AsyncResult', return_value=mock_celery_result):
         status = service.get_job_status("test-job-123")
         assert status["status"] == "pending"
-        
-        # Test processing status
-        mock_result.status = 'STARTED'
-        mock_result.info = {'status': 'processing'}
+    
+    # Test running status
+    mock_celery_result.status = "STARTED"
+    mock_celery_result.info = {
+        'status': 'started',
+        'progress': 50,
+        'status_message': 'Processing...'
+    }
+    with patch('core.services.queue.AsyncResult', return_value=mock_celery_result):
         status = service.get_job_status("test-job-123")
-        assert status["status"] == "processing"
-        
-        # Test completed status - simplified
-        mock_result.status = 'SUCCESS'
-        mock_result.info = {'status': 'completed'}
+        assert status["status"] == "started"
+        assert status["progress"] == 50
+    
+    # Test completed status
+    mock_celery_result.status = "SUCCESS"
+    mock_celery_result.successful.return_value = True
+    mock_celery_result.result = {"transcription": "test result"}
+    with patch('core.services.queue.AsyncResult', return_value=mock_celery_result):
         status = service.get_job_status("test-job-123")
-        assert status["status"] == "completed"
-        
-        # Test failed status - simplified
-        mock_result.status = 'FAILURE'
-        mock_result.info = "Test error"
+        assert status["status"] == "success"
+    
+    # Test failed status
+    mock_celery_result.status = "FAILURE"
+    mock_celery_result.failed.return_value = True
+    mock_celery_result.info = "Task failed"
+    with patch('core.services.queue.AsyncResult', return_value=mock_celery_result):
         status = service.get_job_status("test-job-123")
-        assert status["status"] == "failure"  # Celery returns 'failure' not 'failed' 
+        assert status["status"] == "failure"
+        assert "error" in status
+
+def test_remove_job(mock_celery_result):
+    """Test removing a job"""
+    service = QueueService()
+    with patch('core.services.queue.AsyncResult', return_value=mock_celery_result):
+        result = service.cancel_job("test-job-123")
+        assert result is False  # Celery doesn't support cancellation
+
+def test_cleanup_failed_jobs(mock_queue):
+    """Test cleaning up failed jobs"""
+    service = QueueService()
+    with patch.object(service, 'queue_manager') as mock_celery:
+        # Mock Celery inspect to return failed job information
+        mock_inspect = MagicMock()
+        mock_celery.control.inspect.return_value = mock_inspect
+        mock_inspect.failed.return_value = {}
+        
+        result = service.get_failed_jobs()
+        assert isinstance(result, list)
+
+def test_get_current_job(mock_queue):
+    """Test getting current job"""
+    service = QueueService()
+    with patch.object(service, 'queue_manager') as mock_celery:
+        # Mock Celery inspect to return active job information
+        mock_inspect = MagicMock()
+        mock_celery.control.inspect.return_value = mock_inspect
+        mock_inspect.active.return_value = {}
+        
+        jobs = service.get_all_jobs()
+        assert isinstance(jobs, list) 

@@ -5,7 +5,7 @@ Centralizes main classes, singletons, and helpers for easy import.
 This is the single source of truth for all core imports.
 """
 
-# Import database first (no dependencies)
+# Import lightweight modules immediately (no external dependencies)
 from .database import db
 
 # Import exceptions first (no dependencies)
@@ -27,39 +27,18 @@ from .models import (
     VODPublishRequest, VODBatchPublishRequest, VODSyncStatusResponse, CablecastShowResponse
 )
 
-# Import file manager (depends on exceptions)
-from .file_manager import FileManager, file_manager
-
-# Import security (depends on models and exceptions)
-from .security import SecurityManager, security_manager, require_csrf_token, validate_json_input, sanitize_output, get_csrf_token
-
-# Import VOD content manager (depends on exceptions and models)
-from .vod_content_manager import VODContentManager
-
-# Import unified queue manager (depends on tasks)
-from .unified_queue_manager import UnifiedQueueManager
-
-# Import monitoring dashboard (depends on tasks)
-from .monitoring.integrated_dashboard import IntegratedDashboard
-
-# Import tasks (depends on services)
-from .tasks import celery_app
-
 # Import config constants
 from .config import MEMBER_CITIES
 
-# Import admin UI (depends on security)
-from .admin_ui import AdminUI, start_admin_ui
-
-# Import services with centralized instances
-from .services import (
-    TranscriptionService, VODService, FileService, QueueService,
+# Import lazy loading utilities for heavy modules
+from .lazy_imports import (
+    get_celery_app, get_integrated_dashboard, get_admin_ui, get_start_admin_ui,
     get_transcription_service, get_vod_service, get_file_service, get_queue_service,
-    get_all_jobs, get_queue_status, get_job_status
+    get_unified_queue_manager, get_vod_content_manager
 )
 
-# Import app last (depends on everything above)
-from .app import app, create_app, create_app_with_config
+# Import security functions (lightweight)
+from .security import get_csrf_token, require_csrf_token, validate_json_input, sanitize_output, security_manager
 
 __all__ = [
     # Database
@@ -80,24 +59,14 @@ __all__ = [
     "VODContentRequest", "VODContentResponse", "VODPlaylistRequest", "VODStreamRequest",
     "VODPublishRequest", "VODBatchPublishRequest", "VODSyncStatusResponse", "CablecastShowResponse",
     
-    # Managers and Services
-    "FileManager", "file_manager", "VODContentManager", "UnifiedQueueManager",
-    "TranscriptionService", "VODService", "FileService", "QueueService",
-    "get_transcription_service", "get_vod_service", "get_file_service", "get_queue_service",
-    "get_all_jobs", "get_queue_status", "get_job_status",
-    
-    # Monitoring and Tasks
-    "IntegratedDashboard", "celery_app",
-    
     # Configuration
     "MEMBER_CITIES",
     
-    # Security
-    "SecurityManager", "security_manager", "require_csrf_token", "validate_json_input", "sanitize_output", "get_csrf_token",
+    # Lazy Loading Functions
+    "get_celery_app", "get_integrated_dashboard", "get_admin_ui", "get_start_admin_ui",
+    "get_transcription_service", "get_vod_service", "get_file_service", "get_queue_service",
+    "get_unified_queue_manager", "get_vod_content_manager",
     
-    # Admin UI
-    "AdminUI", "start_admin_ui",
-    
-    # App
-    "app", "create_app", "create_app_with_config"
+    # Security Functions
+    "get_csrf_token", "require_csrf_token", "validate_json_input", "sanitize_output", "security_manager"
 ] 

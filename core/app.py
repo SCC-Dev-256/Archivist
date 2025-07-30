@@ -55,8 +55,25 @@ def create_app(testing=False):
     app = Flask(__name__)
     
     # Configure the app BEFORE initializing the database
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@localhost:5432/archivist')
+    db_url = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@localhost:5432/archivist')
+    
+    # Add timeout parameters to database URL
+    if '?' not in db_url:
+        db_url += '?'
+    else:
+        db_url += '&'
+    
+    db_url += 'connect_timeout=5&application_name=archivist'
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+        'pool_timeout': 5,
+        'max_overflow': 10,
+        'pool_size': 5
+    }
     
     # Security Configuration
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(32).hex())

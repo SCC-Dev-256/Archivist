@@ -15,29 +15,35 @@ from sqlalchemy.orm import relationship
 
 from core.database import db
 
-# Database ORM Models
-class TranscriptionJobORM(db.Model):
-    __tablename__ = 'transcription_jobs'
+# Import guard to prevent multiple model registrations
+if 'models_registered' not in globals():
+    globals()['models_registered'] = True
     
-    id = db.Column(db.String(36), primary_key=True)
-    video_path = db.Column(db.String(255), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='pending')
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    error = db.Column(db.Text, nullable=True)
-    result_id = db.Column(db.String(36), db.ForeignKey('transcription_results.id'), nullable=True)
-    
-    result = db.relationship('TranscriptionResultORM', backref='job', uselist=False)
+    # Database ORM Models
+    class TranscriptionJobORM(db.Model):
+        __tablename__ = 'transcription_jobs'
+        __table_args__ = {'extend_existing': True}
+        
+        id = db.Column(db.String(36), primary_key=True)
+        video_path = db.Column(db.String(255), nullable=False)
+        status = db.Column(db.String(20), nullable=False, default='pending')
+        created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+        updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+        error = db.Column(db.Text, nullable=True)
+        result_id = db.Column(db.String(36), db.ForeignKey('transcription_results.id'), nullable=True)
+        
+        result = db.relationship('TranscriptionResultORM', backref='job', uselist=False)
 
-class TranscriptionResultORM(db.Model):
-    __tablename__ = 'transcription_results'
-    
-    id = db.Column(db.String(36), primary_key=True)
-    video_path = db.Column(db.String(255), nullable=False)
-    output_path = db.Column(db.String(255), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='completed')
-    completed_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    error = db.Column(db.Text, nullable=True)
+    class TranscriptionResultORM(db.Model):
+        __tablename__ = 'transcription_results'
+        __table_args__ = {'extend_existing': True}
+        
+        id = db.Column(db.String(36), primary_key=True)
+        video_path = db.Column(db.String(255), nullable=False)
+        output_path = db.Column(db.String(255), nullable=False)
+        status = db.Column(db.String(20), nullable=False, default='completed')
+        completed_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+        error = db.Column(db.Text, nullable=True)
 
 # Pydantic models for request/response validation
 class BrowseRequest(BaseModel):
@@ -241,6 +247,7 @@ class AuditLogEntry(BaseModel):
 
 class CablecastShowORM(db.Model):
     __tablename__ = 'cablecast_shows'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
@@ -255,6 +262,7 @@ class CablecastShowORM(db.Model):
 
 class CablecastVODORM(db.Model):
     __tablename__ = 'cablecast_vods'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     show_id = db.Column(db.Integer, db.ForeignKey('cablecast_shows.id'), nullable=False)
@@ -273,6 +281,7 @@ class CablecastVODORM(db.Model):
 
 class CablecastVODChapterORM(db.Model):
     __tablename__ = 'cablecast_vod_chapters'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     vod_id = db.Column(db.Integer, db.ForeignKey('cablecast_vods.id'), nullable=False)

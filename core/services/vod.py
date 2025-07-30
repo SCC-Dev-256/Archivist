@@ -19,7 +19,8 @@ Example:
 import os
 from typing import Dict, Optional, List
 from loguru import logger
-from core import VODError, handle_vod_error, VODContentManager
+from core import VODError, handle_vod_error
+from core.lazy_imports import get_vod_content_manager
 from core.config import CABLECAST_API_URL, CABLECAST_API_KEY, CABLECAST_LOCATION_ID
 from core.cablecast_client import CablecastAPIClient
 from core.cablecast_show_mapper import CablecastShowMapper
@@ -32,7 +33,7 @@ class VODService:
     
     def __init__(self):
         self.client = CablecastAPIClient()
-        self.content_manager = VODContentManager()
+        self.content_manager = get_vod_content_manager()()
         self.show_mapper = CablecastShowMapper(self.client)
         self.transcription_linker = CablecastTranscriptionLinker(self.client)
         self.integration_service = CablecastIntegrationService()

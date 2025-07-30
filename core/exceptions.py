@@ -361,6 +361,33 @@ class AuthorizationError(SecurityError):
 
 
 # ============================================================================
+# SERVICE EXCEPTIONS
+# ============================================================================
+
+class ServiceUnavailableError(ArchivistException):
+    """Exception raised when a service is unavailable."""
+    
+    def __init__(self, message: str, service_name: str = None, details: dict = None, original_exception: Exception = None):
+        if service_name:
+            details = details or {}
+            details['service_name'] = service_name
+        super().__init__(message, "SERVICE_UNAVAILABLE", details, original_exception)
+
+
+class ConnectionTimeoutError(ArchivistException):
+    """Exception raised when a connection times out."""
+    
+    def __init__(self, message: str, service_name: str = None, timeout: int = None, details: dict = None, original_exception: Exception = None):
+        if service_name or timeout:
+            details = details or {}
+            if service_name:
+                details['service_name'] = service_name
+            if timeout:
+                details['timeout'] = timeout
+        super().__init__(message, "CONNECTION_TIMEOUT", details, original_exception)
+
+
+# ============================================================================
 # VALIDATION EXCEPTIONS
 # ============================================================================
 

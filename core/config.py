@@ -159,11 +159,15 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
+REDIS_TIMEOUT = int(os.getenv("REDIS_TIMEOUT", "5"))  # 5 second timeout
+REDIS_CONNECT_TIMEOUT = int(os.getenv("REDIS_CONNECT_TIMEOUT", "5"))  # 5 second connect timeout
+REDIS_RETRY_ON_TIMEOUT = os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
+REDIS_MAX_CONNECTIONS = int(os.getenv("REDIS_MAX_CONNECTIONS", "10"))
 
-# Construct Redis URL
-REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+# Construct Redis URL with timeouts
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}?socket_timeout={REDIS_TIMEOUT}&socket_connect_timeout={REDIS_CONNECT_TIMEOUT}"
 if REDIS_PASSWORD:
-    REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+    REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}?socket_timeout={REDIS_TIMEOUT}&socket_connect_timeout={REDIS_CONNECT_TIMEOUT}"
 
 # WhisperX configuration
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v2")
