@@ -19,7 +19,8 @@ Example:
 import os
 from typing import Dict, Optional, List
 from loguru import logger
-from core import FileError, handle_file_error, file_manager
+from core import FileError, handle_file_error
+from core.lazy_imports import get_file_service
 from core.config import MOUNT_POINTS, NAS_PATH
 from core.check_mounts import verify_critical_mounts, list_mount_contents
 from datetime import datetime
@@ -35,11 +36,7 @@ class FileService:
     def browse_directory(self, path: str, user: str = "default", location: str = "default") -> Dict:
         """Browse a directory and return its contents."""
         try:
-            # Use the existing file manager for context
-            file_manager.user = user
-            file_manager.location = location
-
-            # Directory listing logic (since file_manager has no browse_directory)
+            # Directory listing logic
             if not os.path.exists(path):
                 raise FileError(f"Directory not found: {path}")
             if not os.path.isdir(path):
@@ -70,7 +67,7 @@ class FileService:
                         'is_dir': is_dir,
                         'size': file_size,
                         'modified_at': datetime.fromtimestamp(modified_time).isoformat(),
-                        'path': os.path.relpath(full_path, file_manager.base_path)
+                        'path': os.path.relpath(full_path, self.nas_path)
                     })
                 except (OSError, IOError) as e:
                     # Skip files we can't access
@@ -97,7 +94,16 @@ class FileService:
             if not os.path.exists(file_path):
                 raise FileError(f"File not found: {file_path}")
             
-            details = file_manager.get_file_details(file_path)
+            # Get basic file details
+            stat_info = os.stat(file_path)
+            details = {
+                'path': file_path,
+                'size': stat_info.st_size,
+                'modified_at': datetime.fromtimestamp(stat_info.st_mtime).isoformat(),
+                'permissions': oct(stat_info.st_mode)[-3:],
+                'type': 'file' if os.path.isfile(file_path) else 'directory'
+            }
+            
             logger.info(f"Retrieved file details: {file_path}")
             return details
             

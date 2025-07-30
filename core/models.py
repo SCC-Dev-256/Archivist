@@ -191,10 +191,10 @@ class BatchTranscribeRequest(BaseModel):
             if '..' in path:
                 raise ValueError(f'Invalid path: cannot contain ".." - {path}')
             
-            # Check for suspicious characters
-            suspicious_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$']
-            if any(char in path for char in suspicious_chars):
-                raise ValueError(f'Invalid path: contains suspicious characters - {path}')
+                    # Check for truly dangerous characters (command injection attempts)
+        dangerous_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$']
+        if any(char in path for char in dangerous_chars):
+            raise ValueError(f'Invalid path: contains dangerous characters - {path}')
             
             # Check for absolute paths (should be relative)
             if path.startswith('/'):

@@ -107,4 +107,7 @@ class LazyCeleryApp:
         return app(*args, **kwargs)
 
 # Create the lazy app instance
-celery_app = LazyCeleryApp() 
+celery_app = LazyCeleryApp()
+
+# For Celery CLI compatibility
+celery = celery_app 

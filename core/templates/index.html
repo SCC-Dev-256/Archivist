@@ -86,6 +86,19 @@
                 </div>
             </div>
 
+            <!-- Flex Servers Panel -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Flex Servers</h2>
+                    <button onclick="loadFlexServers()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                        Refresh
+                    </button>
+                </div>
+                <div id="flex-servers-list" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Flex servers will be listed here -->
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <!-- Real-Time Analytics Panel -->
                 <div class="bg-gray-800 rounded-lg p-6 mb-4">
@@ -229,6 +242,7 @@
             loadFiles();
             updateQueue();
             loadCompletedTranscriptions();
+            loadFlexServers();
             queueUpdateInterval = setInterval(updateQueue, 5000);
 
             // Initialize Socket.IO connection
@@ -430,6 +444,88 @@
                 queueBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
                 queueBtn.classList.add('bg-gray-600');
             }
+        }
+
+        // Load Flex servers
+        function loadFlexServers() {
+            fetch('/api/member-cities')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    const flexServersList = document.getElementById('flex-servers-list');
+                    if (!data.data || !data.data.member_cities) {
+                        flexServersList.innerHTML = '<div class="text-gray-400 p-4 text-center">No Flex servers found</div>';
+                        return;
+                    }
+                    
+                    const cities = data.data.member_cities;
+                    flexServersList.innerHTML = Object.entries(cities).map(([cityId, cityInfo]) => `
+                        <div class="bg-gray-700 rounded p-4 hover:bg-gray-600 cursor-pointer" onclick="navigateToFlexServer('${cityId}')">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-semibold text-lg">${cityInfo.name}</h3>
+                                <span class="text-xs text-gray-400">${cityId}</span>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-3">${cityInfo.description}</p>
+                            <div class="text-xs text-gray-500">
+                                <div>Mount: ${cityInfo.mount_path}</div>
+                                <div class="mt-1">
+                                    <button onclick="event.stopPropagation(); browseFlexServer('${cityId}')" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
+                                        Browse
+                                    </button>
+                                    <button onclick="event.stopPropagation(); checkFlexServerStatus('${cityId}')" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs ml-1">
+                                        Status
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading Flex servers:', error);
+                    showNotification('Error loading Flex servers: ' + error.message, 'error');
+                    document.getElementById('flex-servers-list').innerHTML = 
+                        '<div class="text-red-400 p-4 text-center">Error loading Flex servers</div>';
+                });
+        }
+
+        // Navigate to Flex server
+        function navigateToFlexServer(cityId) {
+            // This could open a new tab or navigate to the Flex server's content
+            showNotification(`Navigating to ${cityId}...`, 'info');
+        }
+
+        // Browse Flex server
+        function browseFlexServer(cityId) {
+            // Navigate to the Flex server's mount path in the file browser
+            currentPath = cityId;
+            loadFiles();
+            showNotification(`Browsing ${cityId}...`, 'info');
+        }
+
+        // Check Flex server status
+        function checkFlexServerStatus(cityId) {
+            // Check if the Flex server mount is accessible
+            fetch(`/api/browse?path=${encodeURIComponent(cityId)}`)
+                .then(response => {
+                    if (response.ok) {
+                        showNotification(`${cityId} is accessible`, 'success');
+                    } else {
+                        showNotification(`${cityId} is not accessible`, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification(`Error checking ${cityId} status: ${error.message}`, 'error');
+                });
         }
 
         // Load completed transcriptions

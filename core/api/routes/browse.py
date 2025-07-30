@@ -8,7 +8,7 @@ from pathlib import Path
 from flask_restx import Namespace, Resource, fields
 
 from core import BrowseRequest, TranscriptionResultORM, sanitize_output, security_manager
-from core.config import NAS_PATH
+from core.config import NAS_PATH, MEMBER_CITIES
 from core.database import db
 from core.services.file import FileService
 from flask import Blueprint, jsonify, request, send_file
@@ -32,13 +32,30 @@ def create_browse_blueprint(limiter):
     def browse():
         """Browse files and directories. If path is empty, return NAS root."""
         path = request.args.get('path', '')
-        # If path is empty, use NAS_PATH as root
-        browse_path = NAS_PATH if not path else os.path.join(NAS_PATH, path)
+        
+        # Handle Flex server paths
+        if path in MEMBER_CITIES:
+            # This is a Flex server path, use its mount path
+            browse_path = MEMBER_CITIES[path]['mount_path']
+        elif path.startswith('flex') and path in MEMBER_CITIES:
+            # Alternative Flex server path format
+            browse_path = MEMBER_CITIES[path]['mount_path']
+        else:
+            # Regular NAS path
+            browse_path = NAS_PATH if not path else os.path.join(NAS_PATH, path)
         
         # Validate path to prevent directory traversal
-        if not security_manager.validate_path(browse_path, NAS_PATH):
-            logger.warning(f"Invalid path access attempt: {browse_path}")
-            return jsonify({'error': 'Invalid path'}), 400
+        # For Flex servers, validate against their specific mount path
+        if path in MEMBER_CITIES:
+            # Flex server path - validate against the mount path itself
+            if not security_manager.validate_path("", browse_path):
+                logger.warning(f"Invalid Flex server path access attempt: {browse_path}")
+                return jsonify({'error': 'Invalid path'}), 400
+        else:
+            # Regular NAS path - validate against NAS_PATH
+            if not security_manager.validate_path(browse_path, NAS_PATH):
+                logger.warning(f"Invalid path access attempt: {browse_path}")
+                return jsonify({'error': 'Invalid path'}), 400
         
         try:
             # Simple browse operation without signal-based timeout
