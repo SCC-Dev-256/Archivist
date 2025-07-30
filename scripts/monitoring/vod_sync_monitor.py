@@ -26,6 +26,14 @@ from typing import Dict, List, Any, Optional
 from loguru import logger
 from core.services import VODService
 from core import db
+from core.exceptions import (
+    ConnectionError,
+    DatabaseError,
+    VODError,
+    NetworkError,
+    TimeoutError,
+    FileError
+)
 
 # Add the core directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'core'))
@@ -74,8 +82,14 @@ class VODSyncMonitor:
             self.cablecast_client = VODService().client
             logger.info("VOD components initialized successfully")
             return True
+        except ConnectionError as e:
+            logger.error(f"Connection error initializing VOD components: {e}")
+            return False
+        except VODError as e:
+            logger.error(f"VOD service error initializing components: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Failed to initialize VOD components: {e}")
+            logger.error(f"Unexpected error initializing VOD components: {e}")
             return False
     
     def check_vod_connection(self) -> bool:
@@ -92,8 +106,14 @@ class VODSyncMonitor:
             else:
                 logger.warning("⚠ Cablecast API connection failed")
                 return False
+        except ConnectionError as e:
+            logger.error(f"Connection error checking VOD connection: {e}")
+            return False
+        except TimeoutError as e:
+            logger.error(f"Timeout error checking VOD connection: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Error checking VOD connection: {e}")
+            logger.error(f"Unexpected error checking VOD connection: {e}")
             return False
     
     def get_sync_status(self) -> Dict[str, Any]:
@@ -106,8 +126,17 @@ class VODSyncMonitor:
             status = self.vod_manager.get_sync_status()
             logger.info(f"Sync status: {status['synced_transcriptions']}/{status['total_transcriptions']} ({status['sync_percentage']:.1f}%)")
             return status
+        except ConnectionError as e:
+            logger.error(f"Connection error getting sync status: {e}")
+            return {}
+        except DatabaseError as e:
+            logger.error(f"Database error getting sync status: {e}")
+            return {}
+        except VODError as e:
+            logger.error(f"VOD service error getting sync status: {e}")
+            return {}
         except Exception as e:
-            logger.error(f"Error getting sync status: {e}")
+            logger.error(f"Unexpected error getting sync status: {e}")
             return {}
     
     def check_pending_vods(self) -> List[Dict[str, Any]]:
@@ -131,8 +160,11 @@ class VODSyncMonitor:
                 'created_at': vod.created_at.isoformat(),
                 'updated_at': vod.updated_at.isoformat()
             } for vod in pending_vods]
+        except DatabaseError as e:
+            logger.error(f"Database error checking pending VODs: {e}")
+            return []
         except Exception as e:
-            logger.error(f"Error checking pending VODs: {e}")
+            logger.error(f"Unexpected error checking pending VODs: {e}")
             return []
     
     def update_vod_status(self, vod_id: int) -> bool:
@@ -156,8 +188,17 @@ class VODSyncMonitor:
                     return True
             
             return False
+        except ConnectionError as e:
+            logger.error(f"Connection error updating VOD {vod_id} status: {e}")
+            return False
+        except DatabaseError as e:
+            logger.error(f"Database error updating VOD {vod_id} status: {e}")
+            return False
+        except VODError as e:
+            logger.error(f"VOD service error updating VOD {vod_id} status: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Error updating VOD {vod_id} status: {e}")
+            logger.error(f"Unexpected error updating VOD {vod_id} status: {e}")
             return False
     
     def check_transcription_logs(self) -> Dict[str, Any]:
@@ -204,8 +245,11 @@ class VODSyncMonitor:
             logger.info(f"Log analysis: {log_analysis['total_recent_transcriptions']} recent transcriptions, {log_analysis['vod_transcriptions']} with VOD")
             return log_analysis
             
+        except DatabaseError as e:
+            logger.error(f"Database error analyzing transcription logs: {e}")
+            return {}
         except Exception as e:
-            logger.error(f"Error analyzing transcription logs: {e}")
+            logger.error(f"Unexpected error analyzing transcription logs: {e}")
             return {}
     
     def sync_shows_and_vods(self) -> Dict[str, Any]:
@@ -230,8 +274,14 @@ class VODSyncMonitor:
             logger.info(f"Sync completed: {shows_synced} shows, {vods_synced} VODs")
             return result
             
+        except ConnectionError as e:
+            logger.error(f"Connection error syncing shows and VODs: {e}")
+            return {'success': False, 'error': str(e)}
+        except VODError as e:
+            logger.error(f"VOD service error syncing shows and VODs: {e}")
+            return {'success': False, 'error': str(e)}
         except Exception as e:
-            logger.error(f"Error syncing shows and VODs: {e}")
+            logger.error(f"Unexpected error syncing shows and VODs: {e}")
             return {'success': False, 'error': str(e)}
     
     def generate_health_report(self) -> Dict[str, Any]:
@@ -288,8 +338,22 @@ class VODSyncMonitor:
             
             return health_report
             
+        except ConnectionError as e:
+            logger.error(f"Connection error generating health report: {e}")
+            return {
+                'timestamp': datetime.utcnow().isoformat(),
+                'overall_health': 'error',
+                'error': str(e)
+            }
+        except DatabaseError as e:
+            logger.error(f"Database error generating health report: {e}")
+            return {
+                'timestamp': datetime.utcnow().isoformat(),
+                'overall_health': 'error',
+                'error': str(e)
+            }
         except Exception as e:
-            logger.error(f"Error generating health report: {e}")
+            logger.error(f"Unexpected error generating health report: {e}")
             return {
                 'timestamp': datetime.utcnow().isoformat(),
                 'overall_health': 'error',
@@ -317,8 +381,11 @@ class VODSyncMonitor:
             
             return health_report['overall_health'] != 'error'
             
+        except ConnectionError as e:
+            logger.error(f"Connection error in monitoring cycle: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Error in monitoring cycle: {e}")
+            logger.error(f"Unexpected error in monitoring cycle: {e}")
             return False
     
     def save_health_report(self, report: Dict[str, Any]):
@@ -335,8 +402,10 @@ class VODSyncMonitor:
             
             logger.debug(f"Health report saved to {report_file}")
             
+        except FileError as e:
+            logger.error(f"File error saving health report: {e}")
         except Exception as e:
-            logger.error(f"Error saving health report: {e}")
+            logger.error(f"Unexpected error saving health report: {e}")
 
 def main():
     """Main function for the VOD sync monitor"""
@@ -376,10 +445,16 @@ def main():
                 except KeyboardInterrupt:
                     logger.info("Monitoring stopped by user")
                     break
+                except ConnectionError as e:
+                    logger.error(f"Connection error in monitoring loop: {e}")
+                    time.sleep(args.interval)
                 except Exception as e:
-                    logger.error(f"Error in monitoring loop: {e}")
+                    logger.error(f"Unexpected error in monitoring loop: {e}")
                     time.sleep(args.interval)
     
+    except ConnectionError as e:
+        logger.error(f"Fatal connection error in VOD monitor: {e}")
+        sys.exit(1)
     except Exception as e:
         logger.error(f"Fatal error in VOD monitor: {e}")
         sys.exit(1)

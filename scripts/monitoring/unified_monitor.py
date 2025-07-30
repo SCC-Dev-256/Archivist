@@ -4,17 +4,24 @@ Unified monitoring script for Archivist system.
 Consolidates system monitoring, VOD sync monitoring, and status checking.
 """
 
+import argparse
 import json
 import logging
 import os
 import time
-import argparse
 from datetime import datetime
 from typing import Any, Dict, List
 
 import psutil
 import redis
 import requests
+
+from core.exceptions import (
+    ConnectionError,
+    DatabaseError,
+    NetworkError,
+    TimeoutError
+)
 
 # Configure logging
 logging.basicConfig(
@@ -56,10 +63,16 @@ class UnifiedMonitor:
                 "uptime": info.get("uptime_in_seconds", 0),
                 "timestamp": datetime.now().isoformat(),
             }
+        except ConnectionError as e:
+            return {
+                "status": "unhealthy",
+                "error": f"Redis connection error: {e}",
+                "timestamp": datetime.now().isoformat(),
+            }
         except Exception as e:
             return {
                 "status": "unhealthy",
-                "error": str(e),
+                "error": f"Unexpected Redis error: {e}",
                 "timestamp": datetime.now().isoformat(),
             }
 
@@ -76,10 +89,22 @@ class UnifiedMonitor:
                 "status_code": response.status_code,
                 "timestamp": datetime.now().isoformat(),
             }
+        except requests.ConnectionError as e:
+            return {
+                "status": "unhealthy",
+                "error": f"API connection error: {e}",
+                "timestamp": datetime.now().isoformat(),
+            }
+        except requests.Timeout as e:
+            return {
+                "status": "unhealthy",
+                "error": f"API timeout error: {e}",
+                "timestamp": datetime.now().isoformat(),
+            }
         except Exception as e:
             return {
                 "status": "unhealthy",
-                "error": str(e),
+                "error": f"Unexpected API error: {e}",
                 "timestamp": datetime.now().isoformat(),
             }
 
@@ -107,10 +132,22 @@ class UnifiedMonitor:
                     "error": "No Celery workers found",
                     "timestamp": datetime.now().isoformat(),
                 }
+        except ImportError as e:
+            return {
+                "status": "unhealthy",
+                "error": f"Celery import error: {e}",
+                "timestamp": datetime.now().isoformat(),
+            }
+        except ConnectionError as e:
+            return {
+                "status": "unhealthy",
+                "error": f"Celery connection error: {e}",
+                "timestamp": datetime.now().isoformat(),
+            }
         except Exception as e:
             return {
                 "status": "unhealthy",
-                "error": str(e),
+                "error": f"Unexpected Celery error: {e}",
                 "timestamp": datetime.now().isoformat(),
             }
 
@@ -153,6 +190,12 @@ class UnifiedMonitor:
                     "timestamp": datetime.now().isoformat(),
                 }
                 
+        except DatabaseError as e:
+            return {
+                "status": "unhealthy",
+                "error": f"Database error: {e}",
+                "timestamp": datetime.now().isoformat(),
+            }
         except Exception as e:
             return {
                 "status": "unhealthy",
@@ -183,10 +226,16 @@ class UnifiedMonitor:
                 "total_paths": len(vod_paths),
                 "timestamp": datetime.now().isoformat(),
             }
+        except OSError as e:
+            return {
+                "status": "unhealthy",
+                "error": f"VOD sync file system error: {e}",
+                "timestamp": datetime.now().isoformat(),
+            }
         except Exception as e:
             return {
                 "status": "unhealthy",
-                "error": str(e),
+                "error": f"Unexpected VOD sync error: {e}",
                 "timestamp": datetime.now().isoformat(),
             }
 
@@ -202,8 +251,10 @@ class UnifiedMonitor:
                     rate_limits[key.decode()] = value.decode()
 
             return {"rate_limits": rate_limits, "timestamp": datetime.now().isoformat()}
+        except ConnectionError as e:
+            return {"error": f"Rate limit connection error: {e}", "timestamp": datetime.now().isoformat()}
         except Exception as e:
-            return {"error": str(e), "timestamp": datetime.now().isoformat()}
+            return {"error": f"Unexpected rate limit error: {e}", "timestamp": datetime.now().isoformat()}
 
     def run_health_check(self, monitor_type: str = None) -> Dict[str, Any]:
         """Run health checks based on monitor type"""

@@ -11,6 +11,11 @@ from loguru import logger
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from core.services import VODService
+from core.exceptions import (
+    ConnectionError,
+    DatabaseError,
+    VODError
+)
 
 
 def setup_logging():
@@ -43,8 +48,17 @@ def sync_status():
         
         logger.info("="*60)
         
+    except ConnectionError as e:
+        logger.error(f"Connection error getting sync status: {e}")
+        return 1
+    except DatabaseError as e:
+        logger.error(f"Database error getting sync status: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error getting sync status: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error getting sync status: {e}")
+        logger.error(f"Unexpected error getting sync status: {e}")
         return 1
     return 0
 
@@ -64,8 +78,17 @@ def publish_transcription(transcription_id):
             logger.error(f"Failed to publish transcription {transcription_id} to VOD")
             return 1
             
+    except FileNotFoundError as e:
+        logger.error(f"Transcription file not found: {e}")
+        return 1
+    except ConnectionError as e:
+        logger.error(f"Connection error publishing transcription: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error publishing transcription: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error publishing transcription: {e}")
+        logger.error(f"Unexpected error publishing transcription: {e}")
         return 1
     return 0
 
@@ -96,8 +119,15 @@ def batch_publish_transcriptions(transcription_ids):
         
         return 0 if results['error_count'] == 0 else 1
         
+    except ConnectionError as e:
+        logger.error(f"Connection error batch publishing: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error batch publishing: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error batch publishing: {e}")
+        logger.error(f"Unexpected error batch publishing: {e}")
+        return 1
         return 1
 
 
@@ -109,8 +139,14 @@ def sync_shows():
         
         logger.success(f"Synced {synced_count} shows from Cablecast")
         
+    except ConnectionError as e:
+        logger.error(f"Connection error syncing shows: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error syncing shows: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error syncing shows: {e}")
+        logger.error(f"Unexpected error syncing shows: {e}")
         return 1
     return 0
 
@@ -123,8 +159,14 @@ def sync_vods():
         
         logger.success(f"Synced {synced_count} VODs from Cablecast")
         
+    except ConnectionError as e:
+        logger.error(f"Connection error syncing VODs: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error syncing VODs: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error syncing VODs: {e}")
+        logger.error(f"Unexpected error syncing VODs: {e}")
         return 1
     return 0
 
@@ -139,8 +181,14 @@ def test_connection():
             logger.error("Cablecast API connection failed")
             return 1
             
+    except ConnectionError as e:
+        logger.error(f"Connection error testing API: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error testing connection: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error testing connection: {e}")
+        logger.error(f"Unexpected error testing connection: {e}")
         return 1
     return 0
 
@@ -166,8 +214,15 @@ def list_transcriptions():
         
         logger.info("="*80)
         
+    except ConnectionError as e:
+        logger.error(f"Connection error listing transcriptions: {e}")
+        return 1
+    except DatabaseError as e:
+        logger.error(f"Database error listing transcriptions: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error listing transcriptions: {e}")
+        logger.error(f"Unexpected error listing transcriptions: {e}")
+        return 1
         return 1
     return 0
 

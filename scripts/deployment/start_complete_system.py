@@ -24,6 +24,12 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from loguru import logger
+from core.exceptions import (
+    ConnectionError,
+    DatabaseError,
+    FileError,
+    ConfigurationError
+)
 
 def setup_logging():
     """Setup logging configuration."""
@@ -56,6 +62,9 @@ def check_dependencies():
         r = redis.Redis(host='localhost', port=6379, db=0)
         r.ping()
         logger.info("✅ Redis connection successful")
+    except ConnectionError as e:
+        logger.error(f"❌ Redis connection failed: {e}")
+        return False
     except Exception as e:
         logger.error(f"❌ Redis connection failed: {e}")
         return False
@@ -67,6 +76,12 @@ def check_dependencies():
         conn = psycopg2.connect(DATABASE_URL)
         conn.close()
         logger.info("✅ PostgreSQL connection successful")
+    except ConnectionError as e:
+        logger.error(f"❌ PostgreSQL connection failed: {e}")
+        return False
+    except DatabaseError as e:
+        logger.error(f"❌ PostgreSQL connection failed: {e}")
+        return False
     except Exception as e:
         logger.error(f"❌ PostgreSQL connection failed: {e}")
         return False
@@ -75,6 +90,12 @@ def check_dependencies():
     try:
         from core.tasks import celery_app
         logger.info("✅ Celery app loaded successfully")
+    except ImportError as e:
+        logger.error(f"❌ Celery app import failed: {e}")
+        return False
+    except ConfigurationError as e:
+        logger.error(f"❌ Celery app configuration failed: {e}")
+        return False
     except Exception as e:
         logger.error(f"❌ Celery app loading failed: {e}")
         return False
@@ -140,8 +161,14 @@ def start_celery_worker():
             logger.error("❌ Celery worker failed to start")
             return None
             
+    except subprocess.SubprocessError as e:
+        logger.error(f"❌ Subprocess error starting Celery worker: {e}")
+        return None
+    except FileNotFoundError as e:
+        logger.error(f"❌ Celery command not found: {e}")
+        return None
     except Exception as e:
-        logger.error(f"❌ Failed to start Celery worker: {e}")
+        logger.error(f"❌ Unexpected error starting Celery worker: {e}")
         return None
 
 def start_celery_beat():
@@ -172,8 +199,14 @@ def start_celery_beat():
             logger.error("❌ Celery beat scheduler failed to start")
             return None
             
+    except subprocess.SubprocessError as e:
+        logger.error(f"❌ Subprocess error starting Celery beat: {e}")
+        return None
+    except FileNotFoundError as e:
+        logger.error(f"❌ Celery command not found: {e}")
+        return None
     except Exception as e:
-        logger.error(f"❌ Failed to start Celery beat: {e}")
+        logger.error(f"❌ Unexpected error starting Celery beat: {e}")
         return None
 
 def start_background_services():
@@ -201,8 +234,14 @@ def start_background_services():
                 
                 time.sleep(60)  # Check every minute
                 
+            except ConnectionError as e:
+                logger.error(f"Connection error in health check: {e}")
+                time.sleep(60)
+            except ImportError as e:
+                logger.error(f"Import error in health check: {e}")
+                time.sleep(60)
             except Exception as e:
-                logger.error(f"Health check error: {e}")
+                logger.error(f"Unexpected error in health check: {e}")
                 time.sleep(60)
     
     # Start health monitoring in background
@@ -247,8 +286,14 @@ def test_vod_processing():
         
         return True
         
+    except ImportError as e:
+        logger.error(f"❌ Import error in VOD processing test: {e}")
+        return False
+    except ConnectionError as e:
+        logger.error(f"❌ Connection error in VOD processing test: {e}")
+        return False
     except Exception as e:
-        logger.error(f"❌ VOD processing test failed: {e}")
+        logger.error(f"❌ Unexpected error in VOD processing test: {e}")
         return False
 
 def start_gui_interfaces():
@@ -271,8 +316,12 @@ def start_gui_interfaces():
         def run_admin_ui():
             try:
                 start_admin_ui(admin_host, admin_port, dashboard_port)
+            except ImportError as e:
+                logger.error(f"Import error in Admin UI: {e}")
+            except ConnectionError as e:
+                logger.error(f"Connection error in Admin UI: {e}")
             except Exception as e:
-                logger.error(f"Admin UI error: {e}")
+                logger.error(f"Unexpected error in Admin UI: {e}")
         
         admin_thread = threading.Thread(target=run_admin_ui, daemon=True)
         admin_thread.start()
@@ -283,8 +332,14 @@ def start_gui_interfaces():
         logger.info("✅ GUI interfaces started successfully")
         return True
         
+    except ImportError as e:
+        logger.error(f"❌ Import error starting GUI interfaces: {e}")
+        return False
+    except ConnectionError as e:
+        logger.error(f"❌ Connection error starting GUI interfaces: {e}")
+        return False
     except Exception as e:
-        logger.error(f"❌ Failed to start GUI interfaces: {e}")
+        logger.error(f"❌ Unexpected error starting GUI interfaces: {e}")
         return False
 
 def main():
@@ -372,8 +427,14 @@ def main():
             beat_process.terminate()
             
         logger.info("System shutdown complete.")
+    except ConnectionError as e:
+        logger.error(f"Connection error in main: {e}")
+        sys.exit(1)
+    except ImportError as e:
+        logger.error(f"Import error in main: {e}")
+        sys.exit(1)
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Unexpected error in main: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
