@@ -188,14 +188,20 @@ class BatchTranscribeRequest(BaseModel):
         # Validate each path
         allowed_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.mpeg', '.mpg'}
         for path in v:
-            if '..' in path:
+            # Allow legitimate Flex server relative paths (../flex-X/...)
+            # These are valid paths when browsing from NAS_PATH to flex server mounts
+            if path.startswith('../flex-') and '/' in path[8:]:
+                # This is a legitimate Flex server path, not a directory traversal attack
+                pass
+            elif '..' in path:
+                # Block other directory traversal attempts
                 raise ValueError(f'Invalid path: cannot contain ".." - {path}')
             
-                    # Check for truly dangerous characters (command injection attempts)
-        dangerous_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$']
-        if any(char in path for char in dangerous_chars):
-            raise ValueError(f'Invalid path: contains dangerous characters - {path}')
-            
+            # Check for truly dangerous characters (command injection attempts)
+            dangerous_chars = ['<', '>', '"', "'", '&', '|', ';', '`', '$']
+            if any(char in path for char in dangerous_chars):
+                raise ValueError(f'Invalid path: contains dangerous characters - {path}')
+                
             # Check for absolute paths (should be relative)
             if path.startswith('/'):
                 raise ValueError(f'Invalid path: must be relative - {path}')

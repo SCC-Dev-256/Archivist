@@ -196,10 +196,21 @@ class FileService:
             True if path is valid and safe
         """
         try:
+            # Handle absolute paths
+            if os.path.isabs(path):
+                # For absolute paths, check if they're within any valid mount point
+                for mount_path in self.mount_points.values():
+                    if path.startswith(mount_path):
+                        # Path is within a valid mount point
+                        return os.path.exists(path) and os.access(path, os.R_OK)
+                # Path is not within any valid mount point
+                return False
+            
+            # Handle relative paths
             base = base_path or self.nas_path
             
             # Check for path traversal attempts
-            if '..' in path or path.startswith('/'):
+            if '..' in path:
                 return False
             
             # Ensure path is within base directory

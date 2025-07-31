@@ -71,16 +71,50 @@ def create_transcribe_blueprint(limiter):
             if len(video_paths) > 10:  # Limit batch size
                 return jsonify({'error': 'Maximum 10 files per batch'}), 400
             
+            # Convert relative Flex server paths to absolute paths
+            from core.config import MEMBER_CITIES, NAS_PATH
+            processed_paths = []
+            
+            for path in video_paths:
+                # Handle Flex server relative paths (../flex-X/...)
+                if path.startswith('../flex-') and '/' in path[8:]:
+                    # Extract the flex server ID and the rest of the path
+                    flex_part = path[3:]  # Remove '../'
+                    flex_id_with_hyphen = flex_part.split('/')[0]  # Get flex-X
+                    relative_path = '/'.join(flex_part.split('/')[1:])  # Get the rest
+                    
+                    # Convert flex-X to flexX to match MEMBER_CITIES keys
+                    flex_id = flex_id_with_hyphen.replace('-', '')  # Convert flex-1 to flex1
+                    
+                    # Check if this is a valid Flex server
+                    if flex_id in MEMBER_CITIES:
+                        # Convert to absolute path
+                        absolute_path = os.path.join(MEMBER_CITIES[flex_id]['mount_path'], relative_path)
+                        processed_paths.append(absolute_path)
+                        logger.info(f"Converted Flex server path: {path} -> {absolute_path}")
+                    else:
+                        logger.warning(f"Invalid Flex server ID: {flex_id} (from {flex_id_with_hyphen})")
+                        continue
+                else:
+                    # Regular path - assume it's relative to NAS_PATH
+                    absolute_path = os.path.join(NAS_PATH, path)
+                    processed_paths.append(absolute_path)
+                    logger.info(f"Converted regular path: {path} -> {absolute_path}")
+            
+            if not processed_paths:
+                return jsonify({'error': 'No valid video paths provided'}), 400
+            
             # Validate all paths
             file_service = FileService()
             valid_paths = []
             invalid_paths = []
             
-            for path in video_paths:
+            for path in processed_paths:
                 if file_service.validate_path(path):
                     valid_paths.append(path)
                 else:
                     invalid_paths.append(path)
+                    logger.warning(f"Invalid file path: {path}")
             
             if not valid_paths:
                 return jsonify({'error': 'No valid video paths provided'}), 400

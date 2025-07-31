@@ -240,6 +240,12 @@ class SecurityManager:
         if not isinstance(value, str):
             return False
         
+        # Allow legitimate Flex server relative paths (../flex-X/...)
+        # These are valid paths when browsing from NAS_PATH to flex server mounts
+        if value.startswith('../flex-') and '/' in value[8:]:
+            # This is a legitimate Flex server path, not a directory traversal attack
+            return False
+        
         return any(re.search(pattern, value, re.IGNORECASE) for pattern in self.suspicious_patterns)
     
     def _add_security_headers(self, response):

@@ -96,16 +96,25 @@ def register_realtime_events(app):
             cpu_percent = psutil.cpu_percent(interval=0.1)
             memory = psutil.virtual_memory()
             disk = psutil.disk_usage('/')
+            
+            # Check Redis status
+            redis_status = 'Error'
+            try:
+                import redis
+                redis_client = redis.Redis(host='localhost', port=6379, db=0)
+                redis_client.ping()
+                redis_status = 'OK'
+            except Exception as e:
+                redis_status = 'Error'
+            
             metrics = {
                 'timestamp': datetime.now().isoformat(),
-                'system': {
-                    'cpu_percent': cpu_percent,
-                    'memory_percent': memory.percent,
-                    'memory_available_gb': round(memory.available / (1024**3), 2),
-                    'disk_percent': disk.percent,
-                    'disk_free_gb': round(disk.free / (1024**3), 2),
-                },
-                # Add celery/redis/queue metrics as needed
+                'cpu_percent': cpu_percent,
+                'memory_percent': memory.percent,
+                'disk_percent': disk.percent,
+                'redis': {
+                    'status': 'connected' if redis_status == 'OK' else 'error'
+                }
             }
             socketio.emit('system_metrics', metrics, room=request.sid)
         except Exception as e:
