@@ -49,21 +49,22 @@
         // Get CSRF token when page loads
         document.addEventListener('DOMContentLoaded', getCSRFToken);
     </script>
-    <div class="container mx-auto px-4 py-8">
+    
+    <main class="container mx-auto px-4 py-8">
         <header class="mb-8">
             <h1 class="text-3xl font-bold mb-2">Archivist</h1>
             <p class="text-gray-400">Video Transcription System</p>
             <!-- Live System Metrics Panel -->
-            <div id="live-metrics" class="mt-4 bg-gray-700 rounded p-4 flex flex-wrap gap-6 text-sm">
+            <section id="live-metrics" class="mt-4 bg-gray-700 rounded p-4 flex flex-wrap gap-6 text-sm" aria-label="System Metrics">
                 <div><span class="font-semibold">CPU:</span> <span id="metric-cpu">-</span>%</div>
                 <div><span class="font-semibold">Memory:</span> <span id="metric-mem">-</span>%</div>
                 <div><span class="font-semibold">Disk:</span> <span id="metric-disk">-</span>%</div>
                 <div><span class="font-semibold">Redis:</span> <span id="metric-redis">-</span></div>
-            </div>
+            </section>
         </header>
 
         <!-- Navigation Tabs -->
-        <nav class="mb-6">
+        <nav class="mb-6" aria-label="Main Navigation">
             <ul class="flex gap-4 border-b border-gray-700" id="main-tabs">
                 <li><button class="tab-btn active" data-tab="tab-browser">File Browser</button></li>
                 <li><button class="tab-btn" data-tab="tab-analytics">Analytics</button></li>
@@ -73,31 +74,33 @@
         </nav>
 
         <!-- Tab Content Containers -->
-        <div id="tab-browser" class="tab-content">
+        <section id="tab-browser" class="tab-content">
             <!-- Search Bar -->
-            <div class="mb-6">
-                <div class="flex gap-4">
+            <section class="mb-6" aria-label="Search">
+                <form class="flex gap-4" role="search">
+                    <label for="search-input" class="sr-only">Search files or transcriptions</label>
                     <input type="text" id="search-input" placeholder="Search files or transcriptions..." 
-                           class="flex-1 bg-gray-700 text-white px-4 py-2 rounded">
-                    <select id="search-type" class="bg-gray-700 text-white px-4 py-2 rounded">
+                           class="flex-1 bg-gray-700 text-white px-4 py-2 rounded" aria-label="Search input">
+                    <label for="search-type" class="sr-only">Search type</label>
+                    <select id="search-type" class="bg-gray-700 text-white px-4 py-2 rounded" aria-label="Search type">
                         <option value="files">Files</option>
                         <option value="transcriptions">Transcriptions</option>
                     </select>
-                </div>
-            </div>
+                </form>
+            </section>
 
             <!-- Flex Servers Panel -->
-            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <section class="bg-gray-800 rounded-lg p-6 mb-6" aria-label="Flex Servers">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold">Flex Servers</h2>
-                    <button onclick="loadFlexServers()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded">
+                    <button onclick="loadFlexServers()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded" aria-label="Refresh flex servers">
                         Refresh
                     </button>
                 </div>
                 <div id="flex-servers-list" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <!-- Flex servers will be listed here -->
                 </div>
-            </div>
+            </section>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <!-- Real-Time Analytics Panel -->
@@ -210,7 +213,7 @@
         <div id="tab-controls" class="tab-content hidden">
             <div class="bg-gray-800 rounded-lg p-6">
                 <h2 class="text-xl font-semibold mb-4">Controls (Coming Soon)</h2>
-                <div id="controls-placeholder" class="text-gray-400">Manual controls for VOD/transcription will appear here.</div>
+                <div id="controls-placeholder" class="text-gray-400">Coming Soon - Manual controls for VOD/transcription will appear here.</div>
             </div>
         </div>
     </div>
@@ -1418,5 +1421,6 @@
             `).join('');
         }
     </script>
+    </main>
 </body>
 </html> 

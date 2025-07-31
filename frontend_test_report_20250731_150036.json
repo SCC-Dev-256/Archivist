@@ -1,0 +1,278 @@
+{
+  "timestamp": "2025-07-31T15:00:36.870581",
+  "duration": 207.8015694618225,
+  "overall_success": false,
+  "summary": {
+    "total_suites": 6,
+    "passed_suites": 0,
+    "failed_suites": 6,
+    "success_rate": 0.0
+  },
+  "test_suites": {
+    "GUI Testing": {
+      "suite": "GUI Testing",
+      "success": false,
+      "message": "GUI Testing: 0/11 tests passed",
+      "details": {
+        "passed": 0,
+        "total": 11,
+        "results": [
+          {
+            "test": "UI Rendering and Layout",
+            "success": false,
+            "message": "UI rendering failed: Expected 'Archivist' in title, got: ",
+            "details": {},
+            "timestamp": 1753991830.3561854
+          },
+          {
+            "test": "Navigation and Tab Functionality",
+            "success": false,
+            "message": "Tab navigation failed: Message: \nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991840.759754
+          },
+          {
+            "test": "File Browser Functionality",
+            "success": false,
+            "message": "File browser testing failed: Message: \nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991851.1704435
+          },
+          {
+            "test": "Analytics Dashboard",
+            "success": false,
+            "message": "Analytics dashboard testing failed: Message: \nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991861.5976455
+          },
+          {
+            "test": "Real-Time Tasks Interface",
+            "success": false,
+            "message": "Real-time tasks testing failed: Message: \nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991871.9906988
+          },
+          {
+            "test": "Controls Interface",
+            "success": false,
+            "message": "Controls testing failed: Message: \nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991882.3869963
+          },
+          {
+            "test": "Live Metrics Display",
+            "success": false,
+            "message": "Live metrics testing failed: Message: \nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991892.7811258
+          },
+          {
+            "test": "Flex Servers Panel",
+            "success": false,
+            "message": "Flex servers testing failed: Message: \nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991903.1897624
+          },
+          {
+            "test": "Responsive Design",
+            "success": false,
+            "message": "Responsive design testing failed: Message: no such element: Unable to locate element: {\"method\":\"tag name\",\"selector\":\"h1\"}\n  (Session info: chrome=138.0.7204.183); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception\nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991904.2460706
+          },
+          {
+            "test": "Accessibility Features",
+            "success": false,
+            "message": "Accessibility testing failed: Message: no such element: Unable to locate element: {\"method\":\"tag name\",\"selector\":\"h1\"}\n  (Session info: chrome=138.0.7204.183); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception\nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991904.3043633
+          },
+          {
+            "test": "Error Handling and User Feedback",
+            "success": false,
+            "message": "Error handling testing failed: Message: no such element: Unable to locate element: {\"method\":\"css selector\",\"selector\":\"button[onclick='showFileDetails()']\"}\n  (Session info: chrome=138.0.7204.183); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception\nStacktrace:\n#0 0x63b9d4d5b2ca <unknown>\n#1 0x63b9d4802550 <unknown>\n#2 0x63b9d48540f0 <unknown>\n#3 0x63b9d48542e1 <unknown>\n#4 0x63b9d48a25e4 <unknown>\n#5 0x63b9d4879bed <unknown>\n#6 0x63b9d489f9e6 <unknown>\n#7 0x63b9d4879993 <unknown>\n#8 0x63b9d4845d6b <unknown>\n#9 0x63b9d4847141 <unknown>\n#10 0x63b9d4d202ab <unknown>\n#11 0x63b9d4d240b9 <unknown>\n#12 0x63b9d4d07139 <unknown>\n#13 0x63b9d4d24c68 <unknown>\n#14 0x63b9d4ceb60f <unknown>\n#15 0x63b9d4d491f8 <unknown>\n#16 0x63b9d4d493d6 <unknown>\n#17 0x63b9d4d5a5e6 <unknown>\n#18 0x7448dd7da1f5 <unknown>\n",
+            "details": {},
+            "timestamp": 1753991904.3606465
+          }
+        ]
+      },
+      "timestamp": 1753991904.4336212
+    },
+    "WebSocket Testing": {
+      "suite": "WebSocket Testing",
+      "success": false,
+      "message": "WebSocket Testing: 8/9 tests passed",
+      "details": {
+        "passed": 8,
+        "total": 9,
+        "results": [
+          {
+            "test": "Socket.IO Connection",
+            "success": true,
+            "message": "Connection established successfully",
+            "details": {},
+            "timestamp": 1753991906.4913015
+          },
+          {
+            "test": "System Metrics Updates",
+            "success": true,
+            "message": "System metrics updates received correctly",
+            "details": {},
+            "timestamp": 1753991911.541577
+          },
+          {
+            "test": "Task Updates Broadcasting",
+            "success": true,
+            "message": "Task updates broadcasting works correctly",
+            "details": {},
+            "timestamp": 1753991918.5913398
+          },
+          {
+            "test": "Task Analytics Requests",
+            "success": true,
+            "message": "Task analytics requests work correctly",
+            "details": {},
+            "timestamp": 1753991923.6411958
+          },
+          {
+            "test": "Filtered Tasks Functionality",
+            "success": true,
+            "message": "Filtered tasks functionality works correctly",
+            "details": {},
+            "timestamp": 1753991932.6921966
+          },
+          {
+            "test": "Connection Reliability",
+            "success": false,
+            "message": "Connection reliability testing failed: One or more namespaces failed to connect",
+            "details": {},
+            "timestamp": 1753991938.752809
+          },
+          {
+            "test": "Message Latency",
+            "success": true,
+            "message": "Message latency acceptable (avg: 0.10s)",
+            "details": {
+              "average_latency": 0.10277228355407715,
+              "max_latency": 0.10314607620239258,
+              "min_latency": 0.10260558128356934,
+              "latency_samples": [
+                0.10314607620239258,
+                0.10260558128356934,
+                0.1026301383972168,
+                0.10277652740478516,
+                0.10270309448242188
+              ]
+            },
+            "timestamp": 1753991945.8025398
+          },
+          {
+            "test": "Error Handling",
+            "success": true,
+            "message": "Error handling works correctly",
+            "details": {},
+            "timestamp": 1753991949.9072995
+          },
+          {
+            "test": "Concurrent Connections",
+            "success": true,
+            "message": "All 3 concurrent connections work correctly",
+            "details": {},
+            "timestamp": 1753991955.0544975
+          }
+        ]
+      },
+      "timestamp": 1753991955.0547476
+    },
+    "Frontend Integration Testing": {
+      "suite": "Frontend Integration Testing",
+      "success": false,
+      "message": "Frontend Integration Testing: 2/4 tests passed",
+      "details": {
+        "passed": 2,
+        "total": 4,
+        "results": [
+          {
+            "test": "test_admin_dashboard_rendering",
+            "success": true,
+            "message": "Test passed"
+          },
+          {
+            "test": "test_admin_api_endpoints",
+            "success": false,
+            "message": "<module 'core.admin_ui' from '/opt/Archivist/core/admin_ui.py'> does not have the attribute 'celery_app'"
+          },
+          {
+            "test": "test_real_time_updates_websocket",
+            "success": true,
+            "message": "Test passed"
+          },
+          {
+            "test": "test_ui_interactions_form_validation",
+            "success": false,
+            "message": "Valid input queue_cleanup should match expected"
+          }
+        ]
+      },
+      "timestamp": 1753991955.7260401
+    },
+    "Visual Regression Testing": {
+      "suite": "Visual Regression Testing",
+      "success": false,
+      "message": "0/4 visual regression tests passed (0.0%)",
+      "details": {
+        "passed": 0,
+        "total": 4,
+        "success_rate": 0.0,
+        "results": [
+          [
+            "Main Page Layout",
+            false
+          ],
+          [
+            "Navigation Tabs",
+            false
+          ],
+          [
+            "Responsive Design",
+            false
+          ],
+          [
+            "UI Components",
+            false
+          ]
+        ]
+      },
+      "timestamp": 1753992036.7665548
+    },
+    "Performance Testing": {
+      "suite": "Performance Testing",
+      "success": false,
+      "message": "Performance testing failed: Page load failed with status 429",
+      "details": {},
+      "timestamp": 1753992036.771848
+    },
+    "Accessibility Testing": {
+      "suite": "Accessibility Testing",
+      "success": false,
+      "message": "Accessibility Testing: 2 issues found",
+      "details": {
+        "issues": [
+          "No headings found",
+          "No semantic HTML elements found"
+        ],
+        "semantic_elements_found": [],
+        "total_images": 0,
+        "total_forms": 0,
+        "total_headings": 0
+      },
+      "timestamp": 1753992036.870229
+    }
+  },
+  "recommendations": [
+    "Fix GUI rendering issues and ensure all UI elements are properly displayed",
+    "Check WebSocket server configuration and ensure real-time updates are working",
+    "Optimize page load times and reduce server response latency",
+    "Add missing alt text, labels, and semantic HTML elements for better accessibility"
+  ]
+}

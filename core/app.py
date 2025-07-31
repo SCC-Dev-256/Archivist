@@ -29,15 +29,11 @@ migrate = Migrate()
 cache = Cache()
 
 # Initialize limiter with Redis storage for better security
-# Rate limiting configuration via environment variables
-RATE_LIMIT_DAILY = os.getenv('RATE_LIMIT_DAILY', '200 per day')
-RATE_LIMIT_HOURLY = os.getenv('RATE_LIMIT_HOURLY', '50 per hour')
-
+# Rate limiting configuration will be set dynamically in create_app
 limiter = Limiter(
     key_func=get_remote_address,
     storage_uri="redis://localhost:6379/0",
     strategy="fixed-window",
-    default_limits=[RATE_LIMIT_DAILY, RATE_LIMIT_HOURLY],
     headers_enabled=True,
     retry_after="x-ratelimit-reset"
 )
@@ -93,6 +89,22 @@ def create_app(testing=False):
     # Initialize the database AFTER setting the configuration
     db.init_app(app)
     
+    # Configure rate limiting based on environment
+    if testing or os.getenv('TESTING') == 'true':
+        # Higher limits for testing environment
+        rate_limit_daily = '10000 per day'
+        rate_limit_hourly = '1000 per hour'
+        logger.debug(f"Rate limiting (testing): {rate_limit_daily}, {rate_limit_hourly}")
+    else:
+        # Normal limits for production
+        rate_limit_daily = '200 per day'
+        rate_limit_hourly = '50 per hour'
+        logger.debug(f"Rate limiting (production): {rate_limit_daily}, {rate_limit_hourly}")
+    
+    # Set rate limiting configuration
+    app.config['RATELIMIT_DEFAULT'] = f'{rate_limit_daily}; {rate_limit_hourly}'
+    app.config['RATELIMIT_STORAGE_URL'] = "redis://localhost:6379/0"
+    
     # Initialize extensions with app
     migrate.init_app(app, db)
     cache.init_app(app)
@@ -140,11 +152,10 @@ def create_app(testing=False):
     if testing:
         logger.info("Flask application created in testing mode")
     else:
-        logger.info("Flask application created successfully")
-        # Log non-sensitive configuration details
-        logger.debug(f"Environment: {os.getenv('FLASK_ENV', 'development')}")
-        logger.debug(f"HTTPS enforced: {force_https}")
-        logger.debug(f"Rate limiting: {RATE_LIMIT_DAILY}, {RATE_LIMIT_HOURLY}")
+            logger.info("Flask application created successfully")
+    # Log non-sensitive configuration details
+    logger.debug(f"Environment: {os.getenv('FLASK_ENV', 'development')}")
+    logger.debug(f"HTTPS enforced: {force_https}")
     
     return app
 

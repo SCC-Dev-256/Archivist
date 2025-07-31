@@ -1,0 +1,292 @@
+{
+  "timestamp": "2025-07-31T15:23:12.975219",
+  "duration": 153.98467540740967,
+  "overall_success": false,
+  "summary": {
+    "total_suites": 6,
+    "passed_suites": 2,
+    "failed_suites": 4,
+    "success_rate": 33.33333333333333
+  },
+  "test_suites": {
+    "GUI Testing": {
+      "suite": "GUI Testing",
+      "success": false,
+      "message": "GUI Testing: 7/11 tests passed",
+      "details": {
+        "passed": 7,
+        "total": 11,
+        "results": [
+          {
+            "test": "UI Rendering and Layout",
+            "success": true,
+            "message": "All UI elements rendered correctly",
+            "details": {},
+            "timestamp": 1753993240.7587984
+          },
+          {
+            "test": "Navigation and Tab Functionality",
+            "success": false,
+            "message": "Tab navigation failed: Message: \n",
+            "details": {},
+            "timestamp": 1753993251.6308928
+          },
+          {
+            "test": "File Browser Functionality",
+            "success": true,
+            "message": "File browser interface works correctly",
+            "details": {},
+            "timestamp": 1753993252.0887165
+          },
+          {
+            "test": "Analytics Dashboard",
+            "success": false,
+            "message": "Analytics dashboard testing failed: Message: \n",
+            "details": {},
+            "timestamp": 1753993262.5651004
+          },
+          {
+            "test": "Real-Time Tasks Interface",
+            "success": false,
+            "message": "Real-time tasks testing failed: Message: \n",
+            "details": {},
+            "timestamp": 1753993273.0646572
+          },
+          {
+            "test": "Controls Interface",
+            "success": false,
+            "message": "Controls testing failed: Message: \n",
+            "details": {},
+            "timestamp": 1753993283.5647583
+          },
+          {
+            "test": "Live Metrics Display",
+            "success": true,
+            "message": "Live metrics display works correctly",
+            "details": {},
+            "timestamp": 1753993283.7634954
+          },
+          {
+            "test": "Flex Servers Panel",
+            "success": true,
+            "message": "Flex servers panel works correctly",
+            "details": {},
+            "timestamp": 1753993283.8920956
+          },
+          {
+            "test": "Responsive Design",
+            "success": true,
+            "message": "Responsive design works across viewport sizes",
+            "details": {},
+            "timestamp": 1753993288.203263
+          },
+          {
+            "test": "Accessibility Features",
+            "success": true,
+            "message": "Basic accessibility features are present",
+            "details": {},
+            "timestamp": 1753993288.5943153
+          },
+          {
+            "test": "Error Handling and User Feedback",
+            "success": true,
+            "message": "Error handling mechanisms are in place",
+            "details": {},
+            "timestamp": 1753993288.7501206
+          }
+        ]
+      },
+      "timestamp": 1753993288.8255
+    },
+    "WebSocket Testing": {
+      "suite": "WebSocket Testing",
+      "success": false,
+      "message": "WebSocket Testing: 8/9 tests passed",
+      "details": {
+        "passed": 8,
+        "total": 9,
+        "results": [
+          {
+            "test": "Socket.IO Connection",
+            "success": true,
+            "message": "Connection established successfully",
+            "details": {},
+            "timestamp": 1753993290.8760762
+          },
+          {
+            "test": "System Metrics Updates",
+            "success": true,
+            "message": "System metrics updates received correctly",
+            "details": {},
+            "timestamp": 1753993295.926485
+          },
+          {
+            "test": "Task Updates Broadcasting",
+            "success": true,
+            "message": "Task updates broadcasting works correctly",
+            "details": {},
+            "timestamp": 1753993302.9769974
+          },
+          {
+            "test": "Task Analytics Requests",
+            "success": true,
+            "message": "Task analytics requests work correctly",
+            "details": {},
+            "timestamp": 1753993308.0275102
+          },
+          {
+            "test": "Filtered Tasks Functionality",
+            "success": true,
+            "message": "Filtered tasks functionality works correctly",
+            "details": {},
+            "timestamp": 1753993317.078752
+          },
+          {
+            "test": "Connection Reliability",
+            "success": false,
+            "message": "Connection reliability testing failed: One or more namespaces failed to connect",
+            "details": {},
+            "timestamp": 1753993323.137545
+          },
+          {
+            "test": "Message Latency",
+            "success": true,
+            "message": "Message latency acceptable (avg: 0.10s)",
+            "details": {
+              "average_latency": 0.10278491973876953,
+              "max_latency": 0.10289478302001953,
+              "min_latency": 0.10267090797424316,
+              "latency_samples": [
+                0.10267090797424316,
+                0.10289478302001953,
+                0.10285472869873047,
+                0.10276651382446289,
+                0.1027376651763916
+              ]
+            },
+            "timestamp": 1753993330.1867495
+          },
+          {
+            "test": "Error Handling",
+            "success": true,
+            "message": "Error handling works correctly",
+            "details": {},
+            "timestamp": 1753993334.299679
+          },
+          {
+            "test": "Concurrent Connections",
+            "success": true,
+            "message": "All 3 concurrent connections work correctly",
+            "details": {},
+            "timestamp": 1753993339.4473903
+          }
+        ]
+      },
+      "timestamp": 1753993339.4476187
+    },
+    "Frontend Integration Testing": {
+      "suite": "Frontend Integration Testing",
+      "success": false,
+      "message": "Frontend Integration Testing: 2/4 tests passed",
+      "details": {
+        "passed": 2,
+        "total": 4,
+        "results": [
+          {
+            "test": "test_admin_dashboard_rendering",
+            "success": true,
+            "message": "Test passed"
+          },
+          {
+            "test": "test_admin_api_endpoints",
+            "success": false,
+            "message": "<module 'core.admin_ui' from '/opt/Archivist/core/admin_ui.py'> does not have the attribute 'celery_app'"
+          },
+          {
+            "test": "test_real_time_updates_websocket",
+            "success": true,
+            "message": "Test passed"
+          },
+          {
+            "test": "test_ui_interactions_form_validation",
+            "success": false,
+            "message": "Valid input queue_cleanup should match expected"
+          }
+        ]
+      },
+      "timestamp": 1753993340.061431
+    },
+    "Visual Regression Testing": {
+      "suite": "Visual Regression Testing",
+      "success": false,
+      "message": "0/4 visual regression tests passed (0.0%)",
+      "details": {
+        "passed": 0,
+        "total": 4,
+        "success_rate": 0.0,
+        "results": [
+          [
+            "Main Page Layout",
+            false
+          ],
+          [
+            "Navigation Tabs",
+            false
+          ],
+          [
+            "Responsive Design",
+            false
+          ],
+          [
+            "UI Components",
+            false
+          ]
+        ]
+      },
+      "timestamp": 1753993392.8400867
+    },
+    "Performance Testing": {
+      "suite": "Performance Testing",
+      "success": true,
+      "message": "Performance Testing: Avg load time 0.00s, Max 0.01s",
+      "details": {
+        "average_load_time": 0.004726982116699219,
+        "max_load_time": 0.005716800689697266,
+        "load_times": [
+          0.005716800689697266,
+          0.004689216613769531,
+          0.004851341247558594,
+          0.004208087921142578,
+          0.004169464111328125
+        ],
+        "thresholds": {
+          "avg_threshold": 3.0,
+          "max_threshold": 5.0
+        }
+      },
+      "timestamp": 1753993392.8641837
+    },
+    "Accessibility Testing": {
+      "suite": "Accessibility Testing",
+      "success": true,
+      "message": "Accessibility Testing: 0 issues found",
+      "details": {
+        "issues": [],
+        "semantic_elements_found": [
+          "nav",
+          "main",
+          "section",
+          "header"
+        ],
+        "total_images": 0,
+        "total_forms": 1,
+        "total_headings": 11
+      },
+      "timestamp": 1753993392.9748352
+    }
+  },
+  "recommendations": [
+    "Fix GUI rendering issues and ensure all UI elements are properly displayed",
+    "Check WebSocket server configuration and ensure real-time updates are working"
+  ]
+}

@@ -234,7 +234,7 @@ class TestAdminUIIntegration:
             logger.info("Admin cities endpoint data structure verified")
         
         # 3. Test admin queue summary endpoint
-        with patch('core.admin_ui.UnifiedQueueManager') as mock_queue_manager:
+        with patch('core.unified_queue_manager.UnifiedQueueManager') as mock_queue_manager:
             mock_instance = mock_queue_manager.return_value
             mock_instance.get_all_jobs.return_value = [
                 {"status": "queued"},
@@ -577,7 +577,7 @@ class TestAdminUIIntegration:
             logger.info("Health check API integration verified")
         
         # 3. Test queue jobs API integration
-        with patch('core.admin_ui.UnifiedQueueManager') as mock_queue_manager:
+        with patch('core.unified_queue_manager.UnifiedQueueManager') as mock_queue_manager:
             mock_instance = mock_queue_manager.return_value
             mock_instance.get_all_jobs.return_value = [
                 {
@@ -649,7 +649,7 @@ class TestAdminUIIntegration:
                 logger.info(f"Invalid task {invalid_task} properly rejected")
         
         # 2. Test queue cleanup functionality
-        with patch('core.admin_ui.UnifiedQueueManager') as mock_queue_manager:
+        with patch('core.unified_queue_manager.UnifiedQueueManager') as mock_queue_manager:
             mock_instance = mock_queue_manager.return_value
             mock_instance.cleanup_failed_jobs.return_value = True
             
@@ -844,7 +844,7 @@ class TestAdminUIIntegration:
         logger.info("Testing Error Handling and Edge Cases")
         
         # 1. Test API endpoint error handling
-        with patch('core.admin_ui.UnifiedQueueManager') as mock_queue_manager:
+        with patch('core.unified_queue_manager.UnifiedQueueManager') as mock_queue_manager:
             mock_instance = mock_queue_manager.return_value
             mock_instance.get_all_jobs.side_effect = Exception("Queue connection failed")
             
@@ -908,7 +908,7 @@ class TestAdminUIIntegration:
             logger.info("Invalid task triggering handling verified")
         
         # 4. Test empty data handling
-        with patch('core.admin_ui.UnifiedQueueManager') as mock_queue_manager:
+        with patch('core.unified_queue_manager.UnifiedQueueManager') as mock_queue_manager:
             mock_instance = mock_queue_manager.return_value
             mock_instance.get_all_jobs.return_value = []
             
