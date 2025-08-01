@@ -826,7 +826,23 @@
                     }
                     
                     queueList.innerHTML = jobs.map(job => {
-                        const fileName = job.video_path ? job.video_path.split('/').pop() : (job.name || 'Unknown task');
+                        let fileName = 'Unknown task';
+                        
+                        if (job.video_path) {
+                            if (Array.isArray(job.video_path)) {
+                                // Handle batch transcription tasks with array of paths
+                                fileName = job.video_path.length > 0 ? job.video_path[0].split('/').pop() : 'Batch task';
+                                if (job.video_path.length > 1) {
+                                    fileName += ` (+${job.video_path.length - 1} more)`;
+                                }
+                            } else if (typeof job.video_path === 'string') {
+                                fileName = job.video_path.split('/').pop();
+                            }
+                        } else if (job.name && typeof job.name === 'string') {
+                            fileName = job.name;
+                        } else if (job.task_name && typeof job.task_name === 'string') {
+                            fileName = job.task_name;
+                        }
                         const statusClass = job.status === 'completed' ? 'bg-green-600' :
                                           job.status === 'failed' ? 'bg-red-600' :
                                           job.status === 'processing' || job.status === 'started' || job.status === 'active' ? 'bg-blue-600' :
@@ -880,16 +896,36 @@
 
         // Add a function to update the queue UI from real-time data
         function updateQueueUI(jobs) {
+            console.log('🔍 DEBUG: updateQueueUI called with jobs:', jobs);
             const queueList = document.getElementById('queue-list');
             if (!Array.isArray(jobs) || jobs.length === 0) {
                 queueList.innerHTML = '<div class="text-gray-400 p-4 text-center">No jobs in queue</div>';
                 return;
             }
-            queueList.innerHTML = jobs.map(job => `
+            queueList.innerHTML = jobs.map(job => {
+                let fileName = 'Unknown task';
+                
+                if (job.video_path) {
+                    if (Array.isArray(job.video_path)) {
+                        // Handle batch transcription tasks with array of paths
+                        fileName = job.video_path.length > 0 ? job.video_path[0].split('/').pop() : 'Batch task';
+                        if (job.video_path.length > 1) {
+                            fileName += ` (+${job.video_path.length - 1} more)`;
+                        }
+                    } else if (typeof job.video_path === 'string') {
+                        fileName = job.video_path.split('/').pop();
+                    }
+                } else if (job.name && typeof job.name === 'string') {
+                    fileName = job.name;
+                } else if (job.task_name && typeof job.task_name === 'string') {
+                    fileName = job.task_name;
+                }
+                
+                return `
                 <div class="bg-gray-700 rounded p-4">
                     <div class="flex justify-between items-start mb-2">
                         <div>
-                            <h3 class="font-semibold">${job.video_path ? job.video_path.split('/').pop() : 'Unknown file'}</h3>
+                            <h3 class="font-semibold">${fileName}</h3>
                             <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
                         </div>
                         <div class="flex gap-2">
@@ -919,7 +955,8 @@
                         </p>
                     ` : ''}
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Format time remaining
@@ -988,7 +1025,11 @@
                     // Clear selections after successful queueing
                     selectedFiles.clear();
                     document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
-                    handleFileSelection('', false); // Update button state
+                    // Update button state without calling handleFileSelection with empty path
+                    const queueBtn = document.getElementById('queue-selected-btn');
+                    queueBtn.textContent = 'Queue Selected for Transcription';
+                    queueBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    queueBtn.classList.add('bg-gray-600');
                 }
                 
                 if (data.errors && data.errors.length > 0) {

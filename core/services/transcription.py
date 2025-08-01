@@ -60,10 +60,11 @@ class TranscriptionService:
         self.language = LANGUAGE
     
     def _transcribe_with_faster_whisper(self, video_path: str) -> Dict:
-        """Direct transcription using faster-whisper library.
+        """
+        Transcribe video using Faster Whisper with optimized settings for caption generation.
         
-        This function performs transcription directly using faster-whisper to transcribe 
-        the video and generates SCC format output for automatic captioning.
+        This method uses the Faster Whisper library with settings optimized for
+        generating high-quality captions suitable for broadcast use.
         
         Args:
             video_path: Path to the video file to transcribe
@@ -83,6 +84,8 @@ class TranscriptionService:
                 cpu_threads=BATCH_SIZE
             )
             
+            logger.info(f"Whisper model loaded successfully. Starting transcription...")
+            
             # Transcribe the audio with optimized settings for captions
             logger.info(f"Starting transcription of {video_path}")
             segments, info = model.transcribe(
@@ -95,6 +98,7 @@ class TranscriptionService:
             )
             
             # Convert segments to list for processing
+            logger.info("Converting transcription segments...")
             segments_list = list(segments)
             
             if not segments_list:
@@ -127,6 +131,7 @@ class TranscriptionService:
             scc_path = os.path.join(output_dir, f"{base_name}.scc")
             
             # Write SCC file with proper formatting for broadcast captions
+            logger.info(f"Writing SCC file to: {scc_path}")
             with open(scc_path, 'w', encoding='utf-8') as f:
                 f.write("Scenarist_SCC V1.0\n\n")
                 

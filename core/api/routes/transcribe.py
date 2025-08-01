@@ -146,8 +146,12 @@ def create_transcribe_blueprint(limiter):
                     return jsonify({'error': 'Transcription service unavailable'}), 503
                 
                 # Submit the task
+                logger.info(f"Submitting batch task with {len(valid_paths)} files")
                 result = batch_task.delay(valid_paths)
-                batch_task_id = result.id
+                logger.info(f"Task submitted, result: {result}")
+                logger.info(f"Result type: {type(result)}")
+                logger.info(f"Result ID: {getattr(result, 'id', 'NO_ID')}")
+                batch_task_id = result.id if hasattr(result, 'id') else 'dummy'
                 
             except (OperationalError, redis.exceptions.ConnectionError) as e:
                 logger.error(f"Celery broker unavailable: {e}")

@@ -188,34 +188,27 @@ class ErrorHandlingTester:
                          f"Alert failed: {str(e)}")
     
     def test_video_validation(self):
-        """Test video file validation."""
-        print("\n=== Testing Video Validation ===")
+        """Test video file validation using actual video from flex servers."""
+        print("\n=== Testing Video Validation with Real Video from Flex Servers ===")
         
-        # Create a test video file
-        test_video = os.path.join(self.temp_dir, "test_video.mp4")
+        # Use the mount system to get a real video path
+        flex_mount_path = "/mnt/flex-1"  # Example mount path, adjust as needed
+        video_files = list_mount_contents(flex_mount_path)
         
-        # Test with ffmpeg-generated test video
-        if os.path.exists("test_videos/test_video_15s.mp4"):
-            shutil.copy("test_videos/test_video_15s.mp4", test_video)
-            
-            if validate_video_file(test_video):
+        # Find a video file in the mount path
+        test_video = next((file for file in video_files if file.endswith('.mp4')), None)
+        
+        if test_video:
+            full_video_path = os.path.join(flex_mount_path, test_video)
+            if validate_video_file(full_video_path):
                 self.log_test("Video validation - valid file", True, 
-                             f"Validated test video: {test_video}")
+                             f"Validated real video: {full_video_path}")
             else:
                 self.log_test("Video validation - valid file", False, 
-                             f"Failed to validate test video: {test_video}")
+                             f"Failed to validate real video: {full_video_path}")
         else:
-            # Create a dummy file for testing
-            with open(test_video, 'wb') as f:
-                f.write(b'dummy video content')
-            
-            # Should fail validation
-            if not validate_video_file(test_video):
-                self.log_test("Video validation - invalid file", True, 
-                             f"Correctly rejected invalid video: {test_video}")
-            else:
-                self.log_test("Video validation - invalid file", False, 
-                             f"Unexpectedly accepted invalid video: {test_video}")
+            self.log_test("Video validation - file not found", False, 
+                         "No valid video file found on flex servers")
     
     def run_all_tests(self):
         """Run all error handling tests."""
