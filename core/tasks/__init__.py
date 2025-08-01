@@ -17,6 +17,7 @@ Example:
 from celery import Celery
 from core.config import REDIS_URL
 from loguru import logger
+import os
 
 celery_app = Celery(
     "archivist",
@@ -37,6 +38,12 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 )
+
+# Allow running tasks synchronously when a broker isn't available
+if os.getenv("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true":
+    celery_app.conf.task_always_eager = True
+    celery_app.conf.task_eager_propagates = True
+    logger.warning("Celery configured for eager execution; tasks run synchronously")
 
 logger.info(f"Celery app initialised with broker {REDIS_URL}")
 
