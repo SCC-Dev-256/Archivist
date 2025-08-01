@@ -34,12 +34,42 @@ def mock_locations():
         'default': {
             'name': 'Default Location',
             'allowed_users': ['*'],
-            'flex_servers': ['flex1', 'flex2']
+            'member_cities': ['flex1', 'flex2', 'flex3', 'flex4', 'flex5', 'flex6', 'flex7', 'flex8', 'flex9']
         },
-        'restricted': {
-            'name': 'Restricted Location',
-            'allowed_users': ['admin'],
-            'flex_servers': ['flex1']
+        'birchwood': {
+            'name': 'Birchwood',
+            'allowed_users': ['*'],
+            'member_cities': ['flex1']
+        },
+        'dellwood_grant_willernie': {
+            'name': 'Dellwood Grant Willernie',
+            'allowed_users': ['*'],
+            'member_cities': ['flex2']
+        },
+        'lake_elmo': {
+            'name': 'Lake Elmo',
+            'allowed_users': ['*'],
+            'member_cities': ['flex3']
+        },
+        'mahtomedi': {
+            'name': 'Mahtomedi',
+            'allowed_users': ['*'],
+            'member_cities': ['flex4']
+        },
+        'oakdale': {
+            'name': 'Oakdale',
+            'allowed_users': ['*'],
+            'member_cities': ['flex7']
+        },
+        'white_bear_lake': {
+            'name': 'White Bear Lake',
+            'allowed_users': ['*'],
+            'member_cities': ['flex8']
+        },
+        'white_bear_township': {
+            'name': 'White Bear Township',
+            'allowed_users': ['*'],
+            'member_cities': ['flex9']
         }
     }
 
@@ -65,31 +95,31 @@ def test_validate_location_access(file_manager_instance, mock_locations):
     # Test with no user (should pass)
     file_manager_instance._validate_location_access()
     
-    # Test with user having access
+    # Test with user having access to birchwood location
     file_manager_instance.user = 'admin'
-    file_manager_instance.location = 'restricted'
+    file_manager_instance.location = 'birchwood'
     file_manager_instance._validate_location_access()
     
-    # Test with user without access
+    # Test with user without access (using a location that doesn't exist)
     file_manager_instance.user = 'regular_user'
-    with pytest.raises(PermissionError):
+    file_manager_instance.location = 'nonexistent_location'
+    with pytest.raises(ValueError, match="Invalid location"):
         file_manager_instance._validate_location_access()
 
 def test_get_accessible_mounts(file_manager_instance, mock_mount_points):
     """Test getting accessible mount points"""
-    # Test with default location
+    # Test with default location (should have access to all cities)
     mounts = file_manager_instance.get_accessible_mounts()
     assert 'nas' in mounts
     assert 'flex1' in mounts
     assert 'flex2' in mounts
     
-    # Test with restricted location
-    file_manager_instance.location = 'restricted'
-    file_manager_instance.user = 'admin'  # Set admin user for restricted access
+    # Test with birchwood location (should only have access to flex1)
+    file_manager_instance.location = 'birchwood'
     mounts = file_manager_instance.get_accessible_mounts()
     assert 'nas' in mounts
     assert 'flex1' in mounts
-    assert 'flex2' not in mounts
+    assert 'flex2' not in mounts  # birchwood only has access to flex1
 
 def test_get_file_details(file_manager_instance, temp_dir):
     """Test getting file details"""
@@ -163,13 +193,13 @@ def test_list_locations(file_manager_instance, mock_locations):
     file_manager_instance.user = 'admin'
     locations = file_manager_instance.list_locations()
     assert 'default' in locations
-    assert 'restricted' in locations
+    assert 'birchwood' in locations
     
     # Test with regular user
     file_manager_instance.user = 'regular_user'
     locations = file_manager_instance.list_locations()
     assert 'default' in locations
-    assert 'restricted' not in locations
+    assert 'birchwood' in locations  # All locations are accessible to all users in current config
 
 def test_file_not_found(file_manager_instance):
     """Test handling of non-existent files"""

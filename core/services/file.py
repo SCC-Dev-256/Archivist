@@ -19,10 +19,10 @@ Example:
 import os
 from typing import Dict, Optional, List
 from loguru import logger
-from core.exceptions import FileError, handle_file_error
-from core.file_manager import file_manager
-from core.check_mounts import verify_critical_mounts, list_mount_contents
+from core import FileError, handle_file_error
+from core.lazy_imports import get_file_service
 from core.config import MOUNT_POINTS, NAS_PATH
+from core.check_mounts import verify_critical_mounts, list_mount_contents
 from datetime import datetime
 
 class FileService:
@@ -36,11 +36,7 @@ class FileService:
     def browse_directory(self, path: str, user: str = "default", location: str = "default") -> Dict:
         """Browse a directory and return its contents."""
         try:
-            # Use the existing file manager for context
-            file_manager.user = user
-            file_manager.location = location
-
-            # Directory listing logic (since file_manager has no browse_directory)
+            # Directory listing logic
             if not os.path.exists(path):
                 raise FileError(f"Directory not found: {path}")
             if not os.path.isdir(path):
@@ -71,7 +67,7 @@ class FileService:
                         'is_dir': is_dir,
                         'size': file_size,
                         'modified_at': datetime.fromtimestamp(modified_time).isoformat(),
-                        'path': os.path.relpath(full_path, file_manager.base_path)
+                        'path': os.path.relpath(full_path, self.nas_path)
                     })
                 except (OSError, IOError) as e:
                     # Skip files we can't access
@@ -98,7 +94,16 @@ class FileService:
             if not os.path.exists(file_path):
                 raise FileError(f"File not found: {file_path}")
             
-            details = file_manager.get_file_details(file_path)
+            # Get basic file details
+            stat_info = os.stat(file_path)
+            details = {
+                'path': file_path,
+                'size': stat_info.st_size,
+                'modified_at': datetime.fromtimestamp(stat_info.st_mtime).isoformat(),
+                'permissions': oct(stat_info.st_mode)[-3:],
+                'type': 'file' if os.path.isfile(file_path) else 'directory'
+            }
+            
             logger.info(f"Retrieved file details: {file_path}")
             return details
             
@@ -191,10 +196,21 @@ class FileService:
             True if path is valid and safe
         """
         try:
+            # Handle absolute paths
+            if os.path.isabs(path):
+                # For absolute paths, check if they're within any valid mount point
+                for mount_path in self.mount_points.values():
+                    if path.startswith(mount_path):
+                        # Path is within a valid mount point
+                        return os.path.exists(path) and os.access(path, os.R_OK)
+                # Path is not within any valid mount point
+                return False
+            
+            # Handle relative paths
             base = base_path or self.nas_path
             
             # Check for path traversal attempts
-            if '..' in path or path.startswith('/'):
+            if '..' in path:
                 return False
             
             # Ensure path is within base directory

@@ -38,14 +38,11 @@ def init_auth(app):
     # Initialize JWT
     jwt.init_app(app)
     
-    # Initialize rate limiter with a custom key_func
-    def key_func():
-        return 'global'  # Use a fixed key for testing
-        
-    limiter.init_app(app, key_func=key_func)
+    # Initialize rate limiter with correct API
+    limiter.init_app(app)
     
-    # Apply global rate limit
-    limiter.limit("100/minute")(app)
+    # Don't apply global rate limit to app object - this should be done per route
+    # limiter.limit("100/minute")(app)  # This was causing the AttributeError
     
     return app
 
@@ -63,7 +60,8 @@ def admin_required(f):
     @jwt_required()
     def decorated_function(*args, **kwargs):
         current_user = get_jwt_identity()
-        if not current_user.get('is_admin', False):
+        # Check if user identity starts with 'admin_' to indicate admin role
+        if not isinstance(current_user, str) or not current_user.startswith('admin_'):
             return jsonify({'error': 'Admin access required'}), 403
         return f(*args, **kwargs)
     return decorated_function

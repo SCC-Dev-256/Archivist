@@ -35,9 +35,22 @@ import os
 from loguru import logger
 from core.monitoring.metrics import get_metrics_collector
 from core.monitoring.health_checks import get_health_manager
-from core.task_queue import QueueManager
+# Lazy service initialization
+_queue_manager = None
+
+def get_queue_manager():
+    """Get queue manager with lazy initialization."""
+    global _queue_manager
+    if _queue_manager is None:
+        try:
+            from core.lazy_imports import get_queue_service
+            _queue_manager = get_queue_service()
+        except ImportError:
+            _queue_manager = None
+    return _queue_manager
 from core.tasks import celery_app
 from core.monitoring.socket_tracker import socket_tracker
+from core.models import TranscriptionResultORM
 
 @dataclass
 class DashboardConfig:
@@ -101,9 +114,15 @@ class IntegratedDashboard:
         # Initialize core services
         self.metrics_collector = get_metrics_collector()
         self.health_manager = get_health_manager()
-        self.queue_manager = QueueManager()
+        self.queue_manager = None  # Will be initialized lazily when needed
         
         # Task history storage for analytics
+        
+    def _get_queue_manager(self):
+        """Get queue manager with lazy initialization."""
+        if self.queue_manager is None:
+            self.queue_manager = get_queue_manager()
+        return self.queue_manager
         self.task_history = []
         self.max_history_size = self.config.max_history_size
         
@@ -365,7 +384,7 @@ class IntegratedDashboard:
         def api_queue_jobs():
             """Get all queue jobs."""
             try:
-                jobs = self.queue_manager.get_all_jobs()
+                jobs = self._get_queue_manager().get_all_jobs()
                 return jsonify({
                     'jobs': jobs,
                     'total': len(jobs),
@@ -379,7 +398,7 @@ class IntegratedDashboard:
         def api_queue_job_detail(job_id):
             """Get specific job details."""
             try:
-                job_status = self.queue_manager.get_job_status(job_id)
+                job_status = self._get_queue_manager().get_job_status(job_id)
                 return jsonify(job_status)
             except Exception as e:
                 logger.error(f"Error getting job {job_id}: {e}")
@@ -391,7 +410,7 @@ class IntegratedDashboard:
             try:
                 data = request.get_json()
                 position = data.get('position', 0)
-                success = self.queue_manager.reorder_job(job_id, position)
+                success = self._get_queue_manager().reorder_job(job_id, position)
                 return jsonify({'success': success})
             except Exception as e:
                 logger.error(f"Error reordering job {job_id}: {e}")
@@ -401,7 +420,7 @@ class IntegratedDashboard:
         def api_queue_stop_job(job_id):
             """Stop a running job."""
             try:
-                success = self.queue_manager.stop_job(job_id)
+                success = self._get_queue_manager().stop_job(job_id)
                 return jsonify({'success': success})
             except Exception as e:
                 logger.error(f"Error stopping job {job_id}: {e}")
@@ -411,7 +430,7 @@ class IntegratedDashboard:
         def api_queue_pause_job(job_id):
             """Pause a job."""
             try:
-                success = self.queue_manager.pause_job(job_id)
+                success = self._get_queue_manager().pause_job(job_id)
                 return jsonify({'success': success})
             except Exception as e:
                 logger.error(f"Error pausing job {job_id}: {e}")
@@ -421,7 +440,7 @@ class IntegratedDashboard:
         def api_queue_resume_job(job_id):
             """Resume a paused job."""
             try:
-                success = self.queue_manager.resume_job(job_id)
+                success = self._get_queue_manager().resume_job(job_id)
                 return jsonify({'success': success})
             except Exception as e:
                 logger.error(f"Error resuming job {job_id}: {e}")
@@ -431,7 +450,7 @@ class IntegratedDashboard:
         def api_queue_remove_job(job_id):
             """Remove a job from the queue."""
             try:
-                success = self.queue_manager.remove_job(job_id)
+                success = self._get_queue_manager().remove_job(job_id)
                 if success:
                     self.metrics_collector.increment('queue_jobs_removed')
                     logger.info(f"Job {job_id} removed from queue")
@@ -445,7 +464,7 @@ class IntegratedDashboard:
         def api_queue_retry_job(job_id):
             """Retry a failed job."""
             try:
-                success = self.queue_manager.retry_job(job_id)
+                success = self._get_queue_manager().retry_job(job_id)
                 if success:
                     self.metrics_collector.increment('queue_jobs_retried')
                 return jsonify({'success': success})
@@ -458,7 +477,7 @@ class IntegratedDashboard:
         def api_queue_cancel_job(job_id):
             """Cancel a running job."""
             try:
-                success = self.queue_manager.cancel_job(job_id)
+                success = self._get_queue_manager().cancel_job(job_id)
                 if success:
                     self.metrics_collector.increment('queue_jobs_cancelled')
                 return jsonify({'success': success})
@@ -471,7 +490,7 @@ class IntegratedDashboard:
         def api_queue_stats():
             """Get comprehensive queue statistics."""
             try:
-                jobs = self.queue_manager.get_all_jobs()
+                jobs = self._get_queue_manager().get_all_jobs()
                 stats = {
                     'total_jobs': len(jobs),
                     'status_counts': self._count_job_statuses(jobs),
@@ -494,7 +513,7 @@ class IntegratedDashboard:
             try:
                 data = request.get_json() or {}
                 max_age_hours = data.get('max_age_hours', 24)
-                success = self.queue_manager.cleanup_old_jobs(max_age_hours)
+                success = self._get_queue_manager().cleanup_old_jobs(max_age_hours)
                 if success:
                     self.metrics_collector.increment('queue_cleanup_operations')
                 return jsonify({'success': success})
@@ -567,7 +586,7 @@ class IntegratedDashboard:
             """Get unified task view (RQ + Celery)."""
             try:
                 # Get RQ jobs
-                rq_jobs = self.queue_manager.get_all_jobs()
+                rq_jobs = self._get_queue_manager().get_all_jobs()
                 
                 # Get Celery tasks
                 inspect = celery_app.control.inspect()
@@ -654,7 +673,6 @@ class IntegratedDashboard:
                 from core.vod_automation import get_transcription_link_status
                 
                 # Get recent transcriptions and their link status
-                from core.models import TranscriptionResultORM
                 recent_transcriptions = TranscriptionResultORM.query.order_by(
                     TranscriptionResultORM.completed_at.desc()
                 ).limit(20).all()
@@ -1056,7 +1074,7 @@ class IntegratedDashboard:
             stats = inspect.stats() or {}
             
             # Get RQ jobs
-            rq_jobs = self.queue_manager.get_all_jobs()
+            rq_jobs = self._get_queue_manager().get_all_jobs()
             
             # Combine into real-time view
             realtime_tasks = []
@@ -1155,7 +1173,8 @@ class IntegratedDashboard:
     def _get_task_progress(self, task_id: str) -> float:
         """Get task progress from Celery result backend."""
         try:
-            result = celery_app.AsyncResult(task_id)
+            from celery.result import AsyncResult
+            result = AsyncResult(task_id, app=celery_app)
             if result.state == 'PROGRESS':
                 return result.info.get('progress', 0)
             elif result.state == 'SUCCESS':
@@ -1177,7 +1196,7 @@ class IntegratedDashboard:
                 return (datetime.now() - job['started_at']).total_seconds()
             else:
                 return 0.0
-        except Exception:
+        except (TypeError, ValueError):
             return 0.0
     
     def _get_task_analytics(self) -> Dict[str, Any]:

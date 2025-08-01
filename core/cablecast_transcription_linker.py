@@ -20,8 +20,8 @@ from typing import Dict, Optional, List
 from datetime import datetime
 from loguru import logger
 from core.cablecast_client import CablecastAPIClient
-from core.models import TranscriptionResultORM, CablecastShowORM
-from core.app import db
+from core import TranscriptionResultORM, CablecastShowORM
+from core.database import db
 
 class CablecastTranscriptionLinker:
     """Links transcriptions to existing Cablecast shows"""
@@ -210,7 +210,7 @@ class CablecastTranscriptionLinker:
             seconds = float(parts[2])
             
             return hours * 3600 + minutes * 60 + seconds
-        except Exception:
+        except (ValueError, IndexError):
             return 0.0
     
     def _extract_key_phrases(self, text: str, max_phrases: int = 10) -> List[str]:

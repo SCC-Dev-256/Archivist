@@ -14,7 +14,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 def create_cablecast_tables():
     """Create the cablecast_shows table"""
     try:
-        from core.app import create_app, db
+        from core.app import create_app
+        from core import db
         from core.models import CablecastShowORM
         
         # Create Flask app

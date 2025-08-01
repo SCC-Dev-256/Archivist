@@ -1,32 +1,32 @@
 #!/usr/bin/env python3
-"""VOD Command Line Interface for Archivist.
+"""VOD CLI tool for managing VOD operations."""
 
-This CLI tool provides easy access to VOD integration features for managing
-content between Archivist and Cablecast VOD systems.
-
-Usage:
-    python3 vod_cli.py sync-status
-    python3 vod_cli.py publish <transcription_id>
-    python3 vod_cli.py batch-publish <transcription_id1> <transcription_id2> ...
-    python3 vod_cli.py sync-shows
-    python3 vod_cli.py sync-vods
-    python3 vod_cli.py test-connection
-"""
-
+import argparse
 import os
 import sys
-import argparse
-import json
-from loguru import logger
-from core.services import VODService
 
-# Add the core directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'core'))
+from loguru import logger
+
+# Add the project root to the path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from core.services import VODService
+from core.exceptions import (
+    ConnectionError,
+    DatabaseError,
+    VODError
+)
+
 
 def setup_logging():
-    """Setup logging for CLI"""
+    """Setup logging configuration."""
     logger.remove()
-    logger.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>")
+    logger.add(
+        sys.stdout,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        level="INFO"
+    )
+
 
 def sync_status():
     """Get sync status between Archivist and VOD system"""
@@ -34,24 +34,34 @@ def sync_status():
         manager = VODService()
         status = manager.get_sync_status()
         
-        print("\n" + "="*60)
-        print("VOD SYNC STATUS")
-        print("="*60)
-        print(f"Total Transcriptions: {status['total_transcriptions']}")
-        print(f"Synced Transcriptions: {status['synced_transcriptions']}")
-        print(f"Sync Percentage: {status['sync_percentage']:.1f}%")
+        logger.info("="*60)
+        logger.info("VOD SYNC STATUS")
+        logger.info("="*60)
+        logger.info(f"Total Transcriptions: {status['total_transcriptions']}")
+        logger.info(f"Synced Transcriptions: {status['synced_transcriptions']}")
+        logger.info(f"Sync Percentage: {status['sync_percentage']:.1f}%")
         
         if status['recent_syncs']:
-            print(f"\nRecent Syncs:")
+            logger.info("Recent Syncs:")
             for sync in status['recent_syncs'][:5]:
-                print(f"  • {sync['title']} (ID: {sync['cablecast_id']}) - {sync['synced_at']}")
+                logger.info(f"  • {sync['title']} (ID: {sync['cablecast_id']}) - {sync['synced_at']}")
         
-        print("="*60)
+        logger.info("="*60)
         
+    except ConnectionError as e:
+        logger.error(f"Connection error getting sync status: {e}")
+        return 1
+    except DatabaseError as e:
+        logger.error(f"Database error getting sync status: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error getting sync status: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error getting sync status: {e}")
+        logger.error(f"Unexpected error getting sync status: {e}")
         return 1
     return 0
+
 
 def publish_transcription(transcription_id):
     """Publish a single transcription to VOD"""
@@ -60,18 +70,28 @@ def publish_transcription(transcription_id):
         result = manager.process_archivist_content_for_vod(transcription_id)
         
         if result:
-            print(f"\n✓ Successfully published transcription {transcription_id} to VOD")
-            print(f"  Show ID: {result['show_id']}")
-            print(f"  VOD ID: {result['vod_id']}")
-            print(f"  Title: {result['title']}")
+            logger.success(f"Successfully published transcription {transcription_id} to VOD")
+            logger.info(f"  Show ID: {result['show_id']}")
+            logger.info(f"  VOD ID: {result['vod_id']}")
+            logger.info(f"  Title: {result['title']}")
         else:
-            print(f"\n✗ Failed to publish transcription {transcription_id} to VOD")
+            logger.error(f"Failed to publish transcription {transcription_id} to VOD")
             return 1
             
+    except FileNotFoundError as e:
+        logger.error(f"Transcription file not found: {e}")
+        return 1
+    except ConnectionError as e:
+        logger.error(f"Connection error publishing transcription: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error publishing transcription: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error publishing transcription: {e}")
+        logger.error(f"Unexpected error publishing transcription: {e}")
         return 1
     return 0
+
 
 def batch_publish_transcriptions(transcription_ids):
     """Batch publish multiple transcriptions to VOD"""
@@ -79,29 +99,37 @@ def batch_publish_transcriptions(transcription_ids):
         manager = VODService()
         results = manager.batch_process_transcriptions(transcription_ids)
         
-        print(f"\n" + "="*60)
-        print("BATCH PUBLISH RESULTS")
-        print("="*60)
-        print(f"Processed: {results['processed_count']}")
-        print(f"Errors: {results['error_count']}")
+        logger.info("="*60)
+        logger.info("BATCH PUBLISH RESULTS")
+        logger.info("="*60)
+        logger.info(f"Processed: {results['processed_count']}")
+        logger.info(f"Errors: {results['error_count']}")
         
         if results['results']:
-            print(f"\nSuccessful Publications:")
+            logger.info("Successful Publications:")
             for result in results['results']:
-                print(f"  • {result['title']} (VOD ID: {result['vod_id']})")
+                logger.info(f"  • {result['title']} (VOD ID: {result['vod_id']})")
         
         if results['errors']:
-            print(f"\nErrors:")
+            logger.error("Errors:")
             for error in results['errors']:
-                print(f"  • {error}")
+                logger.error(f"  • {error}")
         
-        print("="*60)
+        logger.info("="*60)
         
         return 0 if results['error_count'] == 0 else 1
         
-    except Exception as e:
-        logger.error(f"Error batch publishing: {e}")
+    except ConnectionError as e:
+        logger.error(f"Connection error batch publishing: {e}")
         return 1
+    except VODError as e:
+        logger.error(f"VOD service error batch publishing: {e}")
+        return 1
+    except Exception as e:
+        logger.error(f"Unexpected error batch publishing: {e}")
+        return 1
+        return 1
+
 
 def sync_shows():
     """Sync shows from Cablecast to Archivist database"""
@@ -109,12 +137,19 @@ def sync_shows():
         manager = VODService()
         synced_count = manager.sync_shows_from_cablecast()
         
-        print(f"\n✓ Synced {synced_count} shows from Cablecast")
+        logger.success(f"Synced {synced_count} shows from Cablecast")
         
+    except ConnectionError as e:
+        logger.error(f"Connection error syncing shows: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error syncing shows: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error syncing shows: {e}")
+        logger.error(f"Unexpected error syncing shows: {e}")
         return 1
     return 0
+
 
 def sync_vods():
     """Sync VODs from Cablecast to Archivist database"""
@@ -122,99 +157,100 @@ def sync_vods():
         manager = VODService()
         synced_count = manager.sync_vods_from_cablecast()
         
-        print(f"\n✓ Synced {synced_count} VODs from Cablecast")
+        logger.success(f"Synced {synced_count} VODs from Cablecast")
         
+    except ConnectionError as e:
+        logger.error(f"Connection error syncing VODs: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error syncing VODs: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error syncing VODs: {e}")
+        logger.error(f"Unexpected error syncing VODs: {e}")
         return 1
     return 0
+
 
 def test_connection():
     """Test connection to Cablecast API"""
     try:
         manager = VODService()
-        client = manager.client
-        success = client.test_connection()
-        
-        if success:
-            print("\n✓ Cablecast API connection successful")
+        if manager.test_connection():
+            logger.success("Cablecast API connection successful")
         else:
-            print("\n✗ Cablecast API connection failed")
+            logger.error("Cablecast API connection failed")
             return 1
             
+    except ConnectionError as e:
+        logger.error(f"Connection error testing API: {e}")
+        return 1
+    except VODError as e:
+        logger.error(f"VOD service error testing connection: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error testing connection: {e}")
+        logger.error(f"Unexpected error testing connection: {e}")
         return 1
     return 0
+
 
 def list_transcriptions():
     """List available transcriptions"""
     try:
-        from core.models import TranscriptionResultORM
+        manager = VODService()
+        transcriptions = manager.list_transcriptions()
         
-        transcriptions = TranscriptionResultORM.query.order_by(
-            TranscriptionResultORM.completed_at.desc()
-        ).limit(20).all()
+        logger.info("="*80)
+        logger.info("AVAILABLE TRANSCRIPTIONS")
+        logger.info("="*80)
+        logger.info(f"{'ID':<36} {'Title':<30} {'Status':<12} {'Completed'}")
+        logger.info("-" * 80)
         
-        print("\n" + "="*80)
-        print("AVAILABLE TRANSCRIPTIONS")
-        print("="*80)
-        print(f"{'ID':<36} {'Title':<30} {'Status':<12} {'Completed'}")
-        print("-" * 80)
+        for transcription in transcriptions:
+            status = transcription.get('status', 'unknown')
+            completed = transcription.get('completed_at', 'N/A')
+            title = transcription.get('title', 'Unknown')[:29] + '...' if len(transcription.get('title', '')) > 30 else transcription.get('title', 'Unknown')
+            
+            logger.info(f"{transcription['id']:<36} {title:<30} {status:<12} {completed}")
         
-        for t in transcriptions:
-            title = os.path.basename(t.video_path)[:28] + ".." if len(os.path.basename(t.video_path)) > 30 else os.path.basename(t.video_path)
-            print(f"{t.id:<36} {title:<30} {t.status:<12} {t.completed_at.strftime('%Y-%m-%d %H:%M')}")
+        logger.info("="*80)
         
-        print("="*80)
-        
+    except ConnectionError as e:
+        logger.error(f"Connection error listing transcriptions: {e}")
+        return 1
+    except DatabaseError as e:
+        logger.error(f"Database error listing transcriptions: {e}")
+        return 1
     except Exception as e:
-        logger.error(f"Error listing transcriptions: {e}")
+        logger.error(f"Unexpected error listing transcriptions: {e}")
+        return 1
         return 1
     return 0
 
+
 def main():
-    """Main CLI function"""
+    """Main CLI entry point."""
     setup_logging()
     
-    parser = argparse.ArgumentParser(
-        description="VOD Command Line Interface for Archivist",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python3 vod_cli.py sync-status
-  python3 vod_cli.py publish abc123-def456-ghi789
-  python3 vod_cli.py batch-publish abc123 def456 ghi789
-  python3 vod_cli.py sync-shows
-  python3 vod_cli.py test-connection
-  python3 vod_cli.py list-transcriptions
-        """
-    )
-    
+    parser = argparse.ArgumentParser(description='VOD Management CLI')
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
     
     # Sync status command
-    subparsers.add_parser('sync-status', help='Get sync status between Archivist and VOD system')
+    subparsers.add_parser('sync-status', help='Get sync status')
     
-    # Publish command
-    publish_parser = subparsers.add_parser('publish', help='Publish a transcription to VOD')
+    # Publish commands
+    publish_parser = subparsers.add_parser('publish', help='Publish transcription to VOD')
     publish_parser.add_argument('transcription_id', help='Transcription ID to publish')
     
-    # Batch publish command
-    batch_parser = subparsers.add_parser('batch-publish', help='Batch publish multiple transcriptions to VOD')
+    batch_parser = subparsers.add_parser('batch-publish', help='Batch publish transcriptions')
     batch_parser.add_argument('transcription_ids', nargs='+', help='Transcription IDs to publish')
     
-    # Sync shows command
-    subparsers.add_parser('sync-shows', help='Sync shows from Cablecast to Archivist database')
+    # Sync commands
+    subparsers.add_parser('sync-shows', help='Sync shows from Cablecast')
+    subparsers.add_parser('sync-vods', help='Sync VODs from Cablecast')
     
-    # Sync VODs command
-    subparsers.add_parser('sync-vods', help='Sync VODs from Cablecast to Archivist database')
-    
-    # Test connection command
-    subparsers.add_parser('test-connection', help='Test connection to Cablecast API')
-    
-    # List transcriptions command
-    subparsers.add_parser('list-transcriptions', help='List available transcriptions')
+    # Test commands
+    subparsers.add_parser('test-connection', help='Test Cablecast API connection')
+    subparsers.add_parser('list', help='List available transcriptions')
     
     args = parser.parse_args()
     
@@ -235,12 +271,12 @@ Examples:
         return sync_vods()
     elif args.command == 'test-connection':
         return test_connection()
-    elif args.command == 'list-transcriptions':
+    elif args.command == 'list':
         return list_transcriptions()
     else:
-        parser.print_help()
+        logger.error(f"Unknown command: {args.command}")
         return 1
 
+
 if __name__ == "__main__":
-    exit_code = main()
-    sys.exit(exit_code) 
+    sys.exit(main()) 

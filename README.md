@@ -989,7 +989,4 @@ All features from these have been or are being merged into the integrated dashbo
 4. **If any unique WebSocket events exist, merge them into the dashboard's SocketIO events.**
 5. **Update the dashboard UI to include manual task trigger controls if not already present.**
 
----
-
-**Would you like me to proceed with step 1 and add the manual task trigger endpoints to the integrated dashboard now?**  
-Or do you want a full migration plan for all features first? 
+--- 

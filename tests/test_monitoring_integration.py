@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from core.monitoring.metrics import get_metrics_collector, CircuitBreaker
 from core.monitoring.health_checks import get_health_manager
-from core.monitoring.dashboard import MonitoringDashboard
+from core.monitoring.integrated_dashboard import IntegratedDashboard
 from core.tasks.vod_processing import download_vod_content, process_single_vod
 
 class MonitoringIntegrationTester:
@@ -123,7 +123,7 @@ class MonitoringIntegrationTester:
         for i in range(4):  # Should trigger circuit breaker
             try:
                 cb.call(failing_func)
-            except Exception:
+            except (ConnectionError, TimeoutError):
                 failure_count += 1
         
         status = cb.get_status()
@@ -205,7 +205,7 @@ class MonitoringIntegrationTester:
         
         # Test dashboard initialization
         try:
-            dashboard = MonitoringDashboard(host="127.0.0.1", port=8081)
+            dashboard = IntegratedDashboard(host="127.0.0.1", port=8081)
             self.log_test("Dashboard functionality - initialization", True, 
                          "Dashboard initialized successfully")
         except Exception as e:

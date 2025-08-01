@@ -13,57 +13,99 @@
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
     <script>
+        console.log('🔍 DEBUG: Script block loaded');
+        
         // Global CSRF token variable
         let csrfToken = null;
         
         // Function to get CSRF token
         async function getCSRFToken() {
+            console.log('🔍 DEBUG: getCSRFToken() called');
             try {
+                console.log('🔍 DEBUG: Fetching CSRF token...');
                 const response = await fetch('/api/csrf-token');
+                console.log('🔍 DEBUG: CSRF response status:', response.status);
                 const data = await response.json();
+                console.log('🔍 DEBUG: CSRF response data:', data);
                 csrfToken = data.csrf_token;
-                console.log('CSRF token obtained:', csrfToken ? 'Success' : 'Failed');
+                console.log('🔍 DEBUG: CSRF token set:', csrfToken ? 'Success' : 'Failed');
+                console.log('🔍 DEBUG: CSRF token value:', csrfToken);
             } catch (error) {
-                console.error('Error getting CSRF token:', error);
+                console.error('🔍 DEBUG: Error getting CSRF token:', error);
             }
         }
         
         // Function to make authenticated API requests
         async function apiRequest(url, options = {}) {
+            console.log('🔍 DEBUG: apiRequest() called with URL:', url);
+            console.log('🔍 DEBUG: apiRequest options:', options);
+            
             // Ensure we have a CSRF token
             if (!csrfToken) {
+                console.log('🔍 DEBUG: No CSRF token, getting one...');
                 await getCSRFToken();
             }
             
+            console.log('🔍 DEBUG: CSRF token available:', csrfToken ? 'Yes' : 'No');
+            
             // Add CSRF token to headers for state-changing operations
             if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
+                console.log('🔍 DEBUG: Adding CSRF token to headers');
                 options.headers = {
                     ...options.headers,
                     'X-CSRF-Token': csrfToken
                 };
+                console.log('🔍 DEBUG: Final headers:', options.headers);
             }
             
+            console.log('🔍 DEBUG: Making fetch request...');
             return fetch(url, options);
         }
         
+        // Global error handler
+        window.addEventListener('error', function(event) {
+            console.error('🔍 DEBUG: Global JavaScript error:', event.error);
+            console.error('🔍 DEBUG: Error message:', event.message);
+            console.error('🔍 DEBUG: Error filename:', event.filename);
+            console.error('🔍 DEBUG: Error line number:', event.lineno);
+        });
+
         // Get CSRF token when page loads
-        document.addEventListener('DOMContentLoaded', getCSRFToken);
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 DEBUG: DOM Content Loaded');
+            console.log('🔍 DEBUG: About to get CSRF token');
+            getCSRFToken();
+            console.log('🔍 DEBUG: CSRF token request sent');
+        });
+        
+        // Immediate test
+        console.log('🔍 DEBUG: Script execution started');
+        setTimeout(function() {
+            console.log('🔍 DEBUG: 2 second timeout test');
+            // Add visible debug element
+            const debugDiv = document.createElement('div');
+            debugDiv.id = 'debug-info';
+            debugDiv.style.cssText = 'position: fixed; top: 10px; left: 10px; background: red; color: white; padding: 10px; z-index: 9999; font-size: 12px;';
+            debugDiv.innerHTML = '🔍 DEBUG: JavaScript is working! CSRF Token: ' + (csrfToken ? 'OK' : 'NULL');
+            document.body.appendChild(debugDiv);
+        }, 2000);
     </script>
-    <div class="container mx-auto px-4 py-8">
+    
+    <main class="container mx-auto px-4 py-8">
         <header class="mb-8">
             <h1 class="text-3xl font-bold mb-2">Archivist</h1>
             <p class="text-gray-400">Video Transcription System</p>
             <!-- Live System Metrics Panel -->
-            <div id="live-metrics" class="mt-4 bg-gray-700 rounded p-4 flex flex-wrap gap-6 text-sm">
+            <section id="live-metrics" class="mt-4 bg-gray-700 rounded p-4 flex flex-wrap gap-6 text-sm" aria-label="System Metrics">
                 <div><span class="font-semibold">CPU:</span> <span id="metric-cpu">-</span>%</div>
                 <div><span class="font-semibold">Memory:</span> <span id="metric-mem">-</span>%</div>
                 <div><span class="font-semibold">Disk:</span> <span id="metric-disk">-</span>%</div>
                 <div><span class="font-semibold">Redis:</span> <span id="metric-redis">-</span></div>
-            </div>
+            </section>
         </header>
 
         <!-- Navigation Tabs -->
-        <nav class="mb-6">
+        <nav class="mb-6" aria-label="Main Navigation">
             <ul class="flex gap-4 border-b border-gray-700" id="main-tabs">
                 <li><button class="tab-btn active" data-tab="tab-browser">File Browser</button></li>
                 <li><button class="tab-btn" data-tab="tab-analytics">Analytics</button></li>
@@ -73,18 +115,33 @@
         </nav>
 
         <!-- Tab Content Containers -->
-        <div id="tab-browser" class="tab-content">
+        <section id="tab-browser" class="tab-content">
             <!-- Search Bar -->
-            <div class="mb-6">
-                <div class="flex gap-4">
+            <section class="mb-6" aria-label="Search">
+                <form class="flex gap-4" role="search">
+                    <label for="search-input" class="sr-only">Search files or transcriptions</label>
                     <input type="text" id="search-input" placeholder="Search files or transcriptions..." 
-                           class="flex-1 bg-gray-700 text-white px-4 py-2 rounded">
-                    <select id="search-type" class="bg-gray-700 text-white px-4 py-2 rounded">
+                           class="flex-1 bg-gray-700 text-white px-4 py-2 rounded" aria-label="Search input">
+                    <label for="search-type" class="sr-only">Search type</label>
+                    <select id="search-type" class="bg-gray-700 text-white px-4 py-2 rounded" aria-label="Search type">
                         <option value="files">Files</option>
                         <option value="transcriptions">Transcriptions</option>
                     </select>
+                </form>
+            </section>
+
+            <!-- Flex Servers Panel -->
+            <section class="bg-gray-800 rounded-lg p-6 mb-6" aria-label="Flex Servers">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Flex Servers</h2>
+                    <button onclick="loadFlexServers()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded" aria-label="Refresh flex servers">
+                        Refresh
+                    </button>
                 </div>
-            </div>
+                <div id="flex-servers-list" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Flex servers will be listed here -->
+                </div>
+            </section>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <!-- Real-Time Analytics Panel -->
@@ -137,7 +194,7 @@
                         <!-- Files will be listed here -->
                     </div>
                     <div class="mt-4">
-                        <button id="queue-selected-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="queueSelectedFiles()">
+                        <button id="queue-selected-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="alert('Button clicked!'); console.log('🔍 DEBUG: Button clicked'); queueSelectedFiles();">
                             Queue Selected for Transcription
                         </button>
                     </div>
@@ -197,7 +254,7 @@
         <div id="tab-controls" class="tab-content hidden">
             <div class="bg-gray-800 rounded-lg p-6">
                 <h2 class="text-xl font-semibold mb-4">Controls (Coming Soon)</h2>
-                <div id="controls-placeholder" class="text-gray-400">Manual controls for VOD/transcription will appear here.</div>
+                <div id="controls-placeholder" class="text-gray-400">Coming Soon - Manual controls for VOD/transcription will appear here.</div>
             </div>
         </div>
     </div>
@@ -229,6 +286,7 @@
             loadFiles();
             updateQueue();
             loadCompletedTranscriptions();
+            loadFlexServers();
             queueUpdateInterval = setInterval(updateQueue, 5000);
 
             // Initialize Socket.IO connection
@@ -413,11 +471,17 @@
 
         // Handle file selection
         function handleFileSelection(path, isSelected) {
+            console.log('🔍 DEBUG: handleFileSelection() called with path:', path, 'isSelected:', isSelected);
+            
             if (isSelected) {
                 selectedFiles.add(path);
+                console.log('🔍 DEBUG: Added file to selection. Total selected:', selectedFiles.size);
             } else {
                 selectedFiles.delete(path);
+                console.log('🔍 DEBUG: Removed file from selection. Total selected:', selectedFiles.size);
             }
+            
+            console.log('🔍 DEBUG: Current selectedFiles Set:', Array.from(selectedFiles));
             
             // Update queue button state
             const queueBtn = document.getElementById('queue-selected-btn');
@@ -425,11 +489,95 @@
                 queueBtn.textContent = `Queue ${selectedFiles.size} Selected File(s)`;
                 queueBtn.classList.remove('bg-gray-600');
                 queueBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                console.log('🔍 DEBUG: Updated button to show', selectedFiles.size, 'selected files');
             } else {
                 queueBtn.textContent = 'Queue Selected for Transcription';
                 queueBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
                 queueBtn.classList.add('bg-gray-600');
+                console.log('🔍 DEBUG: Updated button to show no files selected');
             }
+        }
+
+        // Load Flex servers
+        function loadFlexServers() {
+            fetch('/api/member-cities')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    const flexServersList = document.getElementById('flex-servers-list');
+                    if (!data.data || !data.data.member_cities) {
+                        flexServersList.innerHTML = '<div class="text-gray-400 p-4 text-center">No Flex servers found</div>';
+                        return;
+                    }
+                    
+                    const cities = data.data.member_cities;
+                    flexServersList.innerHTML = Object.entries(cities).map(([cityId, cityInfo]) => `
+                        <div class="bg-gray-700 rounded p-4 hover:bg-gray-600 cursor-pointer" onclick="navigateToFlexServer('${cityId}')">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-semibold text-lg">${cityInfo.name}</h3>
+                                <span class="text-xs text-gray-400">${cityId}</span>
+                            </div>
+                            <p class="text-sm text-gray-400 mb-3">${cityInfo.description}</p>
+                            <div class="text-xs text-gray-500">
+                                <div>Mount: ${cityInfo.mount_path}</div>
+                                <div class="mt-1">
+                                    <button onclick="event.stopPropagation(); browseFlexServer('${cityId}')" 
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
+                                        Browse
+                                    </button>
+                                    <button onclick="event.stopPropagation(); checkFlexServerStatus('${cityId}')" 
+                                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs ml-1">
+                                        Status
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading Flex servers:', error);
+                    showNotification('Error loading Flex servers: ' + error.message, 'error');
+                    document.getElementById('flex-servers-list').innerHTML = 
+                        '<div class="text-red-400 p-4 text-center">Error loading Flex servers</div>';
+                });
+        }
+
+        // Navigate to Flex server
+        function navigateToFlexServer(cityId) {
+            // This could open a new tab or navigate to the Flex server's content
+            showNotification(`Navigating to ${cityId}...`, 'info');
+        }
+
+        // Browse Flex server
+        function browseFlexServer(cityId) {
+            // Navigate to the Flex server's mount path in the file browser
+            currentPath = cityId;
+            loadFiles();
+            showNotification(`Browsing ${cityId}...`, 'info');
+        }
+
+        // Check Flex server status
+        function checkFlexServerStatus(cityId) {
+            // Check if the Flex server mount is accessible
+            fetch(`/api/browse?path=${encodeURIComponent(cityId)}`)
+                .then(response => {
+                    if (response.ok) {
+                        showNotification(`${cityId} is accessible`, 'success');
+                    } else {
+                        showNotification(`${cityId} is not accessible`, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification(`Error checking ${cityId} status: ${error.message}`, 'error');
+                });
         }
 
         // Load completed transcriptions
@@ -576,6 +724,7 @@
             
             // Allow manual dismissal
             notification.addEventListener('click', () => notification.remove());
+            return notification; // Return the created notification for removal
         }
 
         // Format file size
@@ -677,7 +826,23 @@
                     }
                     
                     queueList.innerHTML = jobs.map(job => {
-                        const fileName = job.video_path ? job.video_path.split('/').pop() : (job.name || 'Unknown task');
+                        let fileName = 'Unknown task';
+                        
+                        if (job.video_path) {
+                            if (Array.isArray(job.video_path)) {
+                                // Handle batch transcription tasks with array of paths
+                                fileName = job.video_path.length > 0 ? job.video_path[0].split('/').pop() : 'Batch task';
+                                if (job.video_path.length > 1) {
+                                    fileName += ` (+${job.video_path.length - 1} more)`;
+                                }
+                            } else if (typeof job.video_path === 'string') {
+                                fileName = job.video_path.split('/').pop();
+                            }
+                        } else if (job.name && typeof job.name === 'string') {
+                            fileName = job.name;
+                        } else if (job.task_name && typeof job.task_name === 'string') {
+                            fileName = job.task_name;
+                        }
                         const statusClass = job.status === 'completed' ? 'bg-green-600' :
                                           job.status === 'failed' ? 'bg-red-600' :
                                           job.status === 'processing' || job.status === 'started' || job.status === 'active' ? 'bg-blue-600' :
@@ -731,16 +896,36 @@
 
         // Add a function to update the queue UI from real-time data
         function updateQueueUI(jobs) {
+            console.log('🔍 DEBUG: updateQueueUI called with jobs:', jobs);
             const queueList = document.getElementById('queue-list');
             if (!Array.isArray(jobs) || jobs.length === 0) {
                 queueList.innerHTML = '<div class="text-gray-400 p-4 text-center">No jobs in queue</div>';
                 return;
             }
-            queueList.innerHTML = jobs.map(job => `
+            queueList.innerHTML = jobs.map(job => {
+                let fileName = 'Unknown task';
+                
+                if (job.video_path) {
+                    if (Array.isArray(job.video_path)) {
+                        // Handle batch transcription tasks with array of paths
+                        fileName = job.video_path.length > 0 ? job.video_path[0].split('/').pop() : 'Batch task';
+                        if (job.video_path.length > 1) {
+                            fileName += ` (+${job.video_path.length - 1} more)`;
+                        }
+                    } else if (typeof job.video_path === 'string') {
+                        fileName = job.video_path.split('/').pop();
+                    }
+                } else if (job.name && typeof job.name === 'string') {
+                    fileName = job.name;
+                } else if (job.task_name && typeof job.task_name === 'string') {
+                    fileName = job.task_name;
+                }
+                
+                return `
                 <div class="bg-gray-700 rounded p-4">
                     <div class="flex justify-between items-start mb-2">
                         <div>
-                            <h3 class="font-semibold">${job.video_path ? job.video_path.split('/').pop() : 'Unknown file'}</h3>
+                            <h3 class="font-semibold">${fileName}</h3>
                             <p class="text-sm text-gray-400">${job.status_message || job.status}</p>
                         </div>
                         <div class="flex gap-2">
@@ -770,7 +955,8 @@
                         </p>
                     ` : ''}
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Format time remaining
@@ -787,11 +973,21 @@
 
         // Queue selected files for transcription
         function queueSelectedFiles() {
+            console.log('🔍 DEBUG: queueSelectedFiles() called');
+            console.log('🔍 DEBUG: selectedFiles Set:', selectedFiles);
+            console.log('🔍 DEBUG: selectedFiles size:', selectedFiles.size);
+            
             const paths = Array.from(selectedFiles);
+            console.log('🔍 DEBUG: paths array:', paths);
+            
             if (paths.length === 0) {
+                console.log('🔍 DEBUG: No files selected, showing warning');
                 showNotification('Please select at least one video file.', 'warning');
                 return;
             }
+            
+            // Show processing notification
+            const processingNotification = showNotification(`Queuing ${paths.length} file(s) for transcription and captioning...`, 'info');
             
             apiRequest('/api/transcribe/batch', {
                 method: 'POST',
@@ -805,34 +1001,130 @@
                 return response.json();
             })
             .then(data => {
+                // Remove processing notification
+                if (processingNotification && processingNotification.parentNode) {
+                    processingNotification.remove();
+                }
+                
                 let message = '';
+                let notificationType = 'success';
+                
                 if (data.queued && data.queued.length > 0) {
                     message += `Successfully queued ${data.queued.length} file(s) for transcription and captioning.`;
                     if (data.batch_task_id) {
                         message += ` Batch task ID: ${data.batch_task_id}`;
+                        
+                        // Store batch task ID for tracking
+                        localStorage.setItem('current_batch_task', data.batch_task_id);
+                        
+                        // Start monitoring batch progress
+                        monitorBatchProgress(data.batch_task_id);
                     }
                     updateQueue();
                     
                     // Clear selections after successful queueing
                     selectedFiles.clear();
                     document.querySelectorAll('.file-checkbox:checked').forEach(cb => cb.checked = false);
-                    handleFileSelection('', false); // Update button state
+                    // Update button state without calling handleFileSelection with empty path
+                    const queueBtn = document.getElementById('queue-selected-btn');
+                    queueBtn.textContent = 'Queue Selected for Transcription';
+                    queueBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    queueBtn.classList.add('bg-gray-600');
                 }
+                
                 if (data.errors && data.errors.length > 0) {
                     if (message) message += ' ';
                     message += `However, ${data.errors.length} file(s) could not be queued.`;
                     console.error('Queueing errors:', data.errors);
+                    notificationType = 'warning';
                 }
+                
                 if (data.invalid_paths && data.invalid_paths.length > 0) {
                     if (message) message += ' ';
                     message += ` ${data.invalid_paths.length} file(s) had invalid paths.`;
+                    notificationType = 'warning';
                 }
-                showNotification(message, (data.errors && data.errors.length > 0) || (data.invalid_paths && data.invalid_paths.length > 0) ? 'warning' : 'success');
+                
+                showNotification(message, notificationType);
             })
             .catch(error => {
+                // Remove processing notification
+                if (processingNotification && processingNotification.parentNode) {
+                    processingNotification.remove();
+                }
+                
                 console.error('Error queueing files:', error);
                 showNotification('Error queueing files: ' + error.message, 'error');
             });
+        }
+
+        // Monitor batch transcription progress
+        function monitorBatchProgress(batchTaskId) {
+            const progressInterval = setInterval(() => {
+                fetch(`/api/queue/batch/${batchTaskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'completed' || data.status === 'failed') {
+                            clearInterval(progressInterval);
+                            localStorage.removeItem('current_batch_task');
+                            
+                            // Show final results
+                            let message = `Batch processing ${data.status}: ${data.completed} completed, ${data.failed} failed`;
+                            
+                            if (data.captioning_results && data.captioning_results.length > 0) {
+                                const successfulCaptions = data.captioning_results.filter(r => r.captioning_success).length;
+                                message += `. Captioning: ${successfulCaptions}/${data.captioning_results.length} successful`;
+                            }
+                            
+                            showNotification(message, data.status === 'completed' ? 'success' : 'warning');
+                            updateQueue();
+                        } else {
+                            // Update progress in UI
+                            updateBatchProgress(data);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error monitoring batch progress:', error);
+                        clearInterval(progressInterval);
+                    });
+            }, 5000); // Check every 5 seconds
+        }
+
+        // Update batch progress in UI
+        function updateBatchProgress(batchData) {
+            const progressElement = document.getElementById('batch-progress');
+            if (!progressElement) {
+                // Create progress element if it doesn't exist
+                const progressContainer = document.createElement('div');
+                progressContainer.id = 'batch-progress';
+                progressContainer.className = 'fixed bottom-4 right-4 bg-gray-800 rounded-lg p-4 shadow-lg z-50';
+                progressContainer.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-semibold">Batch Processing</h4>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-white">&times;</button>
+                    </div>
+                    <div class="text-sm text-gray-400 mb-2">
+                        <span id="batch-status">Processing...</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
+                        <div id="batch-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="text-xs text-gray-400">
+                        <span id="batch-counts">0 / 0 completed</span>
+                    </div>
+                `;
+                document.body.appendChild(progressContainer);
+            }
+            
+            // Update progress information
+            const total = batchData.total_videos || 0;
+            const completed = batchData.completed || 0;
+            const failed = batchData.failed || 0;
+            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            document.getElementById('batch-status').textContent = `Status: ${batchData.status}`;
+            document.getElementById('batch-progress-bar').style.width = `${progress}%`;
+            document.getElementById('batch-counts').textContent = `${completed} / ${total} completed (${failed} failed)`;
         }
 
         // Cancel job
@@ -1322,5 +1614,6 @@
             `).join('');
         }
     </script>
+    </main>
 </body>
 </html> 

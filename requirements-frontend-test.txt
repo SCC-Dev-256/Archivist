@@ -1,0 +1,53 @@
+# Frontend Testing Dependencies
+# PURPOSE: Required packages for comprehensive frontend testing
+# DEPENDENCIES: Selenium, Socket.IO, pytest, and testing utilities
+# MODIFICATION NOTES: v1.0 - Initial frontend testing requirements
+
+# Core testing framework
+pytest>=7.0.0
+pytest-html>=3.0.0
+pytest-xdist>=3.0.0
+
+# Selenium for browser automation
+selenium>=4.0.0
+webdriver-manager>=3.8.0
+
+# Socket.IO for WebSocket testing
+python-socketio>=5.7.0
+python-socketio[client]>=5.7.0
+
+# HTTP requests and API testing
+requests>=2.28.0
+httpx>=0.24.0
+
+# HTML parsing for accessibility testing
+beautifulsoup4>=4.11.0
+lxml>=4.9.0
+
+# Performance testing
+locust>=2.15.0
+psutil>=5.9.0
+
+# Visual testing (optional)
+pytest-selenium>=4.0.0
+
+# Visual regression testing
+Pillow>=9.0.0
+numpy>=1.21.0
+
+# Accessibility testing
+axe-selenium-python>=2.1.6
+
+# Test reporting and logging
+allure-pytest>=2.13.0
+pytest-json-report>=1.5.0
+
+# Mocking and test utilities
+responses>=0.23.0
+freezegun>=1.2.0
+
+# Development and debugging
+ipdb>=0.13.0
+pytest-cov>=4.0.0
+
+# NEXT STEP: Install these dependencies and run frontend tests 

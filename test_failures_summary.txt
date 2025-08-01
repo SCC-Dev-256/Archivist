@@ -1,0 +1,1329 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-8.4.1, pluggy-1.6.0 -- /opt/Archivist/venv_py311/bin/python
+cachedir: .pytest_cache
+rootdir: /opt/Archivist
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.9.0
+collecting ... collected 160 items / 1 skipped
+
+tests/integration/test_cablecast_api_connection.py::test_cablecast_configuration PASSED [  0%]
+tests/integration/test_cablecast_api_connection.py::test_cablecast_connection PASSED [  1%]
+tests/integration/test_cablecast_api_connection.py::test_cablecast_endpoints PASSED [  1%]
+tests/integration/test_cablecast_api_connection.py::test_vod_integration PASSED [  2%]
+tests/integration/test_cablecast_api_connection.py::test_database_integration PASSED [  3%]
+tests/integration/test_cablecast_workflow.py::test_show_mapper PASSED    [  3%]
+tests/integration/test_cablecast_workflow.py::test_transcription_linker PASSED [  4%]
+tests/integration/test_cablecast_workflow.py::test_vod_automation PASSED [  5%]
+tests/integration/test_cablecast_workflow.py::test_api_endpoints PASSED  [  5%]
+tests/integration/test_cablecast_workflow.py::test_database_models PASSED [  6%]
+tests/integration/test_cablecast_workflow_quick.py::test_show_mapper_core PASSED [  6%]
+tests/integration/test_cablecast_workflow_quick.py::test_transcription_linker_core PASSED [  7%]
+tests/integration/test_cablecast_workflow_quick.py::test_database_models PASSED [  8%]
+tests/integration/test_cablecast_workflow_quick.py::test_api_endpoints PASSED [  8%]
+tests/integration/test_cablecast_workflow_quick.py::test_vod_automation_core PASSED [  9%]
+tests/integration/test_service_import.py::test_imports PASSED            [ 10%]
+tests/integration/test_vod_integration.py::test_cablecast_client PASSED  [ 10%]
+tests/integration/test_vod_integration.py::test_vod_content_manager PASSED [ 11%]
+tests/integration/test_vod_integration.py::test_models PASSED            [ 11%]
+tests/integration/test_vod_integration.py::test_configuration PASSED     [ 12%]
+tests/test_api_fixes.py::test_api_health PASSED                          [ 13%]
+tests/test_api_fixes.py::test_transcription_endpoint PASSED              [ 13%]
+tests/test_api_fixes.py::test_queue_endpoint PASSED                      [ 14%]
+tests/test_api_simple.py::test_api_health PASSED                         [ 15%]
+tests/test_api_simple.py::test_transcription_endpoint PASSED             [ 15%]
+tests/test_api_simple.py::test_queue_endpoint PASSED                     [ 16%]
+tests/test_api_simple.py::test_cablecast_endpoint PASSED                 [ 16%]
+tests/test_archivist.py::test_core_imports PASSED                        [ 17%]
+tests/test_archivist.py::test_service_layer PASSED                       [ 18%]
+tests/test_archivist.py::test_configuration PASSED                       [ 18%]
+tests/test_archivist.py::test_file_system PASSED                         [ 19%]
+tests/test_archivist.py::test_dependencies PASSED                        [ 20%]
+tests/test_celery_integration.py::test_celery_app PASSED                 [ 20%]
+tests/test_celery_integration.py::test_task_registration PASSED          [ 21%]
+tests/test_celery_integration.py::test_transcription_task PASSED         [ 21%]
+tests/test_celery_integration.py::test_vod_task PASSED                   [ 22%]
+tests/test_celery_integration.py::test_celery_configuration PASSED       [ 23%]
+tests/test_celery_migration.py::test_celery_task_registration PASSED     [ 23%]
+tests/test_celery_migration.py::test_transcription_task_import PASSED    [ 24%]
+tests/test_celery_migration.py::test_vod_processing_integration PASSED   [ 25%]
+tests/test_celery_migration.py::test_rq_system_removal PASSED            [ 25%]
+tests/test_celery_migration.py::test_celery_worker_status PASSED         [ 26%]
+tests/test_celery_migration.py::test_backward_compatibility PASSED       [ 26%]
+tests/test_celery_migration.py::test_system_health PASSED                [ 27%]
+tests/test_complete_scc_pipeline.py::test_scc_parsing ERROR              [ 28%]
+tests/test_complete_scc_pipeline.py::test_summarization ERROR            [ 28%]
+tests/test_direct_transcription.py::test_direct_transcription PASSED     [ 29%]
+tests/test_force_processing.py::test_force_processing PASSED             [ 30%]
+tests/test_real_vod_processing.py::test_real_vod_processing PASSED       [ 30%]
+tests/test_real_vod_processing.py::test_vod_download PASSED              [ 31%]
+tests/test_realtime_monitoring.py::test_api_endpoints PASSED             [ 31%]
+tests/test_realtime_monitoring.py::test_web_interface PASSED             [ 32%]
+tests/test_realtime_monitoring.py::test_real_time_features PASSED        [ 33%]
+tests/test_scc_upload.py::test_scc_upload_functionality PASSED           [ 33%]
+tests/test_scc_upload.py::test_scc_conversion_pipeline PASSED            [ 34%]
+tests/test_scc_upload.py::test_scc_parsing PASSED                        [ 35%]
+tests/test_transcription_main.py::test_transcription_service PASSED      [ 35%]
+tests/test_transcription_main.py::test_direct_transcription PASSED       [ 36%]
+tests/test_transcription_main.py::test_task_transcription PASSED         [ 36%]
+tests/test_vod_processing.py::test_flex_mount_access PASSED              [ 37%]
+tests/test_vod_processing.py::test_celery_connection FAILED              [ 38%]
+tests/test_vod_processing.py::test_cablecast_connection FAILED           [ 38%]
+tests/test_vod_processing.py::test_vod_processing_task PASSED            [ 39%]
+tests/test_vod_processing.py::test_storage_paths FAILED                  [ 40%]
+tests/test_vod_processing_pipeline.py::test_celery_task_registration PASSED [ 40%]
+tests/test_vod_processing_pipeline.py::test_cablecast_connection PASSED  [ 41%]
+tests/test_vod_processing_pipeline.py::test_storage_paths PASSED         [ 41%]
+tests/test_vod_processing_pipeline.py::test_caption_generation PASSED    [ 42%]
+tests/test_vod_processing_pipeline.py::test_vod_processing_workflow PASSED [ 43%]
+tests/test_vod_processing_pipeline.py::test_alert_system PASSED          [ 43%]
+tests/test_vod_processing_pipeline.py::test_city_filtering PASSED        [ 44%]
+tests/test_vod_system.py::test_celery_tasks PASSED                       [ 45%]
+tests/test_vod_system.py::test_task_queue PASSED                         [ 45%]
+tests/test_vod_system.py::test_gui_interfaces PASSED                     [ 46%]
+tests/test_vod_system.py::test_scheduled_tasks PASSED                    [ 46%]
+tests/test_vod_system.py::test_vod_processing_pipeline PASSED            [ 47%]
+tests/test_vod_system.py::test_system_resources PASSED                   [ 48%]
+tests/test_vod_system.py::test_api_endpoints PASSED                      [ 48%]
+tests/unit/test_auth.py::test_init_auth FAILED                           [ 49%]
+tests/unit/test_auth.py::test_login_required_decorator FAILED            [ 50%]
+tests/unit/test_auth.py::test_admin_required_decorator FAILED            [ 50%]
+tests/unit/test_auth.py::test_create_token FAILED                        [ 51%]
+tests/unit/test_auth.py::test_get_current_user FAILED                    [ 51%]
+tests/unit/test_auth.py::test_rate_limiting FAILED                       [ 52%]
+tests/unit/test_auth.py::test_token_expiration FAILED                    [ 53%]
+tests/unit/test_caption_checks.py::test_all_captions_present PASSED      [ 53%]
+tests/unit/test_caption_checks.py::test_missing_captions PASSED          [ 54%]
+tests/unit/test_check_mounts.py::test_verify_all_mounts_present PASSED   [ 55%]
+tests/unit/test_check_mounts.py::test_verify_missing_member_city_mount PASSED [ 55%]
+tests/unit/test_check_mounts.py::test_verify_missing_spare_storage_mount PASSED [ 56%]
+tests/unit/test_file_manager.py::test_init_file_manager PASSED           [ 56%]
+tests/unit/test_file_manager.py::test_validate_location_access FAILED    [ 57%]
+tests/unit/test_file_manager.py::test_get_accessible_mounts FAILED       [ 58%]
+tests/unit/test_file_manager.py::test_get_file_details PASSED            [ 58%]
+tests/unit/test_file_manager.py::test_get_file_details_video PASSED      [ 59%]
+tests/unit/test_file_manager.py::test_list_mount_points PASSED           [ 60%]
+tests/unit/test_file_manager.py::test_list_locations FAILED              [ 60%]
+tests/unit/test_file_manager.py::test_file_not_found PASSED              [ 61%]
+tests/unit/test_file_manager.py::test_not_a_file PASSED                  [ 61%]
+tests/unit/test_security.py::TestSecurityManager::test_init PASSED       [ 62%]
+tests/unit/test_security.py::TestSecurityManager::test_validate_path_valid PASSED [ 63%]
+tests/unit/test_security.py::TestSecurityManager::test_validate_path_traversal PASSED [ 63%]
+tests/unit/test_security.py::TestSecurityManager::test_validate_path_absolute PASSED [ 64%]
+tests/unit/test_security.py::TestSecurityManager::test_sanitize_input PASSED [ 65%]
+tests/unit/test_security.py::TestSecurityManager::test_sanitize_input_with_allowed_tags PASSED [ 65%]
+tests/unit/test_security.py::TestSecurityManager::test_validate_file_upload_valid PASSED [ 66%]
+tests/unit/test_security.py::TestSecurityManager::test_validate_file_upload_invalid_extension PASSED [ 66%]
+tests/unit/test_security.py::TestSecurityManager::test_validate_file_upload_too_large PASSED [ 67%]
+tests/unit/test_security.py::TestSecurityManager::test_contains_suspicious_pattern PASSED [ 68%]
+tests/unit/test_security.py::TestInputValidation::test_browse_request_validation PASSED [ 68%]
+tests/unit/test_security.py::TestInputValidation::test_transcribe_request_validation PASSED [ 69%]
+tests/unit/test_security.py::TestInputValidation::test_queue_reorder_request_validation FAILED [ 70%]
+tests/unit/test_security.py::TestInputValidation::test_batch_transcribe_request_validation FAILED [ 70%]
+tests/unit/test_security.py::TestSecurityHeaders::test_security_headers_present PASSED [ 71%]
+tests/unit/test_security.py::TestSecurityHeaders::test_csp_headers PASSED [ 71%]
+tests/unit/test_security.py::TestRateLimiting::test_rate_limiting_headers FAILED [ 72%]
+tests/unit/test_security.py::TestRateLimiting::test_rate_limiting_enforcement FAILED [ 73%]
+tests/unit/test_security.py::TestCSRFProtection::test_csrf_token_required FAILED [ 73%]
+tests/unit/test_security.py::TestErrorHandling::test_generic_error_messages PASSED [ 74%]
+tests/unit/test_security.py::TestErrorHandling::test_structured_error_responses PASSED [ 75%]
+tests/unit/test_security.py::TestFileSecurity::test_path_traversal_prevention FAILED [ 75%]
+tests/unit/test_security.py::TestFileSecurity::test_file_type_validation PASSED [ 76%]
+tests/unit/test_security.py::TestSecurityLogging::test_security_event_logging PASSED [ 76%]
+tests/unit/test_security.py::TestSanitization::test_sanitize_output_string PASSED [ 77%]
+tests/unit/test_security.py::TestSanitization::test_sanitize_output_dict PASSED [ 78%]
+tests/unit/test_security.py::TestSanitization::test_sanitize_output_list PASSED [ 78%]
+tests/unit/test_services.py::TestTranscriptionService::test_transcription_service_initialization PASSED [ 79%]
+tests/unit/test_services.py::TestTranscriptionService::test_transcribe_file_success FAILED [ 80%]
+tests/unit/test_services.py::TestTranscriptionService::test_transcribe_file_not_found PASSED [ 80%]
+tests/unit/test_services.py::TestVODService::test_vod_service_initialization PASSED [ 81%]
+tests/unit/test_services.py::TestVODService::test_test_connection_success PASSED [ 81%]
+tests/unit/test_services.py::TestVODService::test_get_shows_success PASSED [ 82%]
+tests/unit/test_services.py::TestFileService::test_file_service_initialization PASSED [ 83%]
+tests/unit/test_services.py::TestFileService::test_validate_path_safe PASSED [ 83%]
+tests/unit/test_services.py::TestFileService::test_validate_path_traversal_attempt PASSED [ 84%]
+tests/unit/test_services.py::TestFileService::test_get_file_size_success PASSED [ 85%]
+tests/unit/test_services.py::TestQueueService::test_queue_service_initialization PASSED [ 85%]
+tests/unit/test_services.py::TestQueueService::test_enqueue_transcription_success FAILED [ 86%]
+tests/unit/test_services.py::TestQueueService::test_enqueue_transcription_file_not_found PASSED [ 86%]
+tests/unit/test_services.py::TestQueueService::test_get_queue_status_success PASSED [ 87%]
+tests/unit/test_services.py::TestServiceIntegration::test_service_singletons PASSED [ 88%]
+tests/unit/test_services.py::TestServiceIntegration::test_service_imports PASSED [ 88%]
+tests/unit/test_task_queue.py::test_enqueue_transcription FAILED         [ 89%]
+tests/unit/test_task_queue.py::test_get_job_status FAILED                [ 90%]
+tests/unit/test_task_queue.py::test_get_all_jobs FAILED                  [ 90%]
+tests/unit/test_task_queue.py::test_reorder_job FAILED                   [ 91%]
+tests/unit/test_task_queue.py::test_stop_job FAILED                      [ 91%]
+tests/unit/test_task_queue.py::test_pause_job FAILED                     [ 92%]
+tests/unit/test_task_queue.py::test_resume_job FAILED                    [ 93%]
+tests/unit/test_task_queue.py::test_remove_job FAILED                    [ 93%]
+tests/unit/test_task_queue.py::test_cleanup_failed_jobs FAILED           [ 94%]
+tests/unit/test_task_queue.py::test_get_current_job FAILED               [ 95%]
+tests/unit/test_task_queue.py::test_job_status_transitions FAILED        [ 95%]
+tests/unit/test_transcription_unit.py::test_transcription_basic PASSED   [ 96%]
+tests/unit/test_transcription_unit.py::test_transcription_error_handling PASSED [ 96%]
+tests/unit/test_transcription_unit.py::test_transcription_invalid_file PASSED [ 97%]
+tests/unit/test_whisperx.py::test_whisperx_transcription FAILED          [ 98%]
+tests/unit/test_whisperx.py::test_whisperx_error_handling PASSED         [ 98%]
+tests/unit/test_whisperx.py::test_whisperx_empty_file PASSED             [ 99%]
+tests/unit/test_whisperx.py::test_whisperx_permissions PASSED            [100%]
+
+==================================== ERRORS ====================================
+______________________ ERROR at setup of test_scc_parsing ______________________
+file /opt/Archivist/tests/test_complete_scc_pipeline.py, line 85
+  def test_scc_parsing(scc_path):
+E       fixture 'scc_path' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, app, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, client, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, mock_redis, mock_transformers, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, setup_test_environment, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/opt/Archivist/tests/test_complete_scc_pipeline.py:85
+_____________________ ERROR at setup of test_summarization _____________________
+file /opt/Archivist/tests/test_complete_scc_pipeline.py, line 103
+  def test_summarization(scc_path):
+E       fixture 'scc_path' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, app, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, client, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, mock_redis, mock_transformers, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, setup_test_environment, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/opt/Archivist/tests/test_complete_scc_pipeline.py:103
+=================================== FAILURES ===================================
+____________________________ test_celery_connection ____________________________
+tests/test_vod_processing.py:33: in test_celery_connection
+    assert len(vod_tasks) > 0, "No VOD processing tasks registered in Celery."
+E   AssertionError: No VOD processing tasks registered in Celery.
+E   assert 0 > 0
+E    +  where 0 = len([])
+__________________________ test_cablecast_connection ___________________________
+tests/test_vod_processing.py:38: in test_cablecast_connection
+    from core.cablecast_client import CablecastClient
+E   ImportError: cannot import name 'CablecastClient' from 'core.cablecast_client' (/opt/Archivist/core/cablecast_client.py)
+______________________________ test_storage_paths ______________________________
+tests/test_vod_processing.py:55: in test_storage_paths
+    manager = VODContentManager(city)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: VODContentManager.__init__() takes 1 positional argument but 2 were given
+________________________________ test_init_auth ________________________________
+tests/unit/test_auth.py:49: in test_init_auth
+    init_auth(app)
+core/auth.py:45: in init_auth
+    limiter.init_app(app, key_func=key_func)
+E   TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+________________________ test_login_required_decorator _________________________
+tests/unit/test_auth.py:60: in test_login_required_decorator
+    init_auth(app)
+core/auth.py:45: in init_auth
+    limiter.init_app(app, key_func=key_func)
+E   TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+________________________ test_admin_required_decorator _________________________
+tests/unit/test_auth.py:87: in test_admin_required_decorator
+    init_auth(app)
+core/auth.py:45: in init_auth
+    limiter.init_app(app, key_func=key_func)
+E   TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+______________________________ test_create_token _______________________________
+tests/unit/test_auth.py:123: in test_create_token
+    init_auth(app)
+core/auth.py:45: in init_auth
+    limiter.init_app(app, key_func=key_func)
+E   TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+____________________________ test_get_current_user _____________________________
+tests/unit/test_auth.py:136: in test_get_current_user
+    init_auth(app)
+core/auth.py:45: in init_auth
+    limiter.init_app(app, key_func=key_func)
+E   TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+______________________________ test_rate_limiting ______________________________
+tests/unit/test_auth.py:156: in test_rate_limiting
+    init_auth(app)
+core/auth.py:45: in init_auth
+    limiter.init_app(app, key_func=key_func)
+E   TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+____________________________ test_token_expiration _____________________________
+tests/unit/test_auth.py:179: in test_token_expiration
+    init_auth(app)
+core/auth.py:45: in init_auth
+    limiter.init_app(app, key_func=key_func)
+E   TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+________________________ test_validate_location_access _________________________
+tests/unit/test_file_manager.py:71: in test_validate_location_access
+    file_manager_instance._validate_location_access()
+core/file_manager.py:58: in _validate_location_access
+    raise ValueError(f"Invalid location: {self.location}")
+E   ValueError: Invalid location: restricted
+__________________________ test_get_accessible_mounts __________________________
+tests/unit/test_file_manager.py:91: in test_get_accessible_mounts
+    assert 'flex1' in mounts
+E   AssertionError: assert 'flex1' in {'nas': '/tmp/pytest-of-schum/pytest-1/test_get_accessible_mounts0'}
+_____________________________ test_list_locations ______________________________
+tests/unit/test_file_manager.py:160: in test_list_locations
+    assert locations == mock_locations
+E   AssertionError: assert {'default': {'name': 'Default Location', 'member_cities': ['flex1', 'flex2', 'flex3', 'flex4', 'flex5', 'flex6', 'flex7', 'flex8', 'flex9'], 'allowed_users': ['*']}, 'birchwood': {'name': 'Birchwood', 'member_cities': ['flex1'], 'allowed_users': ['*']}, 'dellwood_grant_willernie': {'name': 'Dellwood Grant Willernie', 'member_cities': ['flex2'], 'allowed_users': ['*']}, 'lake_elmo': {'name': 'Lake Elmo', 'member_cities': ['flex3'], 'allowed_users': ['*']}, 'mahtomedi': {'name': 'Mahtomedi', 'member_cities': ['flex4'], 'allowed_users': ['*']}, 'oakdale': {'name': 'Oakdale', 'member_cities': ['flex7'], 'allowed_users': ['*']}, 'white_bear_lake': {'name': 'White Bear Lake', 'member_cities': ['flex8'], 'allowed_users': ['*']}, 'white_bear_township': {'name': 'White Bear Township', 'member_cities': ['flex9'], 'allowed_users': ['*']}} == {'default': {'name': 'Default Location', 'allowed_users': ['*'], 'flex_servers': ['flex1', 'flex2']}, 'restricted': {'name': 'Restricted Location', 'allowed_users': ['admin'], 'flex_servers': ['flex1']}}
+E     
+E     Differing items:
+E     {'default': {'allowed_users': ['*'], 'member_cities': ['flex1', 'flex2', 'flex3', 'flex4', 'flex5', 'flex6', ...], 'name': 'Default Location'}} != {'default': {'allowed_users': ['*'], 'flex_servers': ['flex1', 'flex2'], 'name': 'Default Location'}}
+E     Left contains 7 more items:
+E     {'birchwood': {'allowed_users': ['*'],
+E                    'member_cities': ['flex1'],
+E                    'name': 'Birchwood'},
+E      'dellwood_grant_willernie': {'allowed_users': ['*'],
+E                                   'member_cities': ['flex2'],
+E                                   'name': 'Dellwood Grant Willernie'},
+E      'lake_elmo': {'allowed_users': ['*'],
+E                    'member_cities': ['flex3'],
+E                    'name': 'Lake Elmo'},
+E      'mahtomedi': {'allowed_users': ['*'],
+E                    'member_cities': ['flex4'],
+E                    'name': 'Mahtomedi'},
+E      'oakdale': {'allowed_users': ['*'],
+E                  'member_cities': ['flex7'],
+E                  'name': 'Oakdale'},
+E      'white_bear_lake': {'allowed_users': ['*'],
+E                          'member_cities': ['flex8'],
+E                          'name': 'White Bear Lake'},
+E      'white_bear_township': {'allowed_users': ['*'],
+E                              'member_cities': ['flex9'],
+E                              'name': 'White Bear Township'}}
+E     Right contains 1 more item:
+E     {'restricted': {'allowed_users': ['admin'],
+E                     'flex_servers': ['flex1'],
+E                     'name': 'Restricted Location'}}
+E     
+E     Full diff:
+E       {
+E     +     'birchwood': {
+E     +         'allowed_users': [
+E     +             '*',
+E     +         ],
+E     +         'member_cities': [
+E     +             'flex1',
+E     +         ],
+E     +         'name': 'Birchwood',
+E     +     },
+E           'default': {
+E               'allowed_users': [
+E                   '*',
+E               ],
+E     -         'flex_servers': [
+E     +         'member_cities': [
+E                   'flex1',
+E                   'flex2',
+E     +             'flex3',
+E     +             'flex4',
+E     +             'flex5',
+E     +             'flex6',
+E     +             'flex7',
+E     +             'flex8',
+E     +             'flex9',
+E               ],
+E               'name': 'Default Location',
+E           },
+E     -     'restricted': {
+E     +     'dellwood_grant_willernie': {
+E               'allowed_users': [
+E     -             'admin',
+E     ?              ^^^^^
+E     +             '*',
+E     ?              ^
+E               ],
+E     -         'flex_servers': [
+E     +         'member_cities': [
+E     -             'flex1',
+E     ?                  ^
+E     +             'flex2',
+E     ?                  ^
+E               ],
+E     -         'name': 'Restricted Location',
+E     +         'name': 'Dellwood Grant Willernie',
+E     +     },
+E     +     'lake_elmo': {
+E     +         'allowed_users': [
+E     +             '*',
+E     +         ],
+E     +         'member_cities': [
+E     +             'flex3',
+E     +         ],
+E     +         'name': 'Lake Elmo',
+E     +     },
+E     +     'mahtomedi': {
+E     +         'allowed_users': [
+E     +             '*',
+E     +         ],
+E     +         'member_cities': [
+E     +             'flex4',
+E     +         ],
+E     +         'name': 'Mahtomedi',
+E     +     },
+E     +     'oakdale': {
+E     +         'allowed_users': [
+E     +             '*',
+E     +         ],
+E     +         'member_cities': [
+E     +             'flex7',
+E     +         ],
+E     +         'name': 'Oakdale',
+E     +     },
+E     +     'white_bear_lake': {
+E     +         'allowed_users': [
+E     +             '*',
+E     +         ],
+E     +         'member_cities': [
+E     +             'flex8',
+E     +         ],
+E     +         'name': 'White Bear Lake',
+E     +     },
+E     +     'white_bear_township': {
+E     +         'allowed_users': [
+E     +             '*',
+E     +         ],
+E     +         'member_cities': [
+E     +             'flex9',
+E     +         ],
+E     +         'name': 'White Bear Township',
+E           },
+E       }
+__________ TestInputValidation.test_queue_reorder_request_validation ___________
+tests/unit/test_security.py:247: in test_queue_reorder_request_validation
+    QueueReorderRequest(job_id='', position=0)
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for QueueReorderRequest
+E   job_id
+E     String should have at least 1 character [type=string_too_short, input_value='', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.9/v/string_too_short
+
+During handling of the above exception, another exception occurred:
+tests/unit/test_security.py:246: in test_queue_reorder_request_validation
+    with pytest.raises(ValueError, match='Invalid job ID format'):
+E   AssertionError: Regex pattern did not match.
+E    Regex: 'Invalid job ID format'
+E    Input: "1 validation error for QueueReorderRequest\njob_id\n  String should have at least 1 character [type=string_too_short, input_value='', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.9/v/string_too_short"
+_________ TestInputValidation.test_batch_transcribe_request_validation _________
+tests/unit/test_security.py:263: in test_batch_transcribe_request_validation
+    BatchTranscribeRequest(paths=too_many_paths)
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for BatchTranscribeRequest
+E   paths
+E     List should have at most 100 items after validation, not 101 [type=too_long, input_value=['video0.mp4', 'video1.mp...99.mp4', 'video100.mp4'], input_type=list]
+E       For further information visit https://errors.pydantic.dev/2.9/v/too_long
+
+During handling of the above exception, another exception occurred:
+tests/unit/test_security.py:262: in test_batch_transcribe_request_validation
+    with pytest.raises(ValueError, match='Too many files'):
+E   AssertionError: Regex pattern did not match.
+E    Regex: 'Too many files'
+E    Input: "1 validation error for BatchTranscribeRequest\npaths\n  List should have at most 100 items after validation, not 101 [type=too_long, input_value=['video0.mp4', 'video1.mp...99.mp4', 'video100.mp4'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.9/v/too_long"
+_________________ TestRateLimiting.test_rate_limiting_headers __________________
+tests/unit/test_security.py:307: in test_rate_limiting_headers
+    assert 'X-RateLimit-Limit' in response.headers
+E   assert 'X-RateLimit-Limit' in Headers([('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', '207'), ('X-Content-Type-Options', 'nosniff'), ('X-Frame-Options', 'DENY'), ('X-XSS-Protection', '1; mode=block'), ('Permissions-Policy', 'geolocation=(), microphone=(), camera=()'), ('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"), ('Referrer-Policy', 'strict-origin-when-cross-origin')])
+E    +  where Headers([('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', '207'), ('X-Content-Type-Options', 'nosniff'), ('X-Frame-Options', 'DENY'), ('X-XSS-Protection', '1; mode=block'), ('Permissions-Policy', 'geolocation=(), microphone=(), camera=()'), ('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"), ('Referrer-Policy', 'strict-origin-when-cross-origin')]) = <WrapperTestResponse streamed [404 NOT FOUND]>.headers
+---------------------------- Captured stderr setup -----------------------------
+2025-07-24 10:50:12 | INFO     | core.security:init_app:116 - Security manager initialized successfully (HTTPS enforced: False)
+----------------------------- Captured stderr call -----------------------------
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.625899', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+_______________ TestRateLimiting.test_rate_limiting_enforcement ________________
+tests/unit/test_security.py:320: in test_rate_limiting_enforcement
+    remaining = int(responses[-1].headers.get('X-RateLimit-Remaining', 0))
+                    ^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'int' object has no attribute 'headers'
+---------------------------- Captured stderr setup -----------------------------
+2025-07-24 10:50:12 | INFO     | core.security:init_app:116 - Security manager initialized successfully (HTTPS enforced: False)
+----------------------------- Captured stderr call -----------------------------
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.640316', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.641334', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.642267', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.643199', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.644185', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.645339', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.646231', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.647116', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.648006', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.648894', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/health', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+_________________ TestCSRFProtection.test_csrf_token_required __________________
+tests/unit/test_security.py:347: in test_csrf_token_required
+    assert response.status_code == 200
+E   assert 400 == 200
+E    +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+---------------------------- Captured stderr setup -----------------------------
+2025-07-24 10:50:12 | INFO     | core.security:init_app:116 - Security manager initialized successfully (HTTPS enforced: False)
+----------------------------- Captured stderr call -----------------------------
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.662153', 'event_type': 'bad_request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/protected', 'method': 'POST', 'error': '400 Bad Request: The CSRF token is missing.', 'description': 'The CSRF token is missing.'}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.663035', 'event_type': 'bad_request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/protected', 'method': 'POST', 'error': '400 Bad Request: The CSRF session token is missing.', 'description': 'The CSRF session token is missing.'}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.664423', 'event_type': 'bad_request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/protected', 'method': 'POST', 'error': '400 Bad Request: The CSRF session token is missing.', 'description': 'The CSRF session token is missing.'}
+_______________ TestFileSecurity.test_path_traversal_prevention ________________
+tests/unit/test_security.py:388: in test_path_traversal_prevention
+    assert response.status_code == 400
+E   assert 404 == 400
+E    +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+---------------------------- Captured stderr setup -----------------------------
+2025-07-24 10:50:12 | INFO     | core.security:init_app:116 - Security manager initialized successfully (HTTPS enforced: False)
+----------------------------- Captured stderr call -----------------------------
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.690237', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/api/browse', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+2025-07-24 10:50:12 | WARNING  | core.security:_check_suspicious_patterns:199 - Suspicious pattern in URL parameter path: ../etc/passwd
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.690657', 'event_type': 'bad_request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/api/browse', 'method': 'GET', 'error': '400 Bad Request: Invalid request', 'description': 'Invalid request'}
+2025-07-24 10:50:12 | INFO     | core.security:_log_security_event:263 - Security event: {'timestamp': '2025-07-24T15:50:12.691748', 'event_type': 'request', 'ip_address': '127.0.0.1', 'user_agent': 'Werkzeug/3.1.3', 'path': '/api/browse', 'method': 'GET', 'ip': '127.0.0.1', 'referer': ''}
+____________ TestTranscriptionService.test_transcribe_file_success _____________
+/usr/lib/python3.11/unittest/mock.py:1366: in patched
+    with self.decoration_helper(patched,
+/usr/lib/python3.11/contextlib.py:137: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1348: in decoration_helper
+    arg = exit_stack.enter_context(patching)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/contextlib.py:505: in enter_context
+    result = _enter(cm)
+             ^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1421: in __enter__
+    self.target = self.getter()
+                  ^^^^^^^^^^^^^
+/usr/lib/python3.11/pkgutil.py:715: in resolve_name
+    result = getattr(result, p)
+             ^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'core' has no attribute 'whisperx_helper'
+_____________ TestQueueService.test_enqueue_transcription_success ______________
+tests/unit/test_services.py:150: in test_enqueue_transcription_success
+    assert job_id == 'job-123'
+E   AssertionError: assert 'dummy' == 'job-123'
+E     
+E     - job-123
+E     + dummy
+----------------------------- Captured stderr call -----------------------------
+2025-07-24 10:50:12 | INFO     | core.services.queue:enqueue_transcription:55 - Enqueued transcription job dummy for /path/to/video.mp4
+__________________________ test_enqueue_transcription __________________________
+tests/unit/test_task_queue.py:58: in test_enqueue_transcription
+    with patch.object(QueueService, '_queue', mock_queue):
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+_____________________________ test_get_job_status ______________________________
+tests/unit/test_task_queue.py:65: in test_get_job_status
+    with patch.object(QueueService, '_queue') as mock_queue:
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+______________________________ test_get_all_jobs _______________________________
+tests/unit/test_task_queue.py:74: in test_get_all_jobs
+    with patch.object(QueueService, '_queue', mock_queue):
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+_______________________________ test_reorder_job _______________________________
+tests/unit/test_task_queue.py:82: in test_reorder_job
+    with patch.object(QueueService, '_queue', mock_queue):
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+________________________________ test_stop_job _________________________________
+tests/unit/test_task_queue.py:90: in test_stop_job
+    with patch.object(QueueService, '_queue') as mock_queue:
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+________________________________ test_pause_job ________________________________
+tests/unit/test_task_queue.py:100: in test_pause_job
+    with patch.object(QueueService, '_queue') as mock_queue:
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+_______________________________ test_resume_job ________________________________
+tests/unit/test_task_queue.py:110: in test_resume_job
+    with patch.object(QueueService, '_queue') as mock_queue:
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+_______________________________ test_remove_job ________________________________
+tests/unit/test_task_queue.py:120: in test_remove_job
+    with patch.object(QueueService, '_queue') as mock_queue:
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+___________________________ test_cleanup_failed_jobs ___________________________
+tests/unit/test_task_queue.py:129: in test_cleanup_failed_jobs
+    with patch.object(QueueService, '_queue', mock_queue):
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+_____________________________ test_get_current_job _____________________________
+tests/unit/test_task_queue.py:142: in test_get_current_job
+    with patch.object(QueueService, '_queue', mock_queue):
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+_________________________ test_job_status_transitions __________________________
+tests/unit/test_task_queue.py:149: in test_job_status_transitions
+    with patch.object(QueueService, '_queue') as mock_queue:
+/usr/lib/python3.11/unittest/mock.py:1437: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.11/unittest/mock.py:1410: in get_original
+    raise AttributeError(
+E   AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+_________________________ test_whisperx_transcription __________________________
+tests/unit/test_whisperx.py:45: in test_whisperx_transcription
+    assert '-->' in content  # Should contain timestamp markers
+    ^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert '-->' in 'Scenarist_SCC V1.0\n\n00:00:00:00\t00:00:05:00\n[No speech detected]\n\n'
+---------------------------- Captured stderr setup -----------------------------
+ffmpeg version 5.1.6-0+deb12u1 Copyright (c) 2000-2024 the FFmpeg developers
+  built with gcc 12 (Debian 12.2.0-14)
+  configuration: --prefix=/usr --extra-version=0+deb12u1 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --enable-gnutls --enable-ladspa --enable-libaom --enable-libass --enable-libbluray --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libjack --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-libpulse --enable-librabbitmq --enable-librist --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-libzvbi --enable-lv2 --enable-omx --enable-openal --enable-opencl --enable-opengl --enable-sdl2 --disable-sndio --enable-libjxl --enable-pocketsphinx --enable-librsvg --enable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-libx264 --enable-libplacebo --enable-librav1e --enable-shared
+  libavutil      57. 28.100 / 57. 28.100
+  libavcodec     59. 37.100 / 59. 37.100
+  libavformat    59. 27.100 / 59. 27.100
+  libavdevice    59.  7.100 / 59.  7.100
+  libavfilter     8. 44.100 /  8. 44.100
+  libswscale      6.  7.100 /  6.  7.100
+  libswresample   4.  7.100 /  4.  7.100
+  libpostproc    56.  6.100 / 56.  6.100
+Input #0, lavfi, from 'testsrc=duration=1:size=1280x720:rate=30':
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0: Video: rawvideo (RGB[24] / 0x18424752), rgb24, 1280x720 [SAR 1:1 DAR 16:9], 30 tbr, 30 tbn
+Input #1, lavfi, from 'anullsrc=r=44100:cl=mono':
+  Duration: N/A, start: 0.000000, bitrate: 352 kb/s
+  Stream #1:0: Audio: pcm_u8, 44100 Hz, mono, u8, 352 kb/s
+Stream mapping:
+  Stream #0:0 -> #0:0 (rawvideo (native) -> h264 (libx264))
+  Stream #1:0 -> #0:1 (pcm_u8 (native) -> aac (native))
+Press [q] to stop, [?] for help
+[libx264 @ 0x5fddd60e5240] using SAR=1/1
+[libx264 @ 0x5fddd60e5240] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2
+[libx264 @ 0x5fddd60e5240] profile High 4:4:4 Predictive, level 3.1, 4:4:4, 8-bit
+[libx264 @ 0x5fddd60e5240] 264 - core 164 r3095 baee400 - H.264/MPEG-4 AVC codec - Copyleft 2003-2022 - http://www.videolan.org/x264.html - options: cabac=1 ref=3 deblock=1:0:0 analyse=0x3:0x113 me=hex subme=7 psy=1 psy_rd=1.00:0.00 mixed_ref=1 me_range=16 chroma_me=1 trellis=1 8x8dct=1 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=4 threads=22 lookahead_threads=3 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=3 b_pyramid=2 b_adapt=1 b_bias=0 direct=1 weightb=1 open_gop=0 weightp=2 keyint=250 keyint_min=25 scenecut=40 intra_refresh=0 rc_lookahead=40 rc=crf mbtree=1 crf=23.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 ip_ratio=1.40 aq=1:1.00
+Output #0, mp4, to '/tmp/tmp2sctw22x/test_video.mp4':
+  Metadata:
+    encoder         : Lavf59.27.100
+  Stream #0:0: Video: h264 (avc1 / 0x31637661), yuv444p(tv, progressive), 1280x720 [SAR 1:1 DAR 16:9], q=2-31, 30 fps, 15360 tbn
+    Metadata:
+      encoder         : Lavc59.37.100 libx264
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/0 buffer size: 0 vbv_delay: N/A
+  Stream #0:1: Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, mono, fltp, 69 kb/s
+    Metadata:
+      encoder         : Lavc59.37.100 aac
+frame=    1 fps=0.0 q=0.0 size=       0kB time=00:00:00.00 bitrate=N/A speed=   0x    frame=   30 fps=0.0 q=-1.0 Lsize=      20kB time=00:00:01.02 bitrate= 157.3kbits/s speed=2.76x    
+video:17kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: 14.301969%
+[libx264 @ 0x5fddd60e5240] frame I:1     Avg QP:13.46  size:  7152
+[libx264 @ 0x5fddd60e5240] frame P:8     Avg QP:14.93  size:   741
+[libx264 @ 0x5fddd60e5240] frame B:21    Avg QP:15.40  size:   172
+[libx264 @ 0x5fddd60e5240] consecutive B-frames:  6.7%  0.0%  0.0% 93.3%
+[libx264 @ 0x5fddd60e5240] mb I  I16..4: 58.4% 37.2%  4.4%
+[libx264 @ 0x5fddd60e5240] mb P  I16..4:  3.1%  0.7%  0.1%  P16..4:  3.9%  0.3%  0.0%  0.0%  0.0%    skip:91.9%
+[libx264 @ 0x5fddd60e5240] mb B  I16..4:  0.1%  0.1%  0.0%  B16..8:  2.5%  0.0%  0.0%  direct: 0.0%  skip:97.3%  L0:45.5% L1:53.2% BI: 1.3%
+[libx264 @ 0x5fddd60e5240] 8x8 transform intra:33.3% inter:67.5%
+[libx264 @ 0x5fddd60e5240] coded y,u,v intra: 2.4% 2.3% 2.3% inter: 0.0% 0.0% 0.0%
+[libx264 @ 0x5fddd60e5240] i16 v,h,dc,p: 85% 12%  1%  2%
+[libx264 @ 0x5fddd60e5240] i8 v,h,dc,ddl,ddr,vr,hd,vl,hu: 41% 12% 46%  0%  0%  0%  0%  0%  0%
+[libx264 @ 0x5fddd60e5240] i4 v,h,dc,ddl,ddr,vr,hd,vl,hu: 29% 36% 25%  3%  1%  2%  0%  3%  0%
+[libx264 @ 0x5fddd60e5240] Weighted P-Frames: Y:0.0% UV:0.0%
+[libx264 @ 0x5fddd60e5240] ref P L0: 62.4%  2.3% 25.4%  9.9%
+[libx264 @ 0x5fddd60e5240] ref B L0: 82.4% 15.8%  1.8%
+[libx264 @ 0x5fddd60e5240] ref B L1: 94.7%  5.3%
+[libx264 @ 0x5fddd60e5240] kb/s:133.54
+[aac @ 0x5fddd60e6b80] Qavg: 64874.918
+----------------------------- Captured stderr call -----------------------------
+2025-07-24 10:50:14 | INFO     | core.services.transcription:transcribe_file:179 - Starting transcription of /tmp/tmp2sctw22x/test_video.mp4
+2025-07-24 10:50:14 | INFO     | core.services.transcription:_transcribe_with_faster_whisper:78 - Loading Whisper model: large-v2
+2025-07-24 10:50:21 | INFO     | core.services.transcription:_transcribe_with_faster_whisper:87 - Starting transcription of /tmp/tmp2sctw22x/test_video.mp4
+2025-07-24 10:50:22 | WARNING  | core.services.transcription:_transcribe_with_faster_whisper:101 - No speech segments found in /tmp/tmp2sctw22x/test_video.mp4
+=============================== warnings summary ===============================
+venv_py311/lib/python3.11/site-packages/_pytest/config/__init__.py:1474
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/config/__init__.py:1474: PytestConfigWarning: Unknown config option: asyncio_default_fixture_loop_scope
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+venv_py311/lib/python3.11/site-packages/_pytest/config/__init__.py:1474
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/config/__init__.py:1474: PytestConfigWarning: Unknown config option: asyncio_mode
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+venv_py311/lib/python3.11/site-packages/transformers/utils/hub.py:111
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/transformers/utils/hub.py:111: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+    warnings.warn(
+
+core/models.py:40
+  /opt/Archivist/core/models.py:40: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('path')
+
+core/models.py:68
+  /opt/Archivist/core/models.py:68: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('name')
+
+core/models.py:76
+  /opt/Archivist/core/models.py:76: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('path')
+
+core/models.py:94
+  /opt/Archivist/core/models.py:94: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('path')
+
+core/models.py:121
+  /opt/Archivist/core/models.py:121: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('job_id')
+
+core/models.py:145
+  /opt/Archivist/core/models.py:145: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('video_path')
+
+core/models.py:151
+  /opt/Archivist/core/models.py:151: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('status_message', 'error')
+
+venv_py311/lib/python3.11/site-packages/pydantic/fields.py:795
+venv_py311/lib/python3.11/site-packages/pydantic/fields.py:795
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/pydantic/fields.py:795: PydanticDeprecatedSince20: `min_items` is deprecated and will be removed, use `min_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warn('`min_items` is deprecated and will be removed, use `min_length` instead', DeprecationWarning)
+
+venv_py311/lib/python3.11/site-packages/pydantic/fields.py:801
+venv_py311/lib/python3.11/site-packages/pydantic/fields.py:801
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/pydantic/fields.py:801: PydanticDeprecatedSince20: `max_items` is deprecated and will be removed, use `max_length` instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    warn('`max_items` is deprecated and will be removed, use `max_length` instead', DeprecationWarning)
+
+core/models.py:164
+  /opt/Archivist/core/models.py:164: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('paths')
+
+core/models.py:197
+  /opt/Archivist/core/models.py:197: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('allowed_extensions')
+
+core/models.py:216
+  /opt/Archivist/core/models.py:216: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('ip_address')
+
+core/models.py:274
+  /opt/Archivist/core/models.py:274: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.9/migration/
+    @validator('file_path')
+
+venv_py311/lib/python3.11/site-packages/flask_caching/__init__.py:145
+venv_py311/lib/python3.11/site-packages/flask_caching/__init__.py:145
+tests/integration/test_cablecast_api_connection.py::test_database_integration
+tests/integration/test_cablecast_workflow.py::test_vod_automation
+tests/integration/test_cablecast_workflow_quick.py::test_database_models
+tests/integration/test_cablecast_workflow_quick.py::test_vod_automation_core
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/flask_caching/__init__.py:145: DeprecationWarning: Using the initialization functions in flask_caching.backend is deprecated.  Use the a full path to backend classes directly.
+    self._set_cache(app, config)
+
+venv_py311/lib/python3.11/site-packages/flask_restx/api.py:19
+venv_py311/lib/python3.11/site-packages/flask_restx/api.py:19
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/flask_restx/api.py:19: DeprecationWarning: jsonschema.RefResolver is deprecated as of v4.18.0, in favor of the https://github.com/python-jsonschema/referencing library, which provides more compliant referencing behavior as well as more flexible APIs for customization. A future release will remove RefResolver. Please file a feature request (on referencing) if you are missing an API for the kind of customization you need.
+    from jsonschema import RefResolver
+
+tests/integration/test_cablecast_api_connection.py::test_cablecast_configuration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_api_connection.py::test_cablecast_configuration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_api_connection.py::test_cablecast_connection
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_api_connection.py::test_cablecast_connection returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_api_connection.py::test_cablecast_endpoints
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_api_connection.py::test_cablecast_endpoints returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_api_connection.py::test_vod_integration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_api_connection.py::test_vod_integration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_api_connection.py::test_database_integration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_api_connection.py::test_database_integration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow.py::test_show_mapper
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow.py::test_show_mapper returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow.py::test_transcription_linker
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow.py::test_transcription_linker returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow.py::test_vod_automation
+tests/integration/test_cablecast_workflow_quick.py::test_vod_automation_core
+  /opt/Archivist/core/vod_automation.py:202: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    transcription = TranscriptionResultORM.query.get(transcription_id)
+
+tests/integration/test_cablecast_workflow.py::test_vod_automation
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow.py::test_vod_automation returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow.py::test_api_endpoints
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow.py::test_api_endpoints returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow.py::test_database_models
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow.py::test_database_models returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow_quick.py::test_show_mapper_core
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow_quick.py::test_show_mapper_core returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow_quick.py::test_transcription_linker_core
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow_quick.py::test_transcription_linker_core returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow_quick.py::test_database_models
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow_quick.py::test_database_models returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow_quick.py::test_api_endpoints
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow_quick.py::test_api_endpoints returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_cablecast_workflow_quick.py::test_vod_automation_core
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_cablecast_workflow_quick.py::test_vod_automation_core returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_service_import.py::test_imports
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_service_import.py::test_imports returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_vod_integration.py::test_cablecast_client
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_vod_integration.py::test_cablecast_client returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_vod_integration.py::test_vod_content_manager
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_vod_integration.py::test_vod_content_manager returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_vod_integration.py::test_models
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_vod_integration.py::test_models returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/integration/test_vod_integration.py::test_configuration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/integration/test_vod_integration.py::test_configuration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_api_fixes.py::test_api_health
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_api_fixes.py::test_api_health returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_api_fixes.py::test_transcription_endpoint
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_api_fixes.py::test_transcription_endpoint returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_api_fixes.py::test_queue_endpoint
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_api_fixes.py::test_queue_endpoint returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_api_simple.py::test_api_health
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_api_simple.py::test_api_health returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_api_simple.py::test_transcription_endpoint
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_api_simple.py::test_transcription_endpoint returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_api_simple.py::test_queue_endpoint
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_api_simple.py::test_queue_endpoint returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_api_simple.py::test_cablecast_endpoint
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_api_simple.py::test_cablecast_endpoint returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_archivist.py::test_core_imports
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_archivist.py::test_core_imports returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_archivist.py::test_service_layer
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_archivist.py::test_service_layer returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_archivist.py::test_configuration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_archivist.py::test_configuration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_archivist.py::test_file_system
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_archivist.py::test_file_system returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_archivist.py::test_dependencies
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_archivist.py::test_dependencies returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_integration.py::test_celery_app
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_integration.py::test_celery_app returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_integration.py::test_task_registration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_integration.py::test_task_registration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_integration.py::test_transcription_task
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_integration.py::test_transcription_task returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_integration.py::test_vod_task
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_integration.py::test_vod_task returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_integration.py::test_celery_configuration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_integration.py::test_celery_configuration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_migration.py::test_celery_task_registration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_migration.py::test_celery_task_registration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_migration.py::test_transcription_task_import
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_migration.py::test_transcription_task_import returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_migration.py::test_vod_processing_integration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_migration.py::test_vod_processing_integration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_migration.py::test_rq_system_removal
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_migration.py::test_rq_system_removal returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_migration.py::test_celery_worker_status
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_migration.py::test_celery_worker_status returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_migration.py::test_backward_compatibility
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_migration.py::test_backward_compatibility returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_celery_migration.py::test_system_health
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_celery_migration.py::test_system_health returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_direct_transcription.py::test_direct_transcription
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_direct_transcription.py::test_direct_transcription returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_force_processing.py::test_force_processing
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_force_processing.py::test_force_processing returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_real_vod_processing.py::test_real_vod_processing
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_real_vod_processing.py::test_real_vod_processing returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_real_vod_processing.py::test_vod_download
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_real_vod_processing.py::test_vod_download returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_scc_upload.py::test_scc_upload_functionality
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_scc_upload.py::test_scc_upload_functionality returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_scc_upload.py::test_scc_conversion_pipeline
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_scc_upload.py::test_scc_conversion_pipeline returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_scc_upload.py::test_scc_parsing
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_scc_upload.py::test_scc_parsing returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_transcription_main.py::test_transcription_service
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_transcription_main.py::test_transcription_service returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_transcription_main.py::test_direct_transcription
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_transcription_main.py::test_direct_transcription returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_transcription_main.py::test_task_transcription
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_transcription_main.py::test_task_transcription returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_processing.py::test_vod_processing_task
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_processing.py::test_vod_processing_task returned <class 'str'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_processing_pipeline.py::test_celery_task_registration
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_processing_pipeline.py::test_celery_task_registration returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_processing_pipeline.py::test_cablecast_connection
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_processing_pipeline.py::test_cablecast_connection returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_processing_pipeline.py::test_storage_paths
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_processing_pipeline.py::test_storage_paths returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_processing_pipeline.py::test_caption_generation
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_processing_pipeline.py::test_caption_generation returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_processing_pipeline.py::test_vod_processing_workflow
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_processing_pipeline.py::test_vod_processing_workflow returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_processing_pipeline.py::test_alert_system
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_processing_pipeline.py::test_alert_system returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_processing_pipeline.py::test_city_filtering
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_processing_pipeline.py::test_city_filtering returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_system.py::test_celery_tasks
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_system.py::test_celery_tasks returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_system.py::test_task_queue
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_system.py::test_task_queue returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_system.py::test_gui_interfaces
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_system.py::test_gui_interfaces returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_system.py::test_scheduled_tasks
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_system.py::test_scheduled_tasks returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_system.py::test_vod_processing_pipeline
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_system.py::test_vod_processing_pipeline returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_system.py::test_system_resources
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_system.py::test_system_resources returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_vod_system.py::test_api_endpoints
+  /opt/Archivist/venv_py311/lib/python3.11/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_vod_system.py::test_api_endpoints returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_vod_processing.py::test_celery_connection - AssertionError: No VOD processing tasks registered in Celery.
+assert 0 > 0
+ +  where 0 = len([])
+FAILED tests/test_vod_processing.py::test_cablecast_connection - ImportError: cannot import name 'CablecastClient' from 'core.cablecast_client' (/opt/Archivist/core/cablecast_client.py)
+FAILED tests/test_vod_processing.py::test_storage_paths - TypeError: VODContentManager.__init__() takes 1 positional argument but 2 were given
+FAILED tests/unit/test_auth.py::test_init_auth - TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+FAILED tests/unit/test_auth.py::test_login_required_decorator - TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+FAILED tests/unit/test_auth.py::test_admin_required_decorator - TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+FAILED tests/unit/test_auth.py::test_create_token - TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+FAILED tests/unit/test_auth.py::test_get_current_user - TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+FAILED tests/unit/test_auth.py::test_rate_limiting - TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+FAILED tests/unit/test_auth.py::test_token_expiration - TypeError: Limiter.init_app() got an unexpected keyword argument 'key_func'
+FAILED tests/unit/test_file_manager.py::test_validate_location_access - ValueError: Invalid location: restricted
+FAILED tests/unit/test_file_manager.py::test_get_accessible_mounts - AssertionError: assert 'flex1' in {'nas': '/tmp/pytest-of-schum/pytest-1/test_get_accessible_mounts0'}
+FAILED tests/unit/test_file_manager.py::test_list_locations - AssertionError: assert {'default': {'name': 'Default Location', 'member_cities': ['flex1', 'flex2', 'flex3', 'flex4', 'flex5', 'flex6', 'flex7', 'flex8', 'flex9'], 'allowed_users': ['*']}, 'birchwood': {'name': 'Birchwood', 'member_cities': ['flex1'], 'allowed_users': ['*']}, 'dellwood_grant_willernie': {'name': 'Dellwood Grant Willernie', 'member_cities': ['flex2'], 'allowed_users': ['*']}, 'lake_elmo': {'name': 'Lake Elmo', 'member_cities': ['flex3'], 'allowed_users': ['*']}, 'mahtomedi': {'name': 'Mahtomedi', 'member_cities': ['flex4'], 'allowed_users': ['*']}, 'oakdale': {'name': 'Oakdale', 'member_cities': ['flex7'], 'allowed_users': ['*']}, 'white_bear_lake': {'name': 'White Bear Lake', 'member_cities': ['flex8'], 'allowed_users': ['*']}, 'white_bear_township': {'name': 'White Bear Township', 'member_cities': ['flex9'], 'allowed_users': ['*']}} == {'default': {'name': 'Default Location', 'allowed_users': ['*'], 'flex_servers': ['flex1', 'flex2']}, 'restricted': {'name': 'Restricted Location', 'allowed_users': ['admin'], 'flex_servers': ['flex1']}}
+  
+  Differing items:
+  {'default': {'allowed_users': ['*'], 'member_cities': ['flex1', 'flex2', 'flex3', 'flex4', 'flex5', 'flex6', ...], 'name': 'Default Location'}} != {'default': {'allowed_users': ['*'], 'flex_servers': ['flex1', 'flex2'], 'name': 'Default Location'}}
+  Left contains 7 more items:
+  {'birchwood': {'allowed_users': ['*'],
+                 'member_cities': ['flex1'],
+                 'name': 'Birchwood'},
+   'dellwood_grant_willernie': {'allowed_users': ['*'],
+                                'member_cities': ['flex2'],
+                                'name': 'Dellwood Grant Willernie'},
+   'lake_elmo': {'allowed_users': ['*'],
+                 'member_cities': ['flex3'],
+                 'name': 'Lake Elmo'},
+   'mahtomedi': {'allowed_users': ['*'],
+                 'member_cities': ['flex4'],
+                 'name': 'Mahtomedi'},
+   'oakdale': {'allowed_users': ['*'],
+               'member_cities': ['flex7'],
+               'name': 'Oakdale'},
+   'white_bear_lake': {'allowed_users': ['*'],
+                       'member_cities': ['flex8'],
+                       'name': 'White Bear Lake'},
+   'white_bear_township': {'allowed_users': ['*'],
+                           'member_cities': ['flex9'],
+                           'name': 'White Bear Township'}}
+  Right contains 1 more item:
+  {'restricted': {'allowed_users': ['admin'],
+                  'flex_servers': ['flex1'],
+                  'name': 'Restricted Location'}}
+  
+  Full diff:
+    {
+  +     'birchwood': {
+  +         'allowed_users': [
+  +             '*',
+  +         ],
+  +         'member_cities': [
+  +             'flex1',
+  +         ],
+  +         'name': 'Birchwood',
+  +     },
+        'default': {
+            'allowed_users': [
+                '*',
+            ],
+  -         'flex_servers': [
+  +         'member_cities': [
+                'flex1',
+                'flex2',
+  +             'flex3',
+  +             'flex4',
+  +             'flex5',
+  +             'flex6',
+  +             'flex7',
+  +             'flex8',
+  +             'flex9',
+            ],
+            'name': 'Default Location',
+        },
+  -     'restricted': {
+  +     'dellwood_grant_willernie': {
+            'allowed_users': [
+  -             'admin',
+  ?              ^^^^^
+  +             '*',
+  ?              ^
+            ],
+  -         'flex_servers': [
+  +         'member_cities': [
+  -             'flex1',
+  ?                  ^
+  +             'flex2',
+  ?                  ^
+            ],
+  -         'name': 'Restricted Location',
+  +         'name': 'Dellwood Grant Willernie',
+  +     },
+  +     'lake_elmo': {
+  +         'allowed_users': [
+  +             '*',
+  +         ],
+  +         'member_cities': [
+  +             'flex3',
+  +         ],
+  +         'name': 'Lake Elmo',
+  +     },
+  +     'mahtomedi': {
+  +         'allowed_users': [
+  +             '*',
+  +         ],
+  +         'member_cities': [
+  +             'flex4',
+  +         ],
+  +         'name': 'Mahtomedi',
+  +     },
+  +     'oakdale': {
+  +         'allowed_users': [
+  +             '*',
+  +         ],
+  +         'member_cities': [
+  +             'flex7',
+  +         ],
+  +         'name': 'Oakdale',
+  +     },
+  +     'white_bear_lake': {
+  +         'allowed_users': [
+  +             '*',
+  +         ],
+  +         'member_cities': [
+  +             'flex8',
+  +         ],
+  +         'name': 'White Bear Lake',
+  +     },
+  +     'white_bear_township': {
+  +         'allowed_users': [
+  +             '*',
+  +         ],
+  +         'member_cities': [
+  +             'flex9',
+  +         ],
+  +         'name': 'White Bear Township',
+        },
+    }
+FAILED tests/unit/test_security.py::TestInputValidation::test_queue_reorder_request_validation - AssertionError: Regex pattern did not match.
+ Regex: 'Invalid job ID format'
+ Input: "1 validation error for QueueReorderRequest\njob_id\n  String should have at least 1 character [type=string_too_short, input_value='', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.9/v/string_too_short"
+FAILED tests/unit/test_security.py::TestInputValidation::test_batch_transcribe_request_validation - AssertionError: Regex pattern did not match.
+ Regex: 'Too many files'
+ Input: "1 validation error for BatchTranscribeRequest\npaths\n  List should have at most 100 items after validation, not 101 [type=too_long, input_value=['video0.mp4', 'video1.mp...99.mp4', 'video100.mp4'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.9/v/too_long"
+FAILED tests/unit/test_security.py::TestRateLimiting::test_rate_limiting_headers - assert 'X-RateLimit-Limit' in Headers([('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', '207'), ('X-Content-Type-Options', 'nosniff'), ('X-Frame-Options', 'DENY'), ('X-XSS-Protection', '1; mode=block'), ('Permissions-Policy', 'geolocation=(), microphone=(), camera=()'), ('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"), ('Referrer-Policy', 'strict-origin-when-cross-origin')])
+ +  where Headers([('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', '207'), ('X-Content-Type-Options', 'nosniff'), ('X-Frame-Options', 'DENY'), ('X-XSS-Protection', '1; mode=block'), ('Permissions-Policy', 'geolocation=(), microphone=(), camera=()'), ('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"), ('Referrer-Policy', 'strict-origin-when-cross-origin')]) = <WrapperTestResponse streamed [404 NOT FOUND]>.headers
+FAILED tests/unit/test_security.py::TestRateLimiting::test_rate_limiting_enforcement - AttributeError: 'int' object has no attribute 'headers'
+FAILED tests/unit/test_security.py::TestCSRFProtection::test_csrf_token_required - assert 400 == 200
+ +  where 400 = <WrapperTestResponse streamed [400 BAD REQUEST]>.status_code
+FAILED tests/unit/test_security.py::TestFileSecurity::test_path_traversal_prevention - assert 404 == 400
+ +  where 404 = <WrapperTestResponse streamed [404 NOT FOUND]>.status_code
+FAILED tests/unit/test_services.py::TestTranscriptionService::test_transcribe_file_success - AttributeError: module 'core' has no attribute 'whisperx_helper'
+FAILED tests/unit/test_services.py::TestQueueService::test_enqueue_transcription_success - AssertionError: assert 'dummy' == 'job-123'
+  
+  - job-123
+  + dummy
+FAILED tests/unit/test_task_queue.py::test_enqueue_transcription - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_get_job_status - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_get_all_jobs - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_reorder_job - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_stop_job - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_pause_job - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_resume_job - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_remove_job - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_cleanup_failed_jobs - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_get_current_job - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_task_queue.py::test_job_status_transitions - AttributeError: <class 'core.services.queue.QueueService'> does not have the attribute '_queue'
+FAILED tests/unit/test_whisperx.py::test_whisperx_transcription - AssertionError: assert '-->' in 'Scenarist_SCC V1.0\n\n00:00:00:00\t00:00:05:00\n[No speech detected]\n\n'
+ERROR tests/test_complete_scc_pipeline.py::test_scc_parsing
+ERROR tests/test_complete_scc_pipeline.py::test_summarization
+====== 33 failed, 125 passed, 1 skipped, 97 warnings, 2 errors in 35.73s =======

@@ -23,6 +23,7 @@ from typing import Dict, List, Optional, Any
 from difflib import SequenceMatcher
 from loguru import logger
 from core.cablecast_client import CablecastAPIClient
+from core import TranscriptionResultORM, CablecastShowORM
 
 class CablecastShowMapper:
     """Maps Archivist transcriptions to existing Cablecast shows"""

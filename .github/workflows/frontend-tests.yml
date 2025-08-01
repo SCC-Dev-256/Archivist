@@ -1,0 +1,114 @@
+name: Frontend Tests
+
+on: 
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'core/templates/**'
+      - 'core/static/**'
+      - 'tests/frontend/**'
+      - 'requirements-frontend-test.txt'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'core/templates/**'
+      - 'core/static/**'
+      - 'tests/frontend/**'
+      - 'requirements-frontend-test.txt'
+
+jobs:
+  frontend-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        sudo apt-get install -y xvfb
+        
+    - name: Create virtual environment
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        
+    - name: Install Python dependencies
+      run: |
+        source venv/bin/activate
+        pip install -r requirements-frontend-test.txt
+        pip install -r requirements.txt
+        
+    - name: Start web server
+      run: |
+        source venv/bin/activate
+        export FLASK_ENV=testing
+        export TESTING=true
+        python3 test_web_ui.py &
+        sleep 10
+        
+    - name: Run frontend tests
+      run: |
+        source venv/bin/activate
+        export SELENIUM_HEADLESS=true
+        python3 tests/frontend/run_frontend_tests.py
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: frontend-test-results
+        path: |
+          frontend_test_report_*.json
+          tests/frontend/reports/
+          tests/frontend/screenshots/
+        retention-days: 30
+        
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Look for test report
+          const reportFiles = fs.readdirSync('.').filter(f => f.startsWith('frontend_test_report_'));
+          if (reportFiles.length > 0) {
+            const report = JSON.parse(fs.readFileSync(reportFiles[0], 'utf8'));
+            const summary = report.summary;
+            
+            const comment = `## 🎯 Frontend Test Results
+            
+            **Status:** ${report.overall_success ? '✅ PASSED' : '❌ FAILED'}
+            **Coverage:** ${summary.passed_suites}/${summary.total_suites} test suites passed
+            **Success Rate:** ${summary.success_rate.toFixed(1)}%
+            
+            ### Test Suite Results:
+            ${Object.entries(report.test_suites).map(([name, result]) => 
+              `${result.success ? '✅' : '❌'} **${name}:** ${result.message}`
+            ).join('\n')}
+            
+            ${report.recommendations.length > 0 ? `
+            ### Recommendations:
+            ${report.recommendations.map((rec, i) => `${i+1}. ${rec}`).join('\n')}
+            ` : ''}
+            
+            [View detailed results](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } 

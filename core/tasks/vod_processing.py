@@ -31,7 +31,7 @@ from urllib.parse import urlparse, urljoin
 from loguru import logger
 from core.config import MEMBER_CITIES, OUTPUT_DIR
 from core.cablecast_client import CablecastAPIClient
-from core.services import TranscriptionService
+from core.services.transcription import TranscriptionService
 
 try:
     from core.utils.alerts import send_alert

@@ -5,7 +5,7 @@ from flask_restx import Api, Resource, fields
 from flask_limiter import Limiter
 from loguru import logger
 
-from core.security import get_csrf_token
+from core import get_csrf_token
 from .browse import create_browse_blueprint
 from .transcribe import create_transcribe_blueprint
 from .queue import create_queue_blueprint
@@ -51,10 +51,10 @@ def register_routes(app, limiter):
     app.register_blueprint(bp_api)
     
     # Register Cablecast blueprint (if it exists)
-    try:
-        from web.api.cablecast import cablecast_bp
-        app.register_blueprint(cablecast_bp)
-    except ImportError:
-        logger.warning("Cablecast blueprint not found, skipping registration")
+    # try:
+    #     from web.api.cablecast import cablecast_bp
+    #     app.register_blueprint(cablecast_bp)
+    # except ImportError:
+    #     logger.warning("Cablecast blueprint not found, skipping registration")
 
     return api 

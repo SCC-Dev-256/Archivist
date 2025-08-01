@@ -11,15 +11,19 @@ Enhanced Features:
 - Task state persistence and recovery
 """
 
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
-import time
-import threading
+import os
 import json
 import redis
+import threading
+import time
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
+from celery.result import AsyncResult
+from redis.exceptions import RedisError
 from loguru import logger
 
 from core.tasks import celery_app
+from core.exceptions import QueueError
 from core.config import REDIS_URL
 
 class UnifiedQueueManager:
@@ -144,7 +148,7 @@ class UnifiedQueueManager:
     def get_task_details(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific Celery task."""
         try:
-            result = celery_app.AsyncResult(task_id)
+            result = AsyncResult(task_id, app=celery_app)
             return {
                 'id': task_id,
                 'queue_type': 'celery',
@@ -202,7 +206,7 @@ class UnifiedQueueManager:
                 return False
             
             # Get the current task result to check if it's actually resumable
-            result = celery_app.AsyncResult(task_id)
+            result = AsyncResult(task_id, app=celery_app)
             if result.status in ['SUCCESS', 'PENDING']:
                 logger.warning(f"Task {task_id} is not in a resumable state: {result.status}")
                 return False
@@ -254,7 +258,7 @@ class UnifiedQueueManager:
         """Remove a Celery task from the queue and backend."""
         try:
             celery_app.control.revoke(task_id, terminate=True)
-            result = celery_app.AsyncResult(task_id)
+            result = AsyncResult(task_id, app=celery_app)
             result.forget()
             return True
                 
@@ -272,7 +276,7 @@ class UnifiedQueueManager:
         """
         try:
             # Get current task information
-            result = celery_app.AsyncResult(task_id)
+            result = AsyncResult(task_id, app=celery_app)
             if result.status not in ['PENDING', 'RETRY']:
                 logger.warning(f"Cannot reorder task {task_id} in state {result.status}")
                 return False
@@ -562,7 +566,7 @@ class UnifiedQueueManager:
                             'timestamp': datetime.now()
                         }
                     time.sleep(30)  # Refresh every 30 seconds
-                except Exception as e:
+                except (RedisError, ConnectionError) as e:
                     logger.error(f"Error refreshing cache: {e}")
                     time.sleep(60)  # Wait longer on error
         

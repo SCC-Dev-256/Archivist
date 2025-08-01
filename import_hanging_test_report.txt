@@ -1,0 +1,49 @@
+📊 IMPORT HANGING ISSUE TEST REPORT
+==================================================
+
+BASIC_IMPORTS:
+  core.exceptions: 0.650s ✅ PASS
+  core.models: 0.047s ✅ PASS
+  core.config: 0.010s ✅ PASS
+  core.database: 0.001s ✅ PASS
+
+HEAVY_IMPORTS:
+  core.tasks: 0.001s ✅ PASS
+  core.monitoring.integrated_dashboard: 5.006s ⏰ HANGING
+    Error: Failed to create service instance: 'core.services'
+  core.admin_ui: 0.004s ✅ PASS
+  core.services: 1.769s ✅ PASS
+  core: 0.001s ✅ PASS
+
+MOCKED_IMPORTS:
+  core.tasks: 0.001s ✅ PASS
+  core.monitoring.integrated_dashboard: 0.003s ✅ PASS
+  core.admin_ui: 0.001s ✅ PASS
+  core.services: 0.001s ✅ PASS
+  core: 0.000s ✅ PASS
+
+CONNECTION_TIMEOUTS:
+  redis_timeout: 0.001s ✅ PASS
+  db_timeout: 0.552s ✅ PASS
+
+CIRCULAR_IMPORTS:
+  circular_import_test: 0.001s ✅ PASS
+
+PERFORMANCE_BENCHMARK:
+  core.exceptions: 0.000s ❌ FAIL
+  core.models: 0.000s ❌ FAIL
+  core.config: 0.000s ❌ FAIL
+  core.tasks: 0.000s ❌ FAIL
+  core.services: 0.000s ❌ FAIL
+  core: 0.000s ❌ FAIL
+
+SUMMARY:
+  Total Tests: 23
+  Successful: 16
+  Failed: 6
+  Hanging: 1
+  Success Rate: 69.6%
+
+RECOMMENDATIONS:
+  ⚠️  Hanging imports detected - implement lazy loading
+  ⚠️  Import failures detected - check dependencies

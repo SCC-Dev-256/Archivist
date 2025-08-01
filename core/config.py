@@ -20,6 +20,7 @@ Example:
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -158,8 +159,12 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
+REDIS_TIMEOUT = int(os.getenv("REDIS_TIMEOUT", "5"))  # 5 second timeout
+REDIS_CONNECT_TIMEOUT = int(os.getenv("REDIS_CONNECT_TIMEOUT", "5"))  # 5 second connect timeout
+REDIS_RETRY_ON_TIMEOUT = os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
+REDIS_MAX_CONNECTIONS = int(os.getenv("REDIS_MAX_CONNECTIONS", "10"))
 
-# Construct Redis URL
+# Construct Redis URL without unsupported parameters
 REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 if REDIS_PASSWORD:
     REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
@@ -241,3 +246,35 @@ SUMMARIZATION_MODEL = os.getenv("SUMMARIZATION_MODEL", "facebook/bart-large-cnn"
 SUMMARIZATION_MAX_LENGTH = int(os.getenv("SUMMARIZATION_MAX_LENGTH", "100"))
 SUMMARIZATION_MIN_LENGTH = int(os.getenv("SUMMARIZATION_MIN_LENGTH", "30"))
 SUMMARIZATION_CHUNK_SIZE = int(os.getenv("SUMMARIZATION_CHUNK_SIZE", "5"))
+
+# Add explicit exports for all required config variables
+__all__ = [
+    'NAS_PATH',
+    'OUTPUT_DIR', 
+    'MOUNT_POINTS',
+    'MEMBER_CITIES',
+    'REDIS_URL',
+    'DATABASE_URL',
+    'SECRET_KEY',
+    'DEBUG',
+    'TESTING'
+]
+
+# Ensure all variables are defined
+if 'NAS_PATH' not in globals():
+    NAS_PATH = os.environ.get('NAS_PATH', '/mnt/nas')
+
+if 'OUTPUT_DIR' not in globals():
+    OUTPUT_DIR = os.environ.get('OUTPUT_DIR', '/opt/Archivist/output')
+
+if 'MOUNT_POINTS' not in globals():
+    MOUNT_POINTS = {
+        'nas': NAS_PATH,
+        'output': OUTPUT_DIR
+    }
+
+if 'MEMBER_CITIES' not in globals():
+    MEMBER_CITIES = [
+        'flex1', 'flex2', 'flex3', 'flex4', 'flex5',
+        'flex6', 'flex7', 'flex8', 'flex9'
+    ]

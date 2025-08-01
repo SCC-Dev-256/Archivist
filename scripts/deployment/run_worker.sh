@@ -3,8 +3,10 @@
 # Exit on error
 set -e
 
-# Activate virtual environment if it exists
-if [ -d ".venv" ]; then
+# Activate virtual environment
+if [ -d "venv_py311" ]; then
+    source venv_py311/bin/activate
+elif [ -d ".venv" ]; then
     source .venv/bin/activate
 fi
 
@@ -20,9 +22,12 @@ export REDIS_PORT=${REDIS_PORT:-"6379"}
 export REDIS_DB=${REDIS_DB:-"0"}
 export REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
 
-# Run the RQ worker with logging, redirect output to log file
-exec rq worker transcription \
-    --url "${REDIS_URL}" \
-    --logging_level INFO \
-    --log-format '%(asctime)s - %(name)s - %(levelname)s - %(message)s' \
-    >> logs/rq-worker.log 2>&1 
+# Run Celery worker for transcription tasks
+echo "Starting Celery worker for transcription tasks..."
+exec celery -A core.tasks worker \
+    --loglevel=INFO \
+    --concurrency=2 \
+    --queues=transcription \
+    --hostname=transcription-worker@%h \
+    --logfile=logs/celery-worker.log \
+    --pidfile=logs/celery-worker.pid 

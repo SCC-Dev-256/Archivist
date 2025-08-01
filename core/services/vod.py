@@ -19,21 +19,21 @@ Example:
 import os
 from typing import Dict, Optional, List
 from loguru import logger
-from core.exceptions import VODError, handle_vod_error
+from core import VODError, handle_vod_error
+from core.lazy_imports import get_vod_content_manager
+from core.config import CABLECAST_API_URL, CABLECAST_API_KEY, CABLECAST_LOCATION_ID
 from core.cablecast_client import CablecastAPIClient
-from core.vod_content_manager import VODContentManager
 from core.cablecast_show_mapper import CablecastShowMapper
 from core.cablecast_transcription_linker import CablecastTranscriptionLinker
 from core.cablecast_integration import CablecastIntegrationService
 from core.vod_automation import auto_link_transcription_to_show
-from core.config import CABLECAST_API_URL, CABLECAST_API_KEY, CABLECAST_LOCATION_ID
 
 class VODService:
     """Service for handling VOD operations."""
     
     def __init__(self):
         self.client = CablecastAPIClient()
-        self.content_manager = VODContentManager()
+        self.content_manager = get_vod_content_manager()()
         self.show_mapper = CablecastShowMapper(self.client)
         self.transcription_linker = CablecastTranscriptionLinker(self.client)
         self.integration_service = CablecastIntegrationService()

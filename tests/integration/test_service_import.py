@@ -1,48 +1,54 @@
 #!/usr/bin/env python3
-"""Simple test script to verify service layer imports."""
+"""
+Simple test script to verify service layer imports.
+"""
 
-import sys
 import os
+import sys
+from pathlib import Path
+import traceback
 
-# Add the current directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from loguru import logger
+
+# Add the project root to the Python path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 def test_imports():
     """Test importing the service layer."""
     try:
-        print("Testing service layer imports...")
+        logger.info("Testing service layer imports...")
         
         # Test importing individual services
         from core.services.transcription import TranscriptionService
-        print("✓ TranscriptionService imported")
+        logger.info("✓ TranscriptionService imported")
         
         from core.services.file import FileService
-        print("✓ FileService imported")
+        logger.info("✓ FileService imported")
         
         from core.services.queue import QueueService
-        print("✓ QueueService imported")
+        logger.info("✓ QueueService imported")
         
         # Test importing from the main services module
-        from core.services import TranscriptionService, FileService, QueueService
-        print("✓ All services imported from main module")
+        from core.services import TranscriptionService as TS, FileService as FS, QueueService as QS
+        logger.info("✓ All services imported from main module")
         
         # Test creating service instances
         transcription_service = TranscriptionService()
-        print("✓ TranscriptionService instance created")
+        logger.info("✓ TranscriptionService instance created")
         
         file_service = FileService()
-        print("✓ FileService instance created")
+        logger.info("✓ FileService instance created")
         
         queue_service = QueueService()
-        print("✓ QueueService instance created")
+        logger.info("✓ QueueService instance created")
         
-        print("All service layer tests passed!")
+        logger.info("All service layer tests passed!")
         return True
         
     except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error: {e}")
+        logger.error(traceback.format_exc())
         return False
 
 if __name__ == "__main__":

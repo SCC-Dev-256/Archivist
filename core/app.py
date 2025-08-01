@@ -21,7 +21,7 @@ from loguru import logger
 from flask_socketio import SocketIO
 from core.monitoring.middleware import performance_middleware
 from core.monitoring.socket_tracker import socket_tracker
-from core.services.queue_analytics import queue_analytics
+# from core.services.queue_analytics import queue_analytics  # Temporarily commented out
 from core.database_health import init_db_health_checker
 
 # Initialize extensions
@@ -29,15 +29,11 @@ migrate = Migrate()
 cache = Cache()
 
 # Initialize limiter with Redis storage for better security
-# Rate limiting configuration via environment variables
-RATE_LIMIT_DAILY = os.getenv('RATE_LIMIT_DAILY', '200 per day')
-RATE_LIMIT_HOURLY = os.getenv('RATE_LIMIT_HOURLY', '50 per hour')
-
+# Rate limiting configuration will be set dynamically in create_app
 limiter = Limiter(
     key_func=get_remote_address,
     storage_uri="redis://localhost:6379/0",
     strategy="fixed-window",
-    default_limits=[RATE_LIMIT_DAILY, RATE_LIMIT_HOURLY],
     headers_enabled=True,
     retry_after="x-ratelimit-reset"
 )
@@ -55,8 +51,25 @@ def create_app(testing=False):
     app = Flask(__name__)
     
     # Configure the app BEFORE initializing the database
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@localhost:5432/archivist')
+    db_url = os.getenv('DATABASE_URL', 'postgresql://archivist:archivist_password@localhost:5432/archivist')
+    
+    # Add timeout parameters to database URL
+    if '?' not in db_url:
+        db_url += '?'
+    else:
+        db_url += '&'
+    
+    db_url += 'connect_timeout=5&application_name=archivist'
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+        'pool_timeout': 5,
+        'max_overflow': 10,
+        'pool_size': 5
+    }
     
     # Security Configuration
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(32).hex())
@@ -76,6 +89,22 @@ def create_app(testing=False):
     # Initialize the database AFTER setting the configuration
     db.init_app(app)
     
+    # Configure rate limiting based on environment
+    if testing or os.getenv('TESTING') == 'true':
+        # Higher limits for testing environment
+        rate_limit_daily = '10000 per day'
+        rate_limit_hourly = '1000 per hour'
+        logger.debug(f"Rate limiting (testing): {rate_limit_daily}, {rate_limit_hourly}")
+    else:
+        # Normal limits for production
+        rate_limit_daily = '200 per day'
+        rate_limit_hourly = '50 per hour'
+        logger.debug(f"Rate limiting (production): {rate_limit_daily}, {rate_limit_hourly}")
+    
+    # Set rate limiting configuration
+    app.config['RATELIMIT_DEFAULT'] = f'{rate_limit_daily}; {rate_limit_hourly}'
+    app.config['RATELIMIT_STORAGE_URL'] = "redis://localhost:6379/0"
+    
     # Initialize extensions with app
     migrate.init_app(app, db)
     cache.init_app(app)
@@ -94,8 +123,39 @@ def create_app(testing=False):
     force_https = (os.getenv('FLASK_ENV') == 'production' or os.getenv('FORCE_HTTPS', 'false').lower() == 'true')
     security_manager.init_app(app, force_https=force_https)
     
+    # Add comprehensive request debugging
+    from flask import request
+    
+    @app.before_request
+    def debug_request():
+        """Debug all incoming requests."""
+        logger.info(f"🔍 DEBUG REQUEST: {request.method} {request.path}")
+        logger.info(f"🔍 DEBUG HEADERS: {dict(request.headers)}")
+        logger.info(f"🔍 DEBUG REMOTE ADDR: {request.remote_addr}")
+        logger.info(f"🔍 DEBUG USER AGENT: {request.headers.get('User-Agent', 'None')}")
+        
+        if request.is_json:
+            try:
+                json_data = request.get_json()
+                logger.info(f"🔍 DEBUG JSON DATA: {json_data}")
+            except Exception as e:
+                logger.error(f"🔍 DEBUG JSON PARSE ERROR: {e}")
+        
+        if request.form:
+            logger.info(f"🔍 DEBUG FORM DATA: {dict(request.form)}")
+        
+        if request.args:
+            logger.info(f"🔍 DEBUG ARGS: {dict(request.args)}")
+    
+    @app.after_request
+    def debug_response(response):
+        """Debug all outgoing responses."""
+        logger.info(f"🔍 DEBUG RESPONSE: {response.status_code} for {request.method} {request.path}")
+        logger.info(f"🔍 DEBUG RESPONSE HEADERS: {dict(response.headers)}")
+        return response
+    
     # Register routes from web_app
-    from core.api.routes import register_routes
+    from core.api import register_routes
     register_routes(app, limiter)
     # Initialize SocketIO
     socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
@@ -123,11 +183,10 @@ def create_app(testing=False):
     if testing:
         logger.info("Flask application created in testing mode")
     else:
-        logger.info("Flask application created successfully")
-        # Log non-sensitive configuration details
-        logger.debug(f"Environment: {os.getenv('FLASK_ENV', 'development')}")
-        logger.debug(f"HTTPS enforced: {force_https}")
-        logger.debug(f"Rate limiting: {RATE_LIMIT_DAILY}, {RATE_LIMIT_HOURLY}")
+            logger.info("Flask application created successfully")
+    # Log non-sensitive configuration details
+    logger.debug(f"Environment: {os.getenv('FLASK_ENV', 'development')}")
+    logger.debug(f"HTTPS enforced: {force_https}")
     
     return app
 

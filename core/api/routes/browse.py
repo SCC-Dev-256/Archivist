@@ -7,11 +7,10 @@ from pathlib import Path
 
 from flask_restx import Namespace, Resource, fields
 
-from core.config import NAS_PATH, OUTPUT_DIR
+from core import BrowseRequest, TranscriptionResultORM, sanitize_output, security_manager
+from core.config import NAS_PATH, MEMBER_CITIES
 from core.database import db
-from core.models import BrowseRequest, TranscriptionResultORM
-from core.security import sanitize_output, security_manager
-from core.services import FileService
+from core.services.file import FileService
 from flask import Blueprint, jsonify, request, send_file
 from flask_limiter import Limiter
 from loguru import logger
@@ -32,35 +31,37 @@ def create_browse_blueprint(limiter):
     @limiter.limit(BROWSE_RATE_LIMIT)
     def browse():
         """Browse files and directories. If path is empty, return NAS root."""
-        import signal
-        
         path = request.args.get('path', '')
-        # If path is empty, use NAS_PATH as root
-        browse_path = NAS_PATH if not path else os.path.join(NAS_PATH, path)
+        
+        # Handle Flex server paths
+        if path in MEMBER_CITIES:
+            # This is a Flex server path, use its mount path
+            browse_path = MEMBER_CITIES[path]['mount_path']
+        elif path.startswith('flex') and path in MEMBER_CITIES:
+            # Alternative Flex server path format
+            browse_path = MEMBER_CITIES[path]['mount_path']
+        else:
+            # Regular NAS path
+            browse_path = NAS_PATH if not path else os.path.join(NAS_PATH, path)
         
         # Validate path to prevent directory traversal
-        if not security_manager.validate_path(browse_path, NAS_PATH):
-            logger.warning(f"Invalid path access attempt: {browse_path}")
-            return jsonify({'error': 'Invalid path'}), 400
+        # For Flex servers, validate against their specific mount path
+        if path in MEMBER_CITIES:
+            # Flex server path - validate against the mount path itself
+            if not security_manager.validate_path("", browse_path):
+                logger.warning(f"Invalid Flex server path access attempt: {browse_path}")
+                return jsonify({'error': 'Invalid path'}), 400
+        else:
+            # Regular NAS path - validate against NAS_PATH
+            if not security_manager.validate_path(browse_path, NAS_PATH):
+                logger.warning(f"Invalid path access attempt: {browse_path}")
+                return jsonify({'error': 'Invalid path'}), 400
         
         try:
-            # Set a timeout for the browse operation to prevent hanging
-            def timeout_handler(signum, frame):
-                raise TimeoutError("Browse operation timed out")
-            
-            # Set 10 second timeout for browse operations
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(10)
-            
-            try:
-                contents = FileService().browse_directory(browse_path)
-                signal.alarm(0)  # Cancel the alarm
-                return jsonify(sanitize_output(contents)), 200
-            except TimeoutError:
-                logger.error(f"Browse operation timed out for {browse_path}")
-                return jsonify({'error': 'Browse operation timed out. Please try again.'}), 408
-            finally:
-                signal.alarm(0)  # Ensure alarm is cancelled
+            # Simple browse operation without signal-based timeout
+            contents = FileService().browse_directory(browse_path)
+            # Return the full structure with items array for frontend compatibility
+            return jsonify(sanitize_output(contents)), 200
                 
         except Exception as e:
             logger.error(f"Error browsing directory {browse_path}: {e}")
@@ -104,7 +105,6 @@ def create_browse_blueprint(limiter):
     def get_member_cities():
         """Get information about all member cities and their storage locations."""
         try:
-            from core.config import MEMBER_CITIES
             return jsonify({
                 'success': True,
                 'data': {
@@ -121,8 +121,6 @@ def create_browse_blueprint(limiter):
     def get_member_city_info(city_id):
         """Get information about a specific member city."""
         try:
-            from core.config import MEMBER_CITIES
-
             city_info = MEMBER_CITIES.get(city_id)
 
             if not city_info:

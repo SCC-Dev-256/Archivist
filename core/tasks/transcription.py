@@ -17,61 +17,28 @@ import os
 import time
 
 from core.tasks import celery_app
-from core.transcription import run_whisper_transcription as sync_transcribe
+from core.services.transcription import TranscriptionService
 
 
 @celery_app.task(name="transcription.run_whisper", bind=True)
 def run_whisper_transcription(self, video_path: str) -> Dict:
     """
-    Transcribe a video file using WhisperX via Celery.
+    Transcribe a video file using WhisperX and generate SCC captions.
     
-    This task replaces the RQ transcription job with a Celery-based implementation
-    that provides better progress tracking, error handling, and integration with
-    the VOD processing pipeline.
+    This task handles the transcription of a single video file, producing
+    SCC (Scenarist Closed Caption) format output for broadcast compatibility.
     
     Args:
         video_path: Path to the video file to transcribe
         
     Returns:
-        Dictionary containing transcription results:
-        {
-            'output_path': str,      # Path to generated SCC file
-            'status': str,           # 'completed', 'failed', etc.
-            'segments': int,         # Number of transcription segments
-            'duration': float,       # Video duration in seconds
-            'error': str,            # Error message if failed
-            'task_id': str           # Celery task ID
-        }
-        
-    Raises:
-        Exception: If transcription fails
+        Dictionary containing transcription results and output path
     """
     task_id = self.request.id
     logger.info(f"Starting Celery transcription task {task_id} for {video_path}")
     
     try:
-        # Validate input file
-        if not os.path.exists(video_path):
-            error_msg = f"Video file not found: {video_path}"
-            logger.error(f"Task {task_id}: {error_msg}")
-            self.update_state(
-                state='FAILURE',
-                meta={'error': error_msg, 'video_path': video_path}
-            )
-            raise FileNotFoundError(error_msg)
-        
-        # Update task state to processing
-        self.update_state(
-            state='PROGRESS',
-            meta={
-                'status': 'processing',
-                'progress': 0,
-                'status_message': 'Initializing transcription...',
-                'video_path': video_path
-            }
-        )
-        
-        # Update progress
+        # Update initial progress
         self.update_state(
             state='PROGRESS',
             meta={
@@ -82,9 +49,23 @@ def run_whisper_transcription(self, video_path: str) -> Dict:
             }
         )
         
-        # Perform transcription using synchronous helper
+        # Perform transcription using service layer with progress updates
         logger.info(f"Task {task_id}: Starting transcription of {video_path}")
-        result = sync_transcribe(video_path=video_path)
+        service = TranscriptionService()
+        
+        # Update progress to model loaded
+        self.update_state(
+            state='PROGRESS',
+            meta={
+                'status': 'processing',
+                'progress': 20,
+                'status_message': 'Model loaded, starting transcription...',
+                'video_path': video_path
+            }
+        )
+        
+        # Perform the actual transcription
+        result = service.transcribe_file(video_path)
         
         # Update progress to completion
         self.update_state(
@@ -133,8 +114,8 @@ def run_whisper_transcription(self, video_path: str) -> Dict:
         raise
 
 
-@celery_app.task(name="transcription.batch_process")
-def batch_transcription(video_paths: list, priority: Optional[int] = None) -> Dict:
+@celery_app.task(name="batch_transcription")
+def batch_transcription(video_paths: list, priority: Optional[int] = None, parallel: bool = True) -> Dict:
     """
     Process multiple video files for transcription and captioning.
     
@@ -145,11 +126,12 @@ def batch_transcription(video_paths: list, priority: Optional[int] = None) -> Di
     Args:
         video_paths: List of video file paths to transcribe
         priority: Optional priority level for the batch
+        parallel: Whether to process videos in parallel (default: True)
         
     Returns:
         Dictionary containing batch processing results
     """
-    logger.info(f"Starting batch transcription for {len(video_paths)} videos")
+    logger.info(f"Starting batch transcription for {len(video_paths)} videos (parallel: {parallel})")
     
     results = {
         'total_videos': len(video_paths),
@@ -160,58 +142,82 @@ def batch_transcription(video_paths: list, priority: Optional[int] = None) -> Di
         'captioning_results': []
     }
     
-    # Process videos sequentially to avoid overwhelming the system
-    for i, video_path in enumerate(video_paths):
-        try:
-            logger.info(f"Processing video {i+1}/{len(video_paths)}: {video_path}")
-            
-            # Submit individual transcription task
-            task = run_whisper_transcription.delay(video_path)
-            
-            # Wait for completion (with timeout)
-            result = task.get(timeout=3600)  # 1 hour timeout
-            
-            if result and result.get('status') == 'completed':
-                # Transcription successful, now integrate with captioning workflow
-                scc_path = result.get('output_path')
-                if scc_path and os.path.exists(scc_path):
-                    # Generate captioned video using VOD processing workflow
-                    captioning_result = generate_captioned_video(video_path, scc_path)
-                    results['captioning_results'].append({
+    if parallel:
+        # Process videos in parallel for better performance
+        from celery import group
+        
+        # Create a group of transcription tasks
+        transcription_tasks = group([
+            run_whisper_transcription.s(video_path) for video_path in video_paths
+        ])
+        
+        # Execute all transcription tasks in parallel
+        transcription_results = transcription_tasks.apply_async()
+        
+        # Return the group result ID for tracking - don't wait for completion
+        # The individual tasks will complete independently
+        results['batch_task_id'] = transcription_results.id
+        results['status'] = 'queued'
+        results['message'] = f'Batch transcription queued for {len(video_paths)} videos'
+        
+        logger.info(f"Batch transcription group {transcription_results.id} queued for {len(video_paths)} videos")
+        return results
+        
+        # Individual tasks will complete independently and update the queue
+        # Results will be tracked via the queue service and Socket.IO updates
+    else:
+        # Process videos sequentially (original behavior)
+        for i, video_path in enumerate(video_paths):
+            try:
+                logger.info(f"Processing video {i+1}/{len(video_paths)}: {video_path}")
+                
+                # Submit individual transcription task
+                task = run_whisper_transcription.delay(video_path)
+                
+                # Wait for completion (with timeout)
+                result = task.get(timeout=3600)  # 1 hour timeout
+                
+                if result and result.get('status') == 'completed':
+                    # Transcription successful, now integrate with captioning workflow
+                    scc_path = result.get('output_path')
+                    if scc_path and os.path.exists(scc_path):
+                        # Generate captioned video using VOD processing workflow
+                        captioning_result = generate_captioned_video(video_path, scc_path)
+                        results['captioning_results'].append({
+                            'video_path': video_path,
+                            'scc_path': scc_path,
+                            'captioning_success': captioning_result.get('success', False),
+                            'captioned_video_path': captioning_result.get('output_path')
+                        })
+                    
+                    results['results'].append({
                         'video_path': video_path,
-                        'scc_path': scc_path,
-                        'captioning_success': captioning_result.get('success', False),
-                        'captioned_video_path': captioning_result.get('output_path')
+                        'task_id': task.id,
+                        'status': 'completed',
+                        'result': result
                     })
+                    results['completed'] += 1
+                    
+                    logger.info(f"Completed transcription and captioning for {video_path}")
+                else:
+                    # Transcription failed
+                    error_msg = f"Transcription failed for {video_path}"
+                    results['errors'].append({
+                        'video_path': video_path,
+                        'error': error_msg,
+                        'task_id': task.id
+                    })
+                    results['failed'] += 1
+                    
+            except Exception as e:
+                error_msg = f"Failed to transcribe {video_path}: {str(e)}"
+                logger.error(error_msg)
                 
-                results['results'].append({
-                    'video_path': video_path,
-                    'task_id': task.id,
-                    'status': 'completed',
-                    'result': result
-                })
-                results['completed'] += 1
-                
-                logger.info(f"Completed transcription and captioning for {video_path}")
-            else:
-                # Transcription failed
-                error_msg = f"Transcription failed for {video_path}"
                 results['errors'].append({
                     'video_path': video_path,
-                    'error': error_msg,
-                    'task_id': task.id
+                    'error': error_msg
                 })
                 results['failed'] += 1
-                
-        except Exception as e:
-            error_msg = f"Failed to transcribe {video_path}: {str(e)}"
-            logger.error(error_msg)
-            
-            results['errors'].append({
-                'video_path': video_path,
-                'error': error_msg
-            })
-            results['failed'] += 1
     
     logger.info(f"Batch transcription completed: {results['completed']} successful, {results['failed']} failed")
     return results
@@ -334,23 +340,21 @@ def enqueue_transcription(video_path: str, position: Optional[int] = None) -> st
     """
     Enqueue a transcription job (backward compatibility with RQ system).
     
-    This function provides a drop-in replacement for the RQ enqueue_transcription
-    function, allowing for seamless migration from RQ to Celery.
+    This function delegates to the service layer for proper queue management.
     
     Args:
         video_path: Path to the video file
-        position: Ignored (Celery doesn't support position-based queuing)
+        position: Optional position in queue
         
     Returns:
-        Celery task ID
+        Job ID
     """
-    logger.info(f"Enqueueing transcription for {video_path} via Celery")
+    logger.info(f"Enqueueing transcription for {video_path} via service layer")
     
-    # Submit Celery task
-    task = run_whisper_transcription.delay(video_path)
-    
-    logger.info(f"Transcription task submitted: {task.id}")
-    return task.id
+    # Use service layer for proper queue management
+    from core.services import QueueService
+    service = QueueService()
+    return service.enqueue_transcription(video_path, position)
 
 
 # Export for backward compatibility

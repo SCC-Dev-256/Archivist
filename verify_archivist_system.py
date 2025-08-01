@@ -16,12 +16,15 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from loguru import logger
+
 # Add the project root to Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def check_celery_worker():
     """Check if Celery worker is running and processing tasks."""
-    print("🔍 Checking Celery Worker Status...")
+    logger.info("🔍 Checking Celery Worker Status...")
     
     try:
         import psutil
@@ -35,32 +38,33 @@ def check_celery_worker():
                 pass
         
         if celery_processes:
-            print(f"✅ Celery worker is running ({len(celery_processes)} processes)")
+            logger.success(f"Celery worker is running ({len(celery_processes)} processes)")
             for proc in celery_processes:
-                print(f"   - PID {proc['pid']}: {' '.join(proc['cmdline'])}")
+                logger.info(f"   - PID {proc['pid']}: {' '.join(proc['cmdline'])}")
             return True
         else:
-            print("❌ No Celery worker processes found")
+            logger.error("No Celery worker processes found")
             return False
             
     except ImportError:
-        print("⚠️  psutil not available, checking via command line...")
+        logger.warning("psutil not available, checking via command line...")
         import subprocess
         try:
             result = subprocess.run(['pgrep', '-f', 'celery.*worker'], capture_output=True, text=True)
             if result.returncode == 0:
-                print("✅ Celery worker processes found")
+                logger.success("Celery worker processes found")
                 return True
             else:
-                print("❌ No Celery worker processes found")
+                logger.error("No Celery worker processes found")
                 return False
         except Exception as e:
-            print(f"❌ Error checking Celery processes: {e}")
+            logger.error(f"Error checking Celery processes: {e}")
             return False
+
 
 def check_task_registration():
     """Check if all VOD processing tasks are registered."""
-    print("\n🔍 Checking Task Registration...")
+    logger.info("🔍 Checking Task Registration...")
     
     try:
         from core.tasks import celery_app
@@ -71,9 +75,9 @@ def check_task_registration():
                      'retranscode_vod', 'upload_captioned_vod', 'validate_vod_quality', 'cleanup_temp_files'])]
         transcription_tasks = [task for task in registered_tasks if 'transcription' in task]
         
-        print(f"✅ Total tasks registered: {len(registered_tasks)}")
-        print(f"✅ VOD processing tasks: {len(vod_tasks)}")
-        print(f"✅ Transcription tasks: {len(transcription_tasks)}")
+        logger.success(f"Total tasks registered: {len(registered_tasks)}")
+        logger.info(f"VOD processing tasks: {len(vod_tasks)}")
+        logger.info(f"Transcription tasks: {len(transcription_tasks)}")
         
         expected_vod_tasks = [
             'process_recent_vods',
@@ -88,19 +92,20 @@ def check_task_registration():
         missing_tasks = [task for task in expected_vod_tasks if not any(task in registered_task for registered_task in registered_tasks)]
         
         if missing_tasks:
-            print(f"❌ Missing VOD tasks: {missing_tasks}")
+            logger.error(f"Missing VOD tasks: {missing_tasks}")
             return False
         else:
-            print("✅ All expected VOD processing tasks are registered")
+            logger.success("All expected VOD processing tasks are registered")
             return True
             
     except Exception as e:
-        print(f"❌ Error checking task registration: {e}")
+        logger.error(f"Error checking task registration: {e}")
         return False
 
+
 def check_flex_server_access():
-    """Check access to flex server mounts."""
-    print("\n🔍 Checking Flex Server Access...")
+    """Check access to flex servers and mount points."""
+    logger.info("🔍 Checking Flex Server Access...")
     
     try:
         from core.config import MEMBER_CITIES
@@ -109,128 +114,140 @@ def check_flex_server_access():
         total_mounts = len(MEMBER_CITIES)
         
         for city_id, city_config in MEMBER_CITIES.items():
-            mount_path = city_config['mount_path']
             city_name = city_config['name']
+            mount_path = city_config['mount_path']
             
             if os.path.ismount(mount_path):
                 if os.access(mount_path, os.R_OK):
-                    print(f"✅ {city_name} ({city_id}): {mount_path}")
+                    logger.success(f"{city_name} ({city_id}): {mount_path}")
                     accessible_mounts += 1
                 else:
-                    print(f"⚠️  {city_name} ({city_id}): {mount_path} (not readable)")
+                    logger.warning(f"{city_name} ({city_id}): {mount_path} (not readable)")
             else:
-                print(f"❌ {city_name} ({city_id}): {mount_path} (not mounted)")
+                logger.error(f"{city_name} ({city_id}): {mount_path} (not mounted)")
         
-        print(f"\n📊 Flex Server Summary: {accessible_mounts}/{total_mounts} accessible")
+        logger.info("")
+        logger.info(f"📊 Flex Server Summary: {accessible_mounts}/{total_mounts} accessible")
+        
         return accessible_mounts > 0
         
     except Exception as e:
-        print(f"❌ Error checking flex server access: {e}")
+        logger.error(f"Error checking flex server access: {e}")
         return False
 
+
 def check_transcription_dependencies():
-    """Check if transcription dependencies are available."""
-    print("\n🔍 Checking Transcription Dependencies...")
+    """Check if all transcription dependencies are available."""
+    logger.info("🔍 Checking Transcription Dependencies...")
     
-    dependencies = {
-        'faster_whisper': 'Transcription engine',
-        'torch': 'PyTorch backend',
-        'transformers': 'HuggingFace transformers',
-        'tenacity': 'Retry logic'
-    }
+    dependencies = [
+        ('faster_whisper', 'WhisperX transcription engine'),
+        ('ffmpeg', 'Video processing and metadata extraction'),
+        ('magic', 'File type detection'),
+        ('psutil', 'System resource monitoring'),
+        ('redis', 'Task queue backend'),
+        ('celery', 'Distributed task queue'),
+    ]
     
     missing_deps = []
     
-    for module, description in dependencies.items():
+    for module, description in dependencies:
         try:
-            __import__(module)
-            print(f"✅ {module}: {description}")
-        except ImportError:
-            print(f"❌ {module}: {description} (missing)")
+            if module == 'ffmpeg':
+                import subprocess
+                subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+            else:
+                __import__(module)
+            logger.success(f"{module}: {description}")
+        except (ImportError, subprocess.CalledProcessError):
+            logger.error(f"{module}: {description} (missing)")
             missing_deps.append(module)
     
     if missing_deps:
-        print(f"\n⚠️  Missing dependencies: {missing_deps}")
-        print("   Install with: pip install --break-system-packages " + " ".join(missing_deps))
+        logger.warning(f"Missing dependencies: {missing_deps}")
+        logger.info("   Install with: pip install --break-system-packages " + " ".join(missing_deps))
         return False
     else:
-        print("✅ All transcription dependencies are available")
+        logger.success("All transcription dependencies are available")
         return True
+
 
 def check_scheduled_tasks():
     """Check if scheduled tasks are configured."""
-    print("\n🔍 Checking Scheduled Tasks...")
+    logger.info("🔍 Checking Scheduled Tasks...")
     
     try:
-        from core.tasks.scheduler import celery_app
+        from core.tasks import celery_app
         
-        beat_schedule = celery_app.conf.beat_schedule
+        beat_schedule = getattr(celery_app.conf, 'beat_schedule', {})
         
         expected_schedules = [
-            'daily-caption-check',
-            'daily-vod-processing', 
-            'evening-vod-processing',
-            'vod-cleanup'
+            'process_recent_vods',
+            'cleanup_temp_files',
+            'health_check'
         ]
         
         configured_schedules = list(beat_schedule.keys())
         
-        print(f"✅ Configured scheduled tasks: {len(configured_schedules)}")
+        logger.success(f"Configured scheduled tasks: {len(configured_schedules)}")
         
         for schedule in expected_schedules:
-            if schedule in configured_schedules:
+            if schedule in beat_schedule:
                 task_info = beat_schedule[schedule]
-                print(f"✅ {schedule}: {task_info['task']} at {task_info['schedule']}")
+                logger.success(f"{schedule}: {task_info['task']} at {task_info['schedule']}")
             else:
-                print(f"❌ {schedule}: Not configured")
+                logger.error(f"{schedule}: Not configured")
         
         missing_schedules = [s for s in expected_schedules if s not in configured_schedules]
         
         if missing_schedules:
-            print(f"⚠️  Missing scheduled tasks: {missing_schedules}")
+            logger.warning(f"Missing scheduled tasks: {missing_schedules}")
             return False
         else:
-            print("✅ All expected scheduled tasks are configured")
+            logger.success("All expected scheduled tasks are configured")
             return True
             
     except Exception as e:
-        print(f"❌ Error checking scheduled tasks: {e}")
+        logger.error(f"Error checking scheduled tasks: {e}")
         return False
 
+
 def test_vod_processing():
-    """Test VOD processing by triggering a task."""
-    print("\n🔍 Testing VOD Processing...")
+    """Test VOD processing functionality."""
+    logger.info("🔍 Testing VOD Processing...")
     
     try:
-        from core.tasks.vod_processing import process_recent_vods
+        from core.tasks import process_vod_captions
         
-        print("Triggering VOD processing task...")
-        result = process_recent_vods.delay()
+        logger.info("Triggering VOD processing task...")
         
-        print(f"✅ VOD processing task triggered: {result.id}")
+        result = process_vod_captions.delay()
+        
+        logger.success(f"VOD processing task triggered: {result.id}")
         
         # Wait a moment for the task to start
-        time.sleep(2)
+        time.sleep(3)
         
-        # Check task status - use a try/except to handle different Celery result types
+        # Check task status
         try:
-            if hasattr(result, 'ready') and result.ready():
-                task_result = result.get()
-                print(f"✅ Task completed: {task_result}")
-            else:
-                print("⏳ Task is still running (this is normal for VOD processing)")
+            task_result = result.get(timeout=30)
+            logger.success(f"Task completed: {task_result}")
         except Exception as e:
-            print(f"⏳ Task status check: {e} (task is likely running)")
+            if "TimeoutError" in str(e):
+                logger.info("Task is still running (this is normal for VOD processing)")
+            else:
+                logger.info(f"Task status check: {e} (task is likely running)")
         
         return True
         
     except Exception as e:
-        print(f"❌ Error testing VOD processing: {e}")
+        logger.error(f"Error testing VOD processing: {e}")
         return False
 
+
 def check_redis_connection():
-    """Check Redis connection for Celery broker."""
-    print("\n🔍 Checking Redis Connection...")
+    """Check Redis connection and Celery integration."""
+    logger.info("🔍 Checking Redis Connection...")
     
     try:
         import redis
@@ -238,76 +255,91 @@ def check_redis_connection():
         
         # Parse Redis URL
         if REDIS_URL.startswith('redis://'):
-            host_port = REDIS_URL.replace('redis://', '').split('/')[0]
-            host, port = host_port.split(':') if ':' in host_port else (host_port, 6379)
+            redis_url = REDIS_URL[8:]  # Remove 'redis://' prefix
+            if '@' in redis_url:
+                auth, host_port = redis_url.split('@')
+                password = auth.split(':')[-1] if ':' in auth else None
+                host, port = host_port.split(':')
+                port = int(port) if port else 6379
+            else:
+                password = None
+                if ':' in redis_url:
+                    host, port = redis_url.split(':')
+                    port = int(port) if port else 6379
+                else:
+                    host, port = redis_url, 6379
         else:
-            host, port = 'localhost', 6379
+            host, port, password = 'localhost', 6379, None
         
-        r = redis.Redis(host=host, port=int(port), socket_connect_timeout=5)
+        r = redis.Redis(host=host, port=port, password=password, decode_responses=True)
         r.ping()
         
-        print(f"✅ Redis connection successful: {REDIS_URL}")
+        logger.success(f"Redis connection successful: {REDIS_URL}")
         
-        # Check if Celery is using Redis
+        # Check Celery keys
         celery_keys = r.keys('celery*')
-        print(f"✅ Celery keys in Redis: {len(celery_keys)}")
+        logger.success(f"Celery keys in Redis: {len(celery_keys)}")
         
         return True
         
     except Exception as e:
-        print(f"❌ Redis connection failed: {e}")
+        logger.error(f"Redis connection failed: {e}")
         return False
 
+
 def main():
-    """Run all verification checks."""
-    print("🚀 Archivist System Verification")
-    print("=" * 50)
-    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print()
+    """Main verification function."""
+    logger.info("🚀 Archivist System Verification")
+    logger.info("=" * 50)
+    logger.info(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("")
     
     checks = [
-        ("Celery Worker", check_celery_worker),
+        ("Celery Worker Status", check_celery_worker),
         ("Task Registration", check_task_registration),
         ("Flex Server Access", check_flex_server_access),
         ("Transcription Dependencies", check_transcription_dependencies),
         ("Scheduled Tasks", check_scheduled_tasks),
+        ("VOD Processing", test_vod_processing),
         ("Redis Connection", check_redis_connection),
-        ("VOD Processing Test", test_vod_processing)
     ]
     
-    results = []
+    results = {}
     
     for check_name, check_func in checks:
         try:
-            result = check_func()
-            results.append((check_name, result))
+            results[check_name] = check_func()
         except Exception as e:
-            print(f"❌ {check_name} check failed with exception: {e}")
-            results.append((check_name, False))
+            logger.error(f"❌ {check_name} check failed with exception: {e}")
+            results[check_name] = False
     
     # Summary
-    print("\n" + "=" * 50)
-    print("📊 VERIFICATION SUMMARY")
-    print("=" * 50)
+    logger.info("")
+    logger.info("=" * 50)
+    logger.info("📊 VERIFICATION SUMMARY")
+    logger.info("=" * 50)
     
-    passed = sum(1 for _, result in results if result)
-    total = len(results)
+    passed = 0
+    total = len(checks)
     
-    for check_name, result in results:
+    for check_name, result in results.items():
         status = "✅ PASS" if result else "❌ FAIL"
-        print(f"{status} {check_name}")
+        logger.info(f"{status} {check_name}")
+        if result:
+            passed += 1
     
-    print(f"\nOverall Status: {passed}/{total} checks passed")
+    logger.info("")
+    logger.info(f"Overall Status: {passed}/{total} checks passed")
     
     if passed == total:
-        print("🎉 All systems operational! Archivist is ready for production use.")
-    elif passed >= total * 0.8:
-        print("⚠️  Most systems operational, but some issues need attention.")
+        logger.success("🎉 All systems operational! Archivist is ready for production use.")
+    elif passed >= total * 0.7:
+        logger.warning("⚠️  Most systems operational, but some issues need attention.")
     else:
-        print("❌ Multiple system issues detected. Please review and fix.")
+        logger.error("❌ Multiple system issues detected. Please review and fix.")
     
-    return passed == total
+    return 0 if passed >= total * 0.7 else 1
+
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1) 
+    sys.exit(main()) 

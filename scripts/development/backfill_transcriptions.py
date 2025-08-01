@@ -11,7 +11,8 @@ from pathlib import Path
 # Add the project root to the Python path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from core.app import create_app, db
+from core.app import create_app
+from core import db
 from core.models import TranscriptionResultORM
 from core.config import OUTPUT_DIR
 from loguru import logger

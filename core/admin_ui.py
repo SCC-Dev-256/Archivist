@@ -11,10 +11,9 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from core.config import MEMBER_CITIES
-from core.monitoring.integrated_dashboard import IntegratedDashboard
-from core.task_queue import QueueManager
-from core.tasks import celery_app
-from flask import Blueprint, Flask, jsonify, render_template, request
+# Use lazy imports for heavy modules to avoid circular imports
+from core.lazy_imports import get_integrated_dashboard, get_unified_queue_manager, get_celery_app
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from loguru import logger
 
@@ -29,7 +28,7 @@ class AdminUI:
         self.port = port
         self.dashboard_port = dashboard_port
         self.app = Flask(__name__)
-        self.queue_manager = QueueManager()
+        self.queue_manager = get_unified_queue_manager()()
 
         # Enable CORS
         CORS(self.app)
@@ -80,6 +79,7 @@ class AdminUI:
         def api_admin_celery_summary():
             """Get Celery summary for admin view."""
             try:
+                celery_app = get_celery_app()
                 inspect = celery_app.control.inspect()
                 stats = inspect.stats()
                 ping = inspect.ping()
@@ -102,6 +102,7 @@ class AdminUI:
             try:
                 data = request.get_json() or {}
 
+                celery_app = get_celery_app()
                 if task_name == "process_recent_vods":
                     task = celery_app.send_task("vod_processing.process_recent_vods")
                 elif task_name == "cleanup_temp_files":
@@ -169,10 +170,8 @@ class AdminUI:
         def api_health():
             """Get health check data."""
             try:
-                from core.monitoring.health_checks import get_health_manager
-
-                health_manager = get_health_manager()
-                return jsonify(health_manager.get_health_status())
+                from core.health_check import health_checker
+                return jsonify(health_checker.check_all())
             except Exception as e:
                 logger.error(f"Error getting health status: {e}")
                 return jsonify({"error": str(e)}), 500
@@ -208,7 +207,7 @@ class AdminUI:
         def api_celery_tasks():
             """Get Celery task statistics."""
             try:
-                from core.tasks import celery_app
+                celery_app = get_celery_app()
 
                 inspect = celery_app.control.inspect()
                 stats = inspect.stats()
@@ -233,7 +232,7 @@ class AdminUI:
         def api_celery_workers():
             """Get Celery worker status."""
             try:
-                from core.tasks import celery_app
+                celery_app = get_celery_app()
 
                 inspect = celery_app.control.inspect()
                 stats = inspect.stats()
@@ -254,11 +253,8 @@ class AdminUI:
         def api_unified_tasks():
             """Get unified task view (RQ + Celery)."""
             try:
-                from core.tasks import celery_app
-                from core.unified_queue_manager import \
-                    get_unified_queue_manager
-
-                queue_manager = get_unified_queue_manager()
+                celery_app = get_celery_app()
+                queue_manager = get_unified_queue_manager()()
                 tasks = queue_manager.get_all_tasks()
 
                 return jsonify(
@@ -824,6 +820,7 @@ class AdminUI:
             }
 
             # Get Celery status
+            celery_app = get_celery_app()
             inspect = celery_app.control.inspect()
             stats = inspect.stats()
             ping = inspect.ping()
@@ -861,6 +858,7 @@ class AdminUI:
 
         def start_dashboard():
             try:
+                IntegratedDashboard = get_integrated_dashboard()
                 dashboard = IntegratedDashboard(
                     host="0.0.0.0", port=self.dashboard_port
                 )
