@@ -5,6 +5,8 @@ from flask_restx import Namespace, Resource, fields
 from flask_limiter import Limiter
 from loguru import logger
 import os
+import redis
+from kombu.exceptions import OperationalError
 
 from core import TranscribeRequest, BatchTranscribeRequest, validate_json_input, sanitize_output, require_csrf_token
 from core.services.file import FileService
@@ -134,7 +136,11 @@ def create_transcribe_blueprint(limiter):
             
             # Use Celery batch transcription task for better integration with captioning workflow
             logger.info(f"Starting Celery batch transcription for {len(valid_paths)} files")
-            batch_task = batch_transcription.delay(valid_paths)
+            try:
+                batch_task = batch_transcription.delay(valid_paths)
+            except (OperationalError, redis.exceptions.ConnectionError) as e:
+                logger.error(f"Celery broker unavailable: {e}")
+                return jsonify({'error': 'Task queue unavailable'}), 503
             
             # Return response with task ID for tracking
             response_data = {
