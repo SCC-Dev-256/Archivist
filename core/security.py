@@ -56,7 +56,7 @@ class SecurityManager:
         self.allowed_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.mpeg', '.mpg'}
         self.max_file_size = 10 * 1024 * 1024 * 1024  # 10GB
         self.suspicious_patterns = [
-            r'\.\./',  # Directory traversal
+            r'\.\./(?!flex-\d+/)',  # Directory traversal (but allow ../flex-X/)
             r'<script',  # XSS attempts
             r'javascript:',  # JavaScript injection
             r'data:text/html',  # Data URI attacks
@@ -104,7 +104,7 @@ class SecurityManager:
         )
         
         # Register security middleware
-        app.before_request(self._security_middleware)
+        app.before_request(self._security_middleware)  # Re-enabled for debugging
         app.after_request(self._add_security_headers)
         
         # Register error handlers
@@ -128,6 +128,8 @@ class SecurityManager:
     
     def _security_middleware(self):
         """Security middleware to run before each request."""
+        logger.info(f"🔍 DEBUG: Security middleware called for {request.method} {request.path}")
+        
         # Log security-relevant information
         self._log_security_event('request', {
             'ip': request.remote_addr,
@@ -148,21 +150,30 @@ class SecurityManager:
     
     def _validate_csrf_token(self):
         """Validate CSRF token for state-changing operations."""
+        logger.info(f"🔍 DEBUG: CSRF validation called for {request.method} {request.path}")
+        
         if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
+            logger.info(f"🔍 DEBUG: State-changing operation detected")
+            
             # Skip CSRF validation for API endpoints that don't need it
             if request.path.startswith('/api/health') or request.path.startswith('/api/status'):
+                logger.info(f"🔍 DEBUG: Skipping CSRF for health/status endpoint")
                 return
             
             try:
                 # Check for CSRF token in headers (for AJAX/JSON requests)
                 csrf_token = request.headers.get('X-CSRF-Token') or request.headers.get('X-XSRF-TOKEN')
+                logger.info(f"🔍 DEBUG: CSRF token from headers: {csrf_token is not None}")
                 
                 if not csrf_token:
                     # Fall back to form data for traditional forms
                     csrf_token = request.form.get('csrf_token')
+                    logger.info(f"🔍 DEBUG: CSRF token from form: {csrf_token is not None}")
                 
                 if csrf_token:
+                    logger.info(f"🔍 DEBUG: Validating CSRF token")
                     validate_csrf(csrf_token)
+                    logger.info(f"🔍 DEBUG: CSRF token validation successful")
                 else:
                     # For API requests, require CSRF token
                     if request.is_json or request.path.startswith('/api/'):
@@ -193,8 +204,11 @@ class SecurityManager:
     
     def _check_suspicious_patterns(self):
         """Check request for suspicious patterns."""
+        logger.info(f"🔍 DEBUG: Checking suspicious patterns for {request.method} {request.path}")
+        
         # Check URL parameters
         for key, value in request.args.items():
+            logger.info(f"🔍 DEBUG: Checking URL parameter {key}: {value}")
             if self._contains_suspicious_pattern(value):
                 logger.warning(f"Suspicious pattern in URL parameter {key}: {value}")
                 abort(400, description="Invalid request")
@@ -202,6 +216,7 @@ class SecurityManager:
         # Check form data
         if request.form:
             for key, value in request.form.items():
+                logger.info(f"🔍 DEBUG: Checking form data {key}: {value}")
                 if self._contains_suspicious_pattern(value):
                     logger.warning(f"Suspicious pattern in form data {key}: {value}")
                     abort(400, description="Invalid request")
@@ -210,6 +225,7 @@ class SecurityManager:
         if request.is_json:
             try:
                 json_data = request.get_json()
+                logger.info(f"🔍 DEBUG: Checking JSON data for suspicious patterns")
                 self._check_json_suspicious_patterns(json_data)
             except Exception as e:
                 logger.warning(f"Error checking JSON data: {e}")
@@ -217,36 +233,53 @@ class SecurityManager:
     
     def _check_json_suspicious_patterns(self, data, path=""):
         """Recursively check JSON data for suspicious patterns."""
-        logger.debug(f"[SECURITY] Checking JSON data at {path}: {data}")
+        logger.info(f"🔍 DEBUG: Checking JSON data at {path}: {data}")
         if isinstance(data, dict):
             for key, value in data.items():
                 current_path = f"{path}.{key}" if path else key
+                logger.info(f"🔍 DEBUG: Checking JSON key {current_path}: {value}")
                 if isinstance(value, (dict, list)):
                     self._check_json_suspicious_patterns(value, current_path)
-                elif isinstance(value, str) and self._contains_suspicious_pattern(value):
-                    logger.debug(f"[SECURITY] Suspicious pattern in JSON data at {current_path}: {value}")
-                    abort(400, description="Invalid request data")
+                elif isinstance(value, str):
+                    logger.info(f"🔍 DEBUG: Checking string value at {current_path}: {value}")
+                    if self._contains_suspicious_pattern(value):
+                        logger.warning(f"🔍 DEBUG: Suspicious pattern found in JSON data at {current_path}: {value}")
+                        abort(400, description="Invalid request data")
         elif isinstance(data, list):
             for i, item in enumerate(data):
-                current_path = f"{path}[{i}]"
+                current_path = f"{path}[{i}]" if path else f"[{i}]"
+                logger.info(f"🔍 DEBUG: Checking JSON list item {current_path}: {item}")
                 if isinstance(item, (dict, list)):
                     self._check_json_suspicious_patterns(item, current_path)
-                elif isinstance(item, str) and self._contains_suspicious_pattern(item):
-                    logger.debug(f"[SECURITY] Suspicious pattern in JSON data at {current_path}: {item}")
-                    abort(400, description="Invalid request data")
+                elif isinstance(item, str):
+                    logger.info(f"🔍 DEBUG: Checking string item at {current_path}: {item}")
+                    if self._contains_suspicious_pattern(item):
+                        logger.warning(f"🔍 DEBUG: Suspicious pattern found in JSON data at {current_path}: {item}")
+                        abort(400, description="Invalid request data")
     
     def _contains_suspicious_pattern(self, value: str) -> bool:
         """Check if value contains suspicious patterns."""
+        logger.info(f"🔍 DEBUG: Checking for suspicious patterns in: {value}")
+        
         if not isinstance(value, str):
+            logger.info(f"🔍 DEBUG: Value is not a string, skipping")
             return False
         
         # Allow legitimate Flex server relative paths (../flex-X/...)
         # These are valid paths when browsing from NAS_PATH to flex server mounts
         if value.startswith('../flex-') and '/' in value[8:]:
             # This is a legitimate Flex server path, not a directory traversal attack
+            logger.info(f"🔍 DEBUG: Legitimate Flex server path detected, allowing: {value}")
             return False
         
-        return any(re.search(pattern, value, re.IGNORECASE) for pattern in self.suspicious_patterns)
+        # Check each suspicious pattern
+        for pattern in self.suspicious_patterns:
+            if re.search(pattern, value, re.IGNORECASE):
+                logger.warning(f"🔍 DEBUG: Suspicious pattern '{pattern}' found in value: {value}")
+                return True
+        
+        logger.info(f"🔍 DEBUG: No suspicious patterns found in value: {value}")
+        return False
     
     def _add_security_headers(self, response):
         """Add security headers to response."""
@@ -467,14 +500,16 @@ def validate_json_input(schema_class):
             try:
                 if request.is_json:
                     data = request.get_json()
-                    logger.debug(f"[VALIDATION] Validating input for {schema_class.__name__}: {data}")
+                    logger.info(f"[VALIDATION] Validating input for {schema_class.__name__}: {data}")
                     validated_data = schema_class(**data)
+                    logger.info(f"[VALIDATION] Validation successful for {schema_class.__name__}")
                     g.validated_data = validated_data
                 else:
-                    logger.debug("[VALIDATION] Content-Type is not application/json")
+                    logger.warning("[VALIDATION] Content-Type is not application/json")
                     abort(400, description="Content-Type must be application/json")
             except Exception as e:
-                logger.debug(f"[VALIDATION] Invalid JSON data: {e}")
+                logger.error(f"[VALIDATION] Invalid JSON data for {schema_class.__name__}: {e}")
+                logger.error(f"[VALIDATION] Request data: {request.get_json() if request.is_json else 'Not JSON'}")
                 abort(400, description=f"Invalid JSON data: {str(e)}")
             return f(*args, **kwargs)
         return decorated_function

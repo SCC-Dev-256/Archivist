@@ -22,7 +22,6 @@ from typing import Dict, List, Optional
 from celery.result import AsyncResult
 from core.exceptions import QueueError
 from core.tasks import celery_app
-from core.tasks.transcription import run_whisper_transcription
 from loguru import logger
 
 
@@ -50,6 +49,9 @@ class QueueService:
             if not os.path.exists(video_path):
                 raise QueueError(f"Video file not found: {video_path}")
 
+            # Import task when needed to avoid circular imports
+            from core.tasks.transcription import run_whisper_transcription
+            
             # Submit Celery task directly
             task = run_whisper_transcription.delay(video_path)
             job_id = task.id
@@ -351,3 +353,75 @@ class QueueService:
         """
         logger.warning("Restarting workers is not supported via QueueService")
         return False
+
+    def enqueue_batch_transcription(
+        self, video_paths: List[str], parallel: bool = True
+    ) -> str:
+        """Enqueue a batch transcription job.
+
+        Args:
+            video_paths: List of video file paths
+            parallel: Whether to process videos in parallel
+
+        Returns:
+            Batch task ID
+        """
+        try:
+            if not video_paths:
+                raise QueueError("No video paths provided")
+
+            # Validate all paths exist
+            for video_path in video_paths:
+                if not os.path.exists(video_path):
+                    raise QueueError(f"Video file not found: {video_path}")
+
+            # Import batch transcription task
+            from core.tasks.transcription import batch_transcription
+            
+            # Submit batch transcription task
+            task = batch_transcription.delay(video_paths, parallel=parallel)
+            batch_task_id = task.id
+            
+            logger.info(f"Enqueued batch transcription job {batch_task_id} for {len(video_paths)} files")
+            return batch_task_id
+
+        except Exception as e:
+            logger.error(f"Failed to enqueue batch transcription: {e}")
+            raise QueueError(f"Batch job enqueue failed: {str(e)}")
+
+    def get_batch_status(self, batch_task_id: str) -> Dict:
+        """Get the status of a batch transcription job.
+
+        Args:
+            batch_task_id: ID of the batch task
+
+        Returns:
+            Dictionary containing batch job status
+        """
+        try:
+            result = AsyncResult(batch_task_id, app=self.queue_manager)
+            info = result.info if isinstance(result.info, dict) else {}
+
+            status = info.get("status", result.status.lower())
+            response = {
+                'batch_task_id': batch_task_id,
+                'status': status,
+                'total_videos': info.get('total_videos', 0),
+                'completed': info.get('completed', 0),
+                'failed': info.get('failed', 0),
+                'results': info.get('results', []),
+                'errors': info.get('errors', []),
+                'captioning_results': info.get('captioning_results', [])
+            }
+
+            if result.failed():
+                response['error'] = str(result.info)
+            elif result.successful() and isinstance(result.result, dict):
+                response.update(result.result)
+
+            logger.debug(f"Retrieved batch status for {batch_task_id}")
+            return response
+
+        except Exception as e:
+            logger.error(f"Failed to get batch status for {batch_task_id}: {e}")
+            raise QueueError(f"Batch status retrieval failed: {str(e)}")

@@ -123,6 +123,37 @@ def create_app(testing=False):
     force_https = (os.getenv('FLASK_ENV') == 'production' or os.getenv('FORCE_HTTPS', 'false').lower() == 'true')
     security_manager.init_app(app, force_https=force_https)
     
+    # Add comprehensive request debugging
+    from flask import request
+    
+    @app.before_request
+    def debug_request():
+        """Debug all incoming requests."""
+        logger.info(f"🔍 DEBUG REQUEST: {request.method} {request.path}")
+        logger.info(f"🔍 DEBUG HEADERS: {dict(request.headers)}")
+        logger.info(f"🔍 DEBUG REMOTE ADDR: {request.remote_addr}")
+        logger.info(f"🔍 DEBUG USER AGENT: {request.headers.get('User-Agent', 'None')}")
+        
+        if request.is_json:
+            try:
+                json_data = request.get_json()
+                logger.info(f"🔍 DEBUG JSON DATA: {json_data}")
+            except Exception as e:
+                logger.error(f"🔍 DEBUG JSON PARSE ERROR: {e}")
+        
+        if request.form:
+            logger.info(f"🔍 DEBUG FORM DATA: {dict(request.form)}")
+        
+        if request.args:
+            logger.info(f"🔍 DEBUG ARGS: {dict(request.args)}")
+    
+    @app.after_request
+    def debug_response(response):
+        """Debug all outgoing responses."""
+        logger.info(f"🔍 DEBUG RESPONSE: {response.status_code} for {request.method} {request.path}")
+        logger.info(f"🔍 DEBUG RESPONSE HEADERS: {dict(response.headers)}")
+        return response
+    
     # Register routes from web_app
     from core.api import register_routes
     register_routes(app, limiter)

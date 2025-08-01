@@ -162,4 +162,20 @@ def create_queue_blueprint(limiter):
             logger.error(f"Error removing job: {e}")
             return jsonify({'error': 'Internal server error'}), 500
 
+    @bp.route('/queue/batch/<string:batch_task_id>')
+    @limiter.limit(QUEUE_RATE_LIMIT)
+    def get_batch_status(batch_task_id):
+        """Get status of a batch transcription job."""
+        try:
+            queue_service = QueueService()
+            status = queue_service.get_batch_status(batch_task_id)
+            
+            if status:
+                return jsonify(sanitize_output(status))
+            else:
+                return jsonify({'error': 'Batch job not found'}), 404
+        except Exception as e:
+            logger.error(f"Error getting batch status: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
+
     return bp, ns 
