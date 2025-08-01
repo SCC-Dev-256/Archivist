@@ -1,16 +1,16 @@
 """Transcription API endpoints for Archivist application."""
 
 from flask import Blueprint, jsonify, request, g
-from flask_restx import Namespace, Resource, fields
+from flask_restx import Namespace, fields
 from flask_limiter import Limiter
 from loguru import logger
 import os
-import redis
-from kombu.exceptions import OperationalError
+from celery.exceptions import OperationalError
+from redis.exceptions import ConnectionError as RedisConnectionError
 
-from core.services import TranscriptionService, FileService, QueueService
+from core.services import FileService, QueueService
 from core.models import TranscribeRequest, BatchTranscribeRequest
-from core.security import validate_json_input, sanitize_output, require_csrf_token
+from core.security import validate_json_input, require_csrf_token
 from core.tasks.transcription import batch_transcription
 
 # Rate limiting configuration
@@ -91,7 +91,7 @@ def create_transcribe_blueprint(limiter):
             logger.info(f"Starting Celery batch transcription for {len(valid_paths)} files")
             try:
                 batch_task = batch_transcription.delay(valid_paths)
-            except (OperationalError, redis.exceptions.ConnectionError) as e:
+            except (OperationalError, RedisConnectionError) as e:
                 logger.error(f"Celery broker unavailable: {e}")
                 return jsonify({'error': 'Task queue unavailable'}), 503
             

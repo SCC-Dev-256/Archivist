@@ -164,6 +164,9 @@ REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 if REDIS_PASSWORD:
     REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 
+# Celery configuration
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true"
+
 # WhisperX configuration
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v2")
 USE_GPU = os.getenv("USE_GPU", "false").lower() == "true"
