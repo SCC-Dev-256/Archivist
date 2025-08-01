@@ -57,9 +57,9 @@ def create_transcribe_blueprint(limiter):
             return jsonify({'error': 'Internal server error'}), 500
 
     @bp.route('/transcribe/batch', methods=['POST'])
-    # @limiter.limit(TRANSCRIBE_RATE_LIMIT)  # Temporarily disabled for debugging
-    # @require_csrf_token  # Temporarily disabled for debugging
-    # @validate_json_input(BatchTranscribeRequest)  # Temporarily disabled for debugging
+    @limiter.limit(TRANSCRIBE_RATE_LIMIT)
+    @require_csrf_token
+    @validate_json_input(BatchTranscribeRequest)
     def transcribe_batch():
         """Transcribe multiple video files using Celery batch processing."""
         logger.info("🔍 DEBUG: transcribe_batch endpoint called")
@@ -137,15 +137,32 @@ def create_transcribe_blueprint(limiter):
             # Use Celery batch transcription task for better integration with captioning workflow
             logger.info(f"Starting Celery batch transcription for {len(valid_paths)} files")
             try:
-                batch_task = batch_transcription.delay(valid_paths)
+                # Get the registered task from the Celery app
+                from core.tasks import celery_app
+                batch_task = celery_app.tasks.get('batch_transcription')
+                
+                if not batch_task:
+                    logger.error("batch_transcription task not found in Celery app")
+                    return jsonify({'error': 'Transcription service unavailable'}), 503
+                
+                # Submit the task
+                result = batch_task.delay(valid_paths)
+                batch_task_id = result.id
+                
             except (OperationalError, redis.exceptions.ConnectionError) as e:
                 logger.error(f"Celery broker unavailable: {e}")
                 return jsonify({'error': 'Task queue unavailable'}), 503
+            except ImportError as e:
+                logger.error(f"Failed to import batch_transcription task: {e}")
+                return jsonify({'error': 'Transcription service unavailable'}), 503
+            except Exception as e:
+                logger.error(f"Failed to queue batch transcription: {e}")
+                return jsonify({'error': 'Failed to queue transcription'}), 500
             
             # Return response with task ID for tracking
             response_data = {
                 'message': f'Batch transcription queued successfully',
-                'batch_task_id': batch_task.id,
+                'batch_task_id': batch_task_id,
                 'total_files': len(valid_paths),
                 'valid_paths': valid_paths,
                 'queued': valid_paths
@@ -155,7 +172,7 @@ def create_transcribe_blueprint(limiter):
                 response_data['errors'] = [f'Invalid file path: {path}' for path in invalid_paths]
                 response_data['invalid_paths'] = invalid_paths
             
-            logger.info(f"Batch transcription task {batch_task.id} queued for {len(valid_paths)} files")
+            logger.info(f"Batch transcription task {batch_task_id} queued for {len(valid_paths)} files")
             return jsonify(response_data)
             
         except Exception as e:

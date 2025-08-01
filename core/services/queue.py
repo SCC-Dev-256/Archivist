@@ -49,11 +49,14 @@ class QueueService:
             if not os.path.exists(video_path):
                 raise QueueError(f"Video file not found: {video_path}")
 
-            # Import task when needed to avoid circular imports
-            from core.tasks.transcription import run_whisper_transcription
+            # Get the registered task from the Celery app
+            run_whisper_task = self.queue_manager.tasks.get('run_whisper_transcription')
+            
+            if not run_whisper_task:
+                raise QueueError("run_whisper_transcription task not found in Celery app")
             
             # Submit Celery task directly
-            task = run_whisper_transcription.delay(video_path)
+            task = run_whisper_task.delay(video_path)
             job_id = task.id
             logger.info(f"Enqueued transcription job {job_id} for {video_path}")
             return job_id
@@ -375,11 +378,14 @@ class QueueService:
                 if not os.path.exists(video_path):
                     raise QueueError(f"Video file not found: {video_path}")
 
-            # Import batch transcription task
-            from core.tasks.transcription import batch_transcription
+            # Get the registered batch transcription task
+            batch_task = self.queue_manager.tasks.get('batch_transcription')
+            
+            if not batch_task:
+                raise QueueError("batch_transcription task not found in Celery app")
             
             # Submit batch transcription task
-            task = batch_transcription.delay(video_paths, parallel=parallel)
+            task = batch_task.delay(video_paths, parallel=parallel)
             batch_task_id = task.id
             
             logger.info(f"Enqueued batch transcription job {batch_task_id} for {len(video_paths)} files")
