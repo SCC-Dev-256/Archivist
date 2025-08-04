@@ -1,0 +1,90 @@
+{
+  "mode": "centralized",
+  "ports": {
+    "admin_ui": 8080,
+    "dashboard": 5051,
+    "api": 5050,
+    "celery_flower": 5555,
+    "redis": 6379,
+    "postgresql": 5432
+  },
+  "celery": {
+    "concurrency": 8,
+    "queues": ["vod_processing", "transcription", "default"],
+    "hostname": "vod_worker@%h",
+    "log_level": "info",
+    "scheduler": "celery.beat.PersistentScheduler"
+  },
+  "logging": {
+    "level": "INFO",
+    "file_level": "WARNING",
+    "rotation": "50 MB",
+    "retention": "30 days"
+  },
+  "health_checks": {
+    "enabled": true,
+    "interval": 15,
+    "timeout": 3,
+    "max_failures": 5
+  },
+  "features": {
+    "vod_processing": true,
+    "transcription": true,
+    "monitoring": true,
+    "admin_ui": true,
+    "auto_restart": true,
+    "health_monitoring": true,
+    "flex_integration": true
+  },
+  "services": {
+    "redis": {
+      "enabled": true,
+      "auto_restart": true,
+      "max_restart_attempts": 5,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "postgresql": {
+      "enabled": true,
+      "auto_restart": true,
+      "max_restart_attempts": 5,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "celery_worker": {
+      "enabled": true,
+      "auto_restart": true,
+      "max_restart_attempts": 5,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "celery_beat": {
+      "enabled": true,
+      "auto_restart": true,
+      "max_restart_attempts": 5,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "admin_ui": {
+      "enabled": true,
+      "auto_restart": true,
+      "max_restart_attempts": 5,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "monitoring_dashboard": {
+      "enabled": true,
+      "auto_restart": true,
+      "max_restart_attempts": 5,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "vod_sync_monitor": {
+      "enabled": true,
+      "auto_restart": true,
+      "max_restart_attempts": 5,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    }
+  }
+} 

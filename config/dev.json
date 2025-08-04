@@ -1,0 +1,90 @@
+{
+  "mode": "complete",
+  "ports": {
+    "admin_ui": 8081,
+    "dashboard": 5052,
+    "api": 5051,
+    "celery_flower": 5556,
+    "redis": 6379,
+    "postgresql": 5432
+  },
+  "celery": {
+    "concurrency": 2,
+    "queues": ["vod_processing", "default"],
+    "hostname": "vod_worker@%h",
+    "log_level": "debug",
+    "scheduler": "celery.beat.PersistentScheduler"
+  },
+  "logging": {
+    "level": "DEBUG",
+    "file_level": "DEBUG",
+    "rotation": "5 MB",
+    "retention": "3 days"
+  },
+  "health_checks": {
+    "enabled": false,
+    "interval": 120,
+    "timeout": 10,
+    "max_failures": 2
+  },
+  "features": {
+    "vod_processing": true,
+    "transcription": true,
+    "monitoring": false,
+    "admin_ui": true,
+    "auto_restart": false,
+    "health_monitoring": false,
+    "flex_integration": true
+  },
+  "services": {
+    "redis": {
+      "enabled": true,
+      "auto_restart": false,
+      "max_restart_attempts": 1,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "postgresql": {
+      "enabled": true,
+      "auto_restart": false,
+      "max_restart_attempts": 1,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "celery_worker": {
+      "enabled": true,
+      "auto_restart": false,
+      "max_restart_attempts": 1,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "celery_beat": {
+      "enabled": true,
+      "auto_restart": false,
+      "max_restart_attempts": 1,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "admin_ui": {
+      "enabled": true,
+      "auto_restart": false,
+      "max_restart_attempts": 1,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "monitoring_dashboard": {
+      "enabled": false,
+      "auto_restart": false,
+      "max_restart_attempts": 1,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    },
+    "vod_sync_monitor": {
+      "enabled": false,
+      "auto_restart": false,
+      "max_restart_attempts": 1,
+      "restart_delay": 5,
+      "health_check_timeout": 10
+    }
+  }
+} 
