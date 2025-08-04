@@ -394,7 +394,11 @@
                                 <div class="file-item flex items-center justify-between p-2 hover:bg-gray-700 rounded">
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" class="file-checkbox" value="${item.path}"
+
                                                onchange="handleFileSelection('${item.path}', this.checked)">
+=======
+                                               onchange="handleFileSelection('${item.path}', this.checked, this)">
+
                                         <span class="text-gray-400">📄</span>
                                         <span class="file-name">${item.name}</span>
                                     </div>
@@ -418,13 +422,18 @@
         }
 
         // Handle file selection
-        function handleFileSelection(path, isSelected) {
+        function handleFileSelection(path, isSelected, checkbox = null) {
             if (isSelected) {
+                if (selectedFiles.size >= 10) {
+                    showNotification('You can select up to 10 files at a time.', 'warning');
+                    if (checkbox) checkbox.checked = false;
+                    return;
+                }
                 selectedFiles.add(path);
             } else {
                 selectedFiles.delete(path);
             }
-            
+
             // Update queue button state
             const queueBtn = document.getElementById('queue-selected-btn');
             if (selectedFiles.size > 0) {
@@ -798,7 +807,11 @@
                 showNotification('Please select at least one video file.', 'warning');
                 return;
             }
-            
+            if (paths.length > 10) {
+                showNotification('Please select no more than 10 files at a time.', 'warning');
+                return;
+            }
+
             apiRequest('/api/transcribe/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
