@@ -1,0 +1,44 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Archivist System Overview",
+    "tags": ["archivist"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Health",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"archivist-dashboard\"}",
+            "legendFormat": "Dashboard"
+          },
+          {
+            "expr": "up{job=\"celery-worker\"}",
+            "legendFormat": "Celery Worker"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+} 
