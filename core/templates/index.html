@@ -15,26 +15,45 @@
     <script>
         // Global CSRF token variable
         let csrfToken = null;
-        
-        // Function to get CSRF token
-        async function getCSRFToken() {
-            try {
-                const response = await fetch('/api/csrf-token');
-                const data = await response.json();
-                csrfToken = data.csrf_token;
-                console.log('CSRF token obtained:', csrfToken ? 'Success' : 'Failed');
-            } catch (error) {
-                console.error('Error getting CSRF token:', error);
+        const MAX_CSRF_RETRIES = 3;
+
+        // Function to get CSRF token with retry logic
+        async function getCSRFToken(retries = MAX_CSRF_RETRIES) {
+            for (let attempt = 0; attempt < retries; attempt++) {
+                try {
+                    const response = await fetch('/api/csrf-token');
+                    if (response.ok) {
+                        const data = await response.json();
+                        csrfToken = data.csrf_token;
+                        console.log('CSRF token obtained:', csrfToken ? 'Success' : 'Failed');
+                        if (csrfToken) {
+                            updateQueueButtonState();
+                            return csrfToken;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error getting CSRF token:', error);
+                }
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
+            csrfToken = null;
+            updateQueueButtonState();
+            showNotification('Unable to fetch CSRF token. Queue actions are disabled.', 'error');
+            return null;
         }
-        
-        // Function to make authenticated API requests
-        async function apiRequest(url, options = {}) {
+
+        // Function to make authenticated API requests with retry logic
+        async function apiRequest(url, options = {}, retries = 1) {
             // Ensure we have a CSRF token
             if (!csrfToken) {
                 await getCSRFToken();
             }
-            
+            if (!csrfToken) {
+                showNotification('CSRF token missing. Request not sent.', 'error');
+                throw new Error('Missing CSRF token');
+            }
+
             // Add CSRF token to headers for state-changing operations
             if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
                 options.headers = {
@@ -42,12 +61,29 @@
                     'X-CSRF-Token': csrfToken
                 };
             }
-            
-            return fetch(url, options);
+
+            try {
+                const response = await fetch(url, options);
+                if (response.status === 403 && retries > 0) {
+                    csrfToken = null;
+                    await getCSRFToken();
+                    return apiRequest(url, options, retries - 1);
+                }
+                return response;
+            } catch (error) {
+                if (retries > 0) {
+                    await getCSRFToken();
+                    return apiRequest(url, options, retries - 1);
+                }
+                throw error;
+            }
         }
-        
-        // Get CSRF token when page loads
-        document.addEventListener('DOMContentLoaded', getCSRFToken);
+
+        // Get CSRF token and set initial button state when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            updateQueueButtonState();
+            getCSRFToken();
+        });
     </script>
     <div class="container mx-auto px-4 py-8">
         <header class="mb-8">
@@ -137,7 +173,7 @@
                         <!-- Files will be listed here -->
                     </div>
                     <div class="mt-4">
-                        <button id="queue-selected-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="queueSelectedFiles()">
+                        <button id="queue-selected-btn" class="w-full bg-gray-600 text-white px-4 py-2 rounded opacity-50 cursor-not-allowed" onclick="queueSelectedFiles()" disabled>
                             Queue Selected for Transcription
                         </button>
                     </div>
@@ -418,18 +454,38 @@
             } else {
                 selectedFiles.delete(path);
             }
-            
-            // Update queue button state
+            updateQueueButtonState();
+        }
+
+        // Update state of queue-related buttons
+        function updateQueueButtonState() {
             const queueBtn = document.getElementById('queue-selected-btn');
-            if (selectedFiles.size > 0) {
-                queueBtn.textContent = `Queue ${selectedFiles.size} Selected File(s)`;
-                queueBtn.classList.remove('bg-gray-600');
-                queueBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-            } else {
-                queueBtn.textContent = 'Queue Selected for Transcription';
-                queueBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                queueBtn.classList.add('bg-gray-600');
+            if (queueBtn) {
+                const enabled = csrfToken && selectedFiles.size > 0;
+                queueBtn.disabled = !enabled;
+                if (enabled) {
+                    queueBtn.textContent = `Queue ${selectedFiles.size} Selected File(s)`;
+                    queueBtn.classList.remove('bg-gray-600', 'opacity-50', 'cursor-not-allowed');
+                    queueBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                } else {
+                    queueBtn.textContent = 'Queue Selected for Transcription';
+                    queueBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    queueBtn.classList.add('bg-gray-600');
+                    if (!csrfToken) {
+                        queueBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        queueBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                }
             }
+            document.querySelectorAll('.cancel-job-btn').forEach(btn => {
+                btn.disabled = !csrfToken;
+                if (!csrfToken) {
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            });
         }
 
         // Load completed transcriptions
@@ -695,8 +751,8 @@
                                     <div class="flex gap-2">
                                         <span class="px-2 py-1 rounded text-sm ${statusClass}">${job.status}</span>
                                         ${job.status !== 'completed' && job.status !== 'failed' ? `
-                                            <button onclick="cancelJob('${job.id}')" 
-                                                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                                            <button onclick="cancelJob('${job.id}')"
+                                                    class="cancel-job-btn bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
                                                 Cancel
                                             </button>
                                         ` : ''}
@@ -721,6 +777,7 @@
                             </div>
                         `;
                     }).join('');
+                    updateQueueButtonState();
                 })
                 .catch(error => {
                     console.error('Error updating queue:', error);
