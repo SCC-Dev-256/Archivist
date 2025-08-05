@@ -77,8 +77,23 @@ def test_vod_processing_task():
     try:
         from core.tasks.vod_processing import process_single_vod
         
-        # Test with a dummy task (won't actually process)
-        result = process_single_vod.delay('test_vod.mp4', '/mnt/flex-1/test_video.mp4')
+        # Test with real video from flex servers
+        test_video = None
+        for flex_num in range(1, 10):
+            flex_path = f"/mnt/flex-{flex_num}"
+            if os.path.exists(flex_path):
+                for file in os.listdir(flex_path):
+                    if file.endswith('.mp4') and 'White Bear Lake' in file:
+                        test_video = os.path.join(flex_path, file)
+                        break
+                if test_video:
+                    break
+        
+        if not test_video:
+            print("⚠️  No suitable test video found, using placeholder")
+            test_video = '/mnt/flex-1/test_video.mp4'
+        
+        result = process_single_vod.delay('test_vod.mp4', test_video)
         print(f"✅ Task submitted successfully")
         print(f"   Task ID: {result.id}")
         print(f"   Status: {result.status}")

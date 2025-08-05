@@ -25,6 +25,8 @@ celery_app = Celery(
         "core.tasks.caption_checks",
         "core.tasks.vod_processing",
         "core.tasks.transcription",
+        "core.tasks.transcription_linking",
+        "core.tasks.health_checks",
     ],
 )
 
@@ -62,6 +64,20 @@ try:
     logger.info("Transcription tasks imported successfully")
 except Exception as e:
     logger.error(f"Failed to import transcription tasks: {e}")
+
+# Ensure transcription linking tasks are imported and registered
+try:
+    import core.tasks.transcription_linking  # noqa: E402,F401
+    logger.info("Transcription linking tasks imported successfully")
+except Exception as e:
+    logger.error(f"Failed to import transcription linking tasks: {e}")
+
+# Ensure health check tasks are imported and registered
+try:
+    import core.tasks.health_checks  # noqa: E402,F401
+    logger.info("Health check tasks imported successfully")
+except Exception as e:
+    logger.error(f"Failed to import health check tasks: {e}")
 
 # Verify task registration
 registered_tasks = celery_app.tasks.keys()

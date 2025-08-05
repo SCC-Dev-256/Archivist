@@ -223,24 +223,44 @@ class ServiceManager:
             return True
         
         try:
-            # Try systemctl first
-            result = subprocess.run(['systemctl', 'start', 'redis'], capture_output=True)
-            if result.returncode == 0:
-                time.sleep(2)
-                if self._check_redis_health():
-                    logger.info("✅ Redis started via systemctl")
-                    return True
+            # Try systemctl first with full path
+            systemctl_paths = ['/usr/bin/systemctl', '/bin/systemctl', 'systemctl']
+            systemctl_found = False
+            
+            for systemctl_path in systemctl_paths:
+                try:
+                    result = subprocess.run([systemctl_path, 'start', 'redis'], capture_output=True, text=True)
+                    if result.returncode == 0:
+                        time.sleep(2)
+                        if self._check_redis_health():
+                            logger.info(f"✅ Redis started via {systemctl_path}")
+                            return True
+                        systemctl_found = True
+                        break
+                except FileNotFoundError:
+                    continue
+            
+            if not systemctl_found:
+                logger.warning("⚠️ systemctl not found, trying direct Redis start")
             
             # Fallback to direct start
-            subprocess.run(['redis-server', '--daemonize', 'yes'], check=True)
-            time.sleep(2)
+            try:
+                subprocess.run(['redis-server', '--daemonize', 'yes'], check=True, capture_output=True)
+                time.sleep(2)
+                
+                if self._check_redis_health():
+                    logger.info("✅ Redis started directly")
+                    return True
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                logger.warning(f"⚠️ Direct Redis start failed: {e}")
             
+            # Final fallback - check if Redis is already running
             if self._check_redis_health():
-                logger.info("✅ Redis started directly")
+                logger.info("✅ Redis is already running")
                 return True
-            else:
-                logger.error("❌ Failed to start Redis")
-                return False
+            
+            logger.error("❌ Failed to start Redis")
+            return False
                 
         except Exception as e:
             logger.error(f"❌ Failed to start Redis: {e}")
@@ -253,24 +273,44 @@ class ServiceManager:
             return True
         
         try:
-            # Try systemctl first
-            result = subprocess.run(['systemctl', 'start', 'postgresql'], capture_output=True)
-            if result.returncode == 0:
-                time.sleep(3)
-                if self._check_postgresql_health():
-                    logger.info("✅ PostgreSQL started via systemctl")
-                    return True
+            # Try systemctl first with full path
+            systemctl_paths = ['/usr/bin/systemctl', '/bin/systemctl', 'systemctl']
+            systemctl_found = False
+            
+            for systemctl_path in systemctl_paths:
+                try:
+                    result = subprocess.run([systemctl_path, 'start', 'postgresql'], capture_output=True, text=True)
+                    if result.returncode == 0:
+                        time.sleep(3)
+                        if self._check_postgresql_health():
+                            logger.info(f"✅ PostgreSQL started via {systemctl_path}")
+                            return True
+                        systemctl_found = True
+                        break
+                except FileNotFoundError:
+                    continue
+            
+            if not systemctl_found:
+                logger.warning("⚠️ systemctl not found, trying direct PostgreSQL start")
             
             # Fallback to pg_ctl
-            subprocess.run(['pg_ctl', '-D', '/var/lib/postgresql/data', 'start'], check=True)
-            time.sleep(3)
+            try:
+                subprocess.run(['pg_ctl', '-D', '/var/lib/postgresql/data', 'start'], check=True, capture_output=True)
+                time.sleep(3)
+                
+                if self._check_postgresql_health():
+                    logger.info("✅ PostgreSQL started via pg_ctl")
+                    return True
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                logger.warning(f"⚠️ Direct PostgreSQL start failed: {e}")
             
+            # Final fallback - check if PostgreSQL is already running
             if self._check_postgresql_health():
-                logger.info("✅ PostgreSQL started via pg_ctl")
+                logger.info("✅ PostgreSQL is already running")
                 return True
-            else:
-                logger.error("❌ Failed to start PostgreSQL")
-                return False
+            
+            logger.error("❌ Failed to start PostgreSQL")
+            return False
                 
         except Exception as e:
             logger.error(f"❌ Failed to start PostgreSQL: {e}")

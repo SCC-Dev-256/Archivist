@@ -27,7 +27,8 @@ def find_test_video():
     potential_files = [
         "/mnt/flex-5/14221-1-North St Paul City Council (20190402).mp4",  # Spare Record Storage 1
         "/mnt/flex-2/10845-1-Birchwood City Council (20160614).mpeg",     # Dellwood Grant Willernie
-        "/mnt/nas/test_video.mp4"
+        "/mnt/flex-1/White Bear Lake Shortest Marathon.mp4",              # White Bear Lake content
+        "/mnt/flex-8/White Bear Lake Shortest Marathon.mp4"               # Alternative location
     ]
     
     for video_path in potential_files:

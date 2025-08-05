@@ -47,8 +47,8 @@ sudo chown root:root /etc/flex-credentials
 echo -e "${GREEN}Credentials file created at /etc/flex-credentials${NC}"
 
 # Get user and group IDs
-USER_ID=$(id -u)
-GROUP_ID=$(getent group archivist_users | cut -d: -f3)
+USER_ID=1000  # schum user ID
+GROUP_ID=1001  # archivist_users group ID
 
 echo "User ID: $USER_ID (schum)"
 echo "Group ID: $GROUP_ID (archivist_users)"

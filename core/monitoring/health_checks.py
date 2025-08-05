@@ -54,38 +54,54 @@ class StorageHealthChecker:
                 )
 
             # Check if it's a mount point
-            if not os.path.ismount(mount_path):
-                return HealthCheckResult(
-                    component=f"storage:{mount_path}",
-                    status="degraded",
-                    message=f"Path is not a mount point: {mount_path}",
-                    details={
-                        "exists": True,
-                        "is_mount": False,
-                        "writable": os.access(mount_path, os.W_OK),
-                    },
-                    timestamp=datetime.now(),
-                    response_time=time.time() - start_time,
-                )
+            is_mount = os.path.ismount(mount_path)
 
             # Check write permissions
             writable = os.access(mount_path, os.W_OK)
 
-            # Try to create a test file
+            # Try to create a test file with proper error handling
             test_file = os.path.join(mount_path, ".health_check_test")
             test_success = False
 
             try:
+                # Create a unique test filename to avoid conflicts
+                import uuid
+                test_filename = f".health_check_test_{uuid.uuid4().hex[:8]}"
+                test_file = os.path.join(mount_path, test_filename)
+                
                 with open(test_file, "w") as f:
                     f.write("health_check")
                 test_success = True
-                os.remove(test_file)
+                
+                # Clean up test file
+                try:
+                    os.remove(test_file)
+                except Exception:
+                    pass  # Ignore cleanup errors
+                    
             except Exception as e:
                 test_success = False
                 logger.warning(f"Write test failed for {mount_path}: {e}")
 
-            status = "healthy" if writable and test_success else "degraded"
-            message = f"Storage {mount_path} is {'healthy' if status == 'healthy' else 'has issues'}"
+            # Determine status based on mount type and permissions
+            if is_mount:
+                if writable and test_success:
+                    status = "healthy"
+                    message = f"Storage {mount_path} is healthy and writable"
+                elif writable:
+                    status = "degraded"
+                    message = f"Storage {mount_path} is mounted and writable but write test failed"
+                else:
+                    status = "unhealthy"
+                    message = f"Storage {mount_path} is mounted but not writable"
+            else:
+                # For non-mount paths (like /tmp), just check if writable
+                if writable:
+                    status = "healthy"
+                    message = f"Path {mount_path} is writable"
+                else:
+                    status = "degraded"
+                    message = f"Path {mount_path} is not writable"
 
             self.metrics.increment("storage_checks_total")
             if status != "healthy":
@@ -97,10 +113,10 @@ class StorageHealthChecker:
                 message=message,
                 details={
                     "exists": True,
-                    "is_mount": True,
+                    "is_mount": is_mount,
                     "writable": writable,
                     "test_write": test_success,
-                    "free_space": self._get_free_space(mount_path),
+                    "free_space": self._get_free_space(mount_path) if is_mount else None,
                 },
                 timestamp=datetime.now(),
                 response_time=time.time() - start_time,
@@ -261,12 +277,13 @@ class SystemHealthChecker:
             celery_processes = []
             for proc in psutil.process_iter(["pid", "name", "cmdline"]):
                 try:
-                    if "celery" in proc.info["name"].lower():
-                        cmdline = " ".join(proc.info["cmdline"] or [])
-                        if "worker" in cmdline:
-                            celery_processes.append(
-                                {"pid": proc.info["pid"], "cmdline": cmdline}
-                            )
+                    cmdline = " ".join(proc.info["cmdline"] or [])
+                    # Look for both python processes running celery and direct celery processes
+                    if (("celery" in proc.info["name"].lower() or proc.info["name"] == "python") and 
+                        "celery" in cmdline and "worker" in cmdline):
+                        celery_processes.append(
+                            {"pid": proc.info["pid"], "cmdline": cmdline}
+                        )
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
 

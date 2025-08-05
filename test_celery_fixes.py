@@ -7,6 +7,7 @@
 
 import subprocess
 import time
+import os
 import json
 import sys
 from pathlib import Path
@@ -38,8 +39,27 @@ def test_task_creation():
     try:
         from core.tasks import celery_app
         
-        # Test transcription task
-        result = celery_app.send_task('transcription.run_whisper', args=['/tmp/test.mp4'])
+        # Test transcription task with real video from flex servers
+        test_video = "/mnt/flex-1/White Bear Lake Shortest Marathon.mp4"
+        if not os.path.exists(test_video):
+            test_video = "/mnt/flex-8/White Bear Lake Shortest Marathon.mp4"
+        if not os.path.exists(test_video):
+            # Fallback to any available video
+            for flex_num in range(1, 10):
+                flex_path = f"/mnt/flex-{flex_num}"
+                if os.path.exists(flex_path):
+                    for file in os.listdir(flex_path):
+                        if file.endswith('.mp4') and 'White Bear Lake' in file:
+                            test_video = os.path.join(flex_path, file)
+                            break
+                    if os.path.exists(test_video):
+                        break
+        
+        if not os.path.exists(test_video):
+            print("⚠️  No suitable test video found, using placeholder")
+            test_video = "/tmp/test.mp4"
+        
+        result = celery_app.send_task('transcription.run_whisper', args=[test_video])
         task_id = result.id
         
         print(f"✅ Task created with ID: {task_id}")

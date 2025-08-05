@@ -46,6 +46,21 @@ celery_app.conf.beat_schedule.update(
             "task": "vod_processing.cleanup_temp_files",
             "schedule": crontab(minute=30, hour=2),  # Run at 2:30 AM UTC daily
             "options": {"timezone": "UTC"},
+        },
+        "transcription-linking-queue": {
+            "task": "transcription_linking.process_queue",
+            "schedule": crontab(minute=15, hour="*/2"),  # Run every 2 hours at :15
+            "options": {"timezone": "UTC"},
+        },
+        "transcription-linking-cleanup": {
+            "task": "transcription_linking.cleanup_orphaned",
+            "schedule": crontab(minute=45, hour=3),  # Run at 3:45 AM UTC daily
+            "options": {"timezone": "UTC"},
+        },
+        "system-health-check": {
+            "task": "health_checks.run_scheduled_health_check",
+            "schedule": crontab(minute=0, hour="*/1"),  # Run every hour
+            "options": {"timezone": "UTC"},
         }
     }
 )
@@ -55,4 +70,7 @@ logger.info(
 )
 logger.info("Registered daily VOD processing task at 04:00 UTC via Celery beat")
 logger.info(f"Registered evening VOD processing task at {vod_hour:02d}:{vod_minute:02d} Central Time via Celery beat")
-logger.info("Registered VOD cleanup task at 02:30 UTC via Celery beat") 
+logger.info("Registered VOD cleanup task at 02:30 UTC via Celery beat")
+logger.info("Registered transcription linking queue processing task every 2 hours via Celery beat")
+logger.info("Registered transcription linking cleanup task at 03:45 UTC via Celery beat")
+logger.info("Registered system health check task every hour via Celery beat") 

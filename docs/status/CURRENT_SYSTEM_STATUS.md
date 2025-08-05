@@ -282,7 +282,7 @@ Overall: 5/5 tests passed
 ps aux | grep -E "(celery|python.*start_archivist)"
 
 # Test task creation
-python -c "from core.tasks import celery_app; result = celery_app.send_task('vod_processing.process_single_vod', args=['test.mp4']); print(f'Task ID: {result.id}')"
+python -c "from core.tasks import celery_app; result = celery_app.send_task('vod_processing.process_single_vod', args=['/mnt/flex-1/White Bear Lake Shortest Marathon.mp4']); print(f'Task ID: {result.id}')"
 
 # Start workers manually
 celery -A core.tasks worker --loglevel=info --concurrency=4

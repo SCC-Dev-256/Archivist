@@ -1,6 +1,7 @@
 import asyncio
 import aiohttp
 import time
+import os
 from datetime import datetime
 import json
 from typing import List, Dict
@@ -54,9 +55,15 @@ class LoadTester:
                     "/api/transcribe"
                 ])
                 
-                # For transcribe endpoint, use POST with test data
+                # For transcribe endpoint, use POST with real video data
                 if endpoint == "/api/transcribe":
-                    data = {"path": "test.mp4"}
+                    # Use real video from flex servers
+                    test_video = "/mnt/flex-1/White Bear Lake Shortest Marathon.mp4"
+                    if not os.path.exists(test_video):
+                        test_video = "/mnt/flex-8/White Bear Lake Shortest Marathon.mp4"
+                    if not os.path.exists(test_video):
+                        test_video = "test.mp4"  # Fallback
+                    data = {"path": test_video}
                     task = self.make_request(session, endpoint, "POST", data)
                 else:
                     task = self.make_request(session, endpoint)

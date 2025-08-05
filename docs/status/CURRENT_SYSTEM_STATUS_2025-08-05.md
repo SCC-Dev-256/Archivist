@@ -252,7 +252,7 @@ source venv_py311/bin/activate
 python3 -c "import sys; sys.path.insert(0, '.'); from core.tasks.vod_processing import process_recent_vods; result = process_recent_vods.delay(); print(f'VOD processing triggered: {result.id}')"
 
 # Test transcription
-python3 -c "import sys; sys.path.insert(0, '.'); from core.tasks.transcription import run_whisper_transcription; result = run_whisper_transcription.delay('/mnt/flex-1/test.mp4'); print(f'Transcription task triggered: {result.id}')"
+python3 -c "import sys; sys.path.insert(0, '.'); from core.tasks.transcription import run_whisper_transcription; result = run_whisper_transcription.delay('/mnt/flex-1/White Bear Lake Shortest Marathon.mp4'); print(f'Transcription task triggered: {result.id}')"
 ```
 
 **Status: ✅ FULLY OPERATIONAL**  

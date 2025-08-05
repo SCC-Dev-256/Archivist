@@ -85,7 +85,7 @@ pkill -f "celery.*beat"              # Stopped old beat scheduler
 ### **✅ MANUAL PROCESSING:**
 ```bash
 # Test command that works:
-python3 -c "from core.tasks.transcription import run_whisper_transcription; result = run_whisper_transcription.delay('/mnt/flex-1/test.mp4'); print(f'Task triggered: {result.id}')"
+python3 -c "from core.tasks.transcription import run_whisper_transcription; result = run_whisper_transcription.delay('/mnt/flex-1/White Bear Lake Shortest Marathon.mp4'); print(f'Task triggered: {result.id}')"
 ```
 
 ## 🚀 **PRODUCTION READINESS**
