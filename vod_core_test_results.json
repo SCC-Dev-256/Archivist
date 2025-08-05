@@ -1,0 +1,28 @@
+{
+  "admin_ui": {
+    "imports": true,
+    "functionality": true
+  },
+  "vod_processing": {
+    "imports": true,
+    "functions": true
+  },
+  "vod_automation": {
+    "imports": true
+  },
+  "vod_service": {
+    "imports": true
+  },
+  "celery_imports": {
+    "imports": true,
+    "task_definitions": true
+  },
+  "overall": {
+    "total_tests": 8,
+    "passed_tests": 8,
+    "failed_tests": 0,
+    "success_rate": 1.0,
+    "status": "PASS",
+    "duration": 12.284288
+  }
+}

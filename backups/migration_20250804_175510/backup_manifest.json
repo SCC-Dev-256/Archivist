@@ -1,0 +1,18 @@
+{
+  "backup_date": "2025-08-04T17:55:10.136884",
+  "backup_directory": "/opt/Archivist/backups/migration_20250804_175510",
+  "backed_up_files": [
+    "scripts/deployment/start_integrated_system.py",
+    "scripts/deployment/start_complete_system.py",
+    "scripts/deployment/start_archivist_centralized.py",
+    "scripts/deployment/start_vod_system_simple.py",
+    "scripts/deployment/start_archivist_centralized.sh",
+    "start_dashboard.sh",
+    "start_archivist_system.sh",
+    "start_archivist_simple.sh",
+    "start_dashboard.sh",
+    "start_archivist_system.sh",
+    "start_archivist_simple.sh"
+  ],
+  "migration_version": "1.0"
+}

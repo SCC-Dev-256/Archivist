@@ -1,0 +1,30 @@
+{
+  "imports": {
+    "admin_ui": true,
+    "celery": false,
+    "vod_processing": false
+  },
+  "vod_processing": {
+    "functions": false,
+    "workflow": false,
+    "automation": false,
+    "service": false
+  },
+  "task_definitions": {
+    "celery_tasks": true
+  },
+  "configuration": {
+    "config_loading": true
+  },
+  "overall": {
+    "total_tests": 10,
+    "passed_tests": 4,
+    "failed_tests": 6,
+    "success_rate": 0.4,
+    "status": "FAIL",
+    "duration": 9.032317
+  },
+  "admin_ui": {
+    "functionality": true
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "redis": true,
+  "imports": true,
+  "config": false,
+  "worker_status": false,
+  "task_submission": false,
+  "vod_processing": true
+}

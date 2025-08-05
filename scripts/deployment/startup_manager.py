@@ -91,21 +91,45 @@ class ServiceManager:
     def _check_celery_worker_health(self) -> bool:
         """Check Celery worker health."""
         try:
-            from core.tasks import celery_app
-            inspect = celery_app.control.inspect()
-            stats = inspect.stats()
-            return bool(stats)
-        except Exception:
+            # Check for any Python or Celery process running celery worker
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                if ((proc.info['name'] == 'python' or proc.info['name'] == 'celery') and 
+                    proc.info['cmdline'] and 
+                    any('celery' in arg for arg in proc.info['cmdline']) and
+                    any('worker' in arg for arg in proc.info['cmdline']) and
+                    proc.is_running()):
+                    logger.debug(f"Found Celery worker process: {proc.info['pid']}")
+                    return True
+            
+            # If no process found, try the inspect method as fallback
+            try:
+                from core.tasks import celery_app
+                inspect = celery_app.control.inspect()
+                stats = inspect.stats()
+                if stats:
+                    logger.debug(f"Found Celery workers via inspect: {list(stats.keys())}")
+                    return True
+            except Exception as e:
+                logger.debug(f"Celery inspect failed: {e}")
+            
+            return False
+        except Exception as e:
+            logger.debug(f"Celery worker health check failed: {e}")
             return False
     
     def _check_celery_beat_health(self) -> bool:
         """Check Celery beat health."""
         try:
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-                if proc.info['cmdline'] and 'celery' in proc.info['cmdline'] and 'beat' in proc.info['cmdline']:
-                    return proc.is_running()
+                if (proc.info['cmdline'] and 
+                    any('celery' in arg for arg in proc.info['cmdline']) and
+                    any('beat' in arg for arg in proc.info['cmdline']) and
+                    proc.is_running()):
+                    logger.debug(f"Found Celery beat process: {proc.info['pid']}")
+                    return True
             return False
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Celery beat health check failed: {e}")
             return False
     
     def _check_admin_ui_health(self) -> bool:
@@ -255,8 +279,16 @@ class ServiceManager:
     def _start_celery_worker(self) -> bool:
         """Start Celery worker."""
         try:
+            # Check if worker is already running
+            if self._check_celery_worker_health():
+                logger.info("✅ Celery worker is already running")
+                return True
+            
+            # Use direct celery command with virtual environment activation
+            logger.info("Using direct Celery command with venv activation")
+            venv_celery = os.path.join(self.config.project_root, "venv_py311", "bin", "celery")
             worker_cmd = [
-                "celery", "-A", "core.tasks", "worker",
+                venv_celery, "-A", "core.tasks", "worker",
                 "--loglevel=info",
                 f"--concurrency={self.config.celery.concurrency}",
                 f"--hostname={self.config.celery.hostname}",
@@ -265,21 +297,30 @@ class ServiceManager:
             
             worker_process = subprocess.Popen(
                 worker_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 cwd=self.config.project_root
             )
             
+            logger.info(f"Starting Celery worker with command: {' '.join(worker_cmd)}")
+            
             self.processes["celery_worker"] = worker_process
             
-            # Wait for worker to start
-            time.sleep(5)
-            if self._check_celery_worker_health():
-                logger.info("✅ Celery worker started successfully")
-                return True
-            else:
-                logger.error("❌ Celery worker failed to start")
-                return False
+            # Wait for worker to start with multiple checks
+            for attempt in range(30):  # Try for up to 30 seconds (increased for ML model loading)
+                time.sleep(1)
+                if self._check_celery_worker_health():
+                    logger.info("✅ Celery worker started successfully")
+                    return True
+                
+                # Check if process is still running
+                if worker_process.poll() is not None:
+                    # Process died
+                    logger.error(f"❌ Celery worker process died with exit code: {worker_process.returncode}")
+                    return False
+            
+            logger.error("❌ Celery worker failed to start within timeout")
+            return False
                 
         except Exception as e:
             logger.error(f"❌ Failed to start Celery worker: {e}")
@@ -288,29 +329,46 @@ class ServiceManager:
     def _start_celery_beat(self) -> bool:
         """Start Celery beat scheduler."""
         try:
+            # Check if beat is already running
+            if self._check_celery_beat_health():
+                logger.info("✅ Celery beat scheduler is already running")
+                return True
+            
+            # Use direct celery command with virtual environment activation
+            logger.info("Using direct Celery beat command with venv activation")
+            venv_celery = os.path.join(self.config.project_root, "venv_py311", "bin", "celery")
             beat_cmd = [
-                "celery", "-A", "core.tasks", "beat",
+                venv_celery, "-A", "core.tasks", "beat",
                 "--loglevel=info",
                 f"--scheduler={self.config.celery.scheduler}"
             ]
             
             beat_process = subprocess.Popen(
                 beat_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 cwd=self.config.project_root
             )
             
+            logger.info(f"Starting Celery beat with command: {' '.join(beat_cmd)}")
+            
             self.processes["celery_beat"] = beat_process
             
-            # Wait for beat to start
-            time.sleep(5)
-            if self._check_celery_beat_health():
-                logger.info("✅ Celery beat scheduler started successfully")
-                return True
-            else:
-                logger.error("❌ Celery beat scheduler failed to start")
-                return False
+            # Wait for beat to start with multiple checks
+            for attempt in range(10):  # Try for up to 10 seconds
+                time.sleep(1)
+                if self._check_celery_beat_health():
+                    logger.info("✅ Celery beat scheduler started successfully")
+                    return True
+                
+                # Check if process is still running
+                if beat_process.poll() is not None:
+                    # Process died
+                    logger.error(f"❌ Celery beat process died with exit code: {beat_process.returncode}")
+                    return False
+            
+            logger.error("❌ Celery beat scheduler failed to start within timeout")
+            return False
                 
         except Exception as e:
             logger.error(f"❌ Failed to start Celery beat: {e}")

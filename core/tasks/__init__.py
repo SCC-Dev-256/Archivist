@@ -21,8 +21,6 @@ import os
 
 celery_app = Celery(
     "archivist",
-    broker=REDIS_URL,
-    backend=REDIS_URL,
     include=[
         "core.tasks.caption_checks",
         "core.tasks.vod_processing",
@@ -30,14 +28,15 @@ celery_app = Celery(
     ],
 )
 
-celery_app.conf.update(
-    task_serializer="json",
-    result_serializer="json",
-    accept_content=["json"],
-    result_expires=86400,
-    timezone="UTC",
-    enable_utc=True,
-)
+# Set configuration explicitly
+celery_app.conf.broker_url = REDIS_URL
+celery_app.conf.result_backend = REDIS_URL
+celery_app.conf.task_serializer = "json"
+celery_app.conf.result_serializer = "json"
+celery_app.conf.accept_content = ["json"]
+celery_app.conf.result_expires = 86400
+celery_app.conf.timezone = "UTC"
+celery_app.conf.enable_utc = True
 
 # Allow running tasks synchronously when a broker isn't available
 if os.getenv("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true":
