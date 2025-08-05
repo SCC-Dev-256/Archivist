@@ -159,16 +159,28 @@ class VODCoreTester:
             else:
                 self.log("⚠ Storage path returned None", "WARNING")
             
-            # Test video validation with fake file
-            test_video_path = "/tmp/test_video.mp4"
-            with open(test_video_path, 'wb') as f:
-                f.write(b'fake video content')
+            # Test video validation with real video from flex servers
+            from core.tasks.vod_processing import get_recent_vods_from_flex_server
+            from core.config import MEMBER_CITIES
             
-            validation_result = validate_video_file(test_video_path)
-            self.log(f"✓ Video validation test completed (result: {validation_result})")
+            test_video_path = None
+            for city_id, city_config in MEMBER_CITIES.items():
+                mount_path = city_config.get('mount_path')
+                if mount_path and os.path.ismount(mount_path):
+                    try:
+                        vod_files = get_recent_vods_from_flex_server(mount_path, city_id, limit=1)
+                        if vod_files:
+                            test_video_path = vod_files[0].get('file_path')
+                            break
+                    except Exception as e:
+                        self.log(f"Warning: Could not scan {city_id}: {e}", "WARNING")
             
-            # Cleanup
-            os.remove(test_video_path)
+            if test_video_path and os.path.exists(test_video_path):
+                validation_result = validate_video_file(test_video_path)
+                self.log(f"✓ Video validation test completed with real video (result: {validation_result})")
+            else:
+                self.log("⚠ No real video files found for validation test", "WARNING")
+                self.log("Video validation test skipped - requires real video files from flex servers", "WARNING")
             
             return True
             

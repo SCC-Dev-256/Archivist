@@ -329,18 +329,9 @@ admin_ui.run()
                         self.log(f"Warning: Could not scan {city_id}: {e}", "WARNING")
             
             if not test_vod_files:
-                self.log("No real video files found on flex servers, creating test file", "WARNING")
-                # Fallback to test file if no real files found
-                test_video_path = "/tmp/test_video.mp4"
-                with open(test_video_path, 'wb') as f:
-                    f.write(b'fake video content')
-                
-                vod_data = {
-                    'id': 'test_123',
-                    'title': 'Test VOD',
-                    'file_path': test_video_path
-                }
-                test_vod_files = [vod_data]
+                self.log("No real video files found on flex servers - test cannot proceed", "ERROR")
+                self.log("This test requires real video files from flex servers to validate video processing", "ERROR")
+                return False  # Fail instead of using fake file
             
             # Test each VOD file
             for i, vod_data in enumerate(test_vod_files[:3]):  # Test up to 3 files
@@ -370,10 +361,7 @@ admin_ui.run()
                 else:
                     self.log(f"✗ File not found: {file_path}", "ERROR")
             
-            # Cleanup test file if created
-            test_video_path = "/tmp/test_video.mp4"
-            if os.path.exists(test_video_path):
-                os.remove(test_video_path)
+            # No cleanup needed - we only use real video files
             
             self.log("✓ VOD processing workflow test completed with real files")
             return True

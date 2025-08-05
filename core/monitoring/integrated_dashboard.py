@@ -26,7 +26,15 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from flask import Flask, render_template, jsonify, request, Blueprint, Response
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, join_room, leave_room
+try:
+    from flask_socketio import SocketIO, emit, join_room, leave_room
+    SOCKETIO_AVAILABLE = True
+except ImportError:
+    SocketIO = None
+    emit = None
+    join_room = None
+    leave_room = None
+    SOCKETIO_AVAILABLE = False
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import threading
@@ -174,6 +182,10 @@ class IntegratedDashboard:
     
     def _register_socketio_events(self):
         """Register SocketIO event handlers for real-time updates."""
+        
+        if not SOCKETIO_AVAILABLE:
+            logger.warning("SocketIO not available - real-time events disabled")
+            return
         
         @self.socketio.on('connect')
         def handle_connect():
@@ -1254,7 +1266,8 @@ class IntegratedDashboard:
         """Broadcast task updates to all connected clients."""
         try:
             task_data = self._get_realtime_task_data()
-            self.socketio.emit('task_updates', task_data, room='task_monitoring')
+            if SOCKETIO_AVAILABLE and self.socketio:
+                self.socketio.emit('task_updates', task_data, room='task_monitoring')
             
             # Update task history for completed tasks
             for task in task_data.get('tasks', []):
@@ -4131,13 +4144,19 @@ class IntegratedDashboard:
     
     def run(self):
         """Run the dashboard server with SocketIO support."""
-        logger.info(f"Starting integrated monitoring dashboard with SocketIO on {self.host}:{self.port}")
+        logger.info(f"Starting integrated monitoring dashboard on {self.host}:{self.port}")
         ssl_context = None
         import os
         if os.path.exists('cert.pem') and os.path.exists('key.pem'):
             ssl_context = ('cert.pem', 'key.pem')
             logger.info("Using self-signed SSL context for HTTPS.")
-        self.socketio.run(self.app, host=self.host, port=self.port, debug=False, allow_unsafe_werkzeug=True, ssl_context=ssl_context)
+        
+        if SOCKETIO_AVAILABLE and self.socketio:
+            logger.info("Running with SocketIO support")
+            self.socketio.run(self.app, host=self.host, port=self.port, debug=False, allow_unsafe_werkzeug=True, ssl_context=ssl_context)
+        else:
+            logger.info("Running without SocketIO support")
+            self.app.run(host=self.host, port=self.port, debug=False, ssl_context=ssl_context)
 
 def start_integrated_dashboard(host: str = "0.0.0.0", port: int = 5051, config: Optional[DashboardConfig] = None):
     """Start the integrated monitoring dashboard."""

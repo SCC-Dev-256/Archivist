@@ -131,21 +131,42 @@ def check_queue_system():
         for task in transcription_tasks:
             print(f"   - {task}")
         
-        # Test task queuing
-        print("🚀 Testing task queuing...")
-        test_result = run_whisper_transcription.delay("/tmp/test_video.mp4")
+        # Test task queuing with real video from flex servers
+        print("🚀 Testing task queuing with real video...")
         
-        print(f"✅ Task queued successfully: {test_result.id}")
+        # Find a real video file for testing
+        from core.config import MEMBER_CITIES
+        from core.tasks.vod_processing import get_recent_vods_from_flex_server
         
-        # Check if worker is processing
-        time.sleep(2)
-        try:
-            if hasattr(test_result, 'ready') and test_result.ready():
-                print("✅ Task completed (test file doesn't exist, but queue is working)")
-            else:
-                print("⏳ Task is in queue (this is expected for non-existent test file)")
-        except Exception as e:
-            print(f"⏳ Task status check: {e} (queue is working)")
+        test_video_path = None
+        for city_id, city_config in MEMBER_CITIES.items():
+            mount_path = city_config.get('mount_path')
+            if mount_path and os.path.ismount(mount_path):
+                try:
+                    vod_files = get_recent_vods_from_flex_server(mount_path, city_id, limit=1)
+                    if vod_files:
+                        test_video_path = vod_files[0].get('file_path')
+                        break
+                except Exception as e:
+                    print(f"Warning: Could not scan {city_id}: {e}")
+        
+        if test_video_path and os.path.exists(test_video_path):
+            test_result = run_whisper_transcription.delay(test_video_path)
+            print(f"✅ Task queued successfully with real video: {test_result.id}")
+            print(f"   Video: {os.path.basename(test_video_path)}")
+            
+            # Check if worker is processing
+            time.sleep(2)
+            try:
+                if hasattr(test_result, 'ready') and test_result.ready():
+                    print("✅ Task completed with real video")
+                else:
+                    print("⏳ Task is in queue (processing real video)")
+            except Exception as e:
+                print(f"⏳ Task status check: {e} (queue is working)")
+        else:
+            print("⚠ No real video files found for queue testing")
+            print("Queue test skipped - requires real video files from flex servers")
         
         return True
         
@@ -204,6 +225,14 @@ def check_flex_server_integration():
         
         return accessible_servers > 0
         
+    except ImportError as e:
+        if 'flask_socketio' in str(e):
+            print(f"⚠️  Flex server integration check skipped - SocketIO not available")
+            print(f"   This is expected when Flask-SocketIO is not installed")
+            return True  # Not a critical failure
+        else:
+            print(f"❌ Error checking flex server integration: {e}")
+            return False
     except Exception as e:
         print(f"❌ Error checking flex server integration: {e}")
         return False

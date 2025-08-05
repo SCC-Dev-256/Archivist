@@ -1,0 +1,5 @@
+VOD 192.168.180.200:5901
+E:/VODcontent
+
+Flex Servers are all E:\> 
+--- all videos are saved at surface level on flex servers. 

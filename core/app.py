@@ -18,7 +18,12 @@ from core.logging_config import setup_logging
 from core.database import db
 from core.security import security_manager
 from loguru import logger
-from flask_socketio import SocketIO
+try:
+    from flask_socketio import SocketIO
+    SOCKETIO_AVAILABLE = True
+except ImportError:
+    SocketIO = None
+    SOCKETIO_AVAILABLE = False
 from core.monitoring.middleware import performance_middleware
 from core.monitoring.socket_tracker import socket_tracker
 from core.services.queue_analytics import queue_analytics
@@ -97,12 +102,19 @@ def create_app(testing=False):
     # Register routes from web_app
     from core.api.routes import register_routes
     register_routes(app, limiter)
-    # Initialize SocketIO
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
-    app.socketio = socketio
-    # Register real-time event handlers
-    from core.realtime import register_realtime_events
-    register_realtime_events(app)
+    # Initialize SocketIO if available
+    if SOCKETIO_AVAILABLE:
+        socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+        app.socketio = socketio
+        # Register real-time event handlers
+        try:
+            from core.realtime import register_realtime_events
+            register_realtime_events(app)
+        except ImportError:
+            logger.warning("Real-time events module not available")
+    else:
+        logger.warning("Flask-SocketIO not available - real-time features disabled")
+        app.socketio = None
     
     # Initialize database health checker
     with app.app_context():

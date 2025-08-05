@@ -70,7 +70,7 @@ server2:/volume1/flex-4 /mnt/flex-4 nfs defaults,_netdev 0 0
 server3:/volume1/flex-5 /mnt/flex-5 nfs defaults,_netdev 0 0
 ```
 
-## 📁 Flex Server Specifications
+## 📁 Flex Server Specifications (Surface-Level E: Drive Structure)
 
 ### FLEX-1: Birchwood City Council Storage
 
@@ -87,49 +87,24 @@ server3:/volume1/flex-5 /mnt/flex-5 nfs defaults,_netdev 0 0
 - Live streaming archives (recent 30 days)
 - High-priority content requiring immediate access
 
-**Directory Structure**:
+**Actual Directory Structure (Surface-Level)**:
 ```
-/mnt/flex-1/
-├── videos/
-│   ├── city_council/
-│   │   ├── 2024/
-│   │   │   ├── 01-January/
-│   │   │   ├── 02-February/
-│   │   │   └── ...
-│   │   └── meetings/
-│   │       ├── regular/
-│   │       ├── special/
-│   │       └── workshops/
-│   ├── live_streams/
-│   │   ├── current/
-│   │   ├── scheduled/
-│   │   └── completed/
-│   └── vod_content/
-│       ├── published/
-│       ├── pending/
-│       └── draft/
-├── transcriptions/
-│   ├── scc_files/
-│   │   ├── completed/
-│   │   ├── processing/
-│   │   └── failed/
-│   ├── summaries/
-│   │   ├── auto_generated/
-│   │   ├── reviewed/
-│   │   └── enhanced/
-│   └── metadata/
-│       ├── json_files/
-│       ├── timestamps/
-│       └── speaker_data/
-├── temp/
-│   ├── processing/
-│   ├── uploads/
-│   └── exports/
-└── logs/
-    ├── transcription/
-    ├── vod_publishing/
-    └── system/
+/mnt/flex-1/ (E: drive surface level)
+├── 21413-1-Birchwood Council Me.mp4
+├── Birchwood City Council 6_10_25.mp4
+├── 21337-1-Birchwood Council Me.mp4
+├── Birchwood City Council Meeting May 13, 2025.mp4
+├── Night To Unite 2024 b_captioned.mp4
+├── [video_file_1].scc (generated transcriptions)
+├── [video_file_2].scc (generated transcriptions)
+└── ... (all files at surface level)
 ```
+
+**Key Characteristics**:
+- **Surface-level storage**: All files stored directly at mount root
+- **No nested directories**: No `/videos/`, `/transcriptions/`, etc. subdirectories
+- **Mixed content**: Video files and transcription files stored together
+- **Direct access**: Files accessible via simple filename patterns
 
 **Access Patterns**:
 - High-frequency access during business hours
@@ -152,48 +127,30 @@ server3:/volume1/flex-5 /mnt/flex-5 nfs defaults,_netdev 0 0
 **Backup**: Weekly full backups, monthly archives
 
 **Content Types**:
-- Overflow from FLEX-1 when capacity reached
-- Backup copies of critical content
+- Grant City Council meeting recordings
+- Dellwood and Willernie community content
 - Historical meeting recordings (30-90 days)
 - Completed transcription archives
 - VOD content mirrors
 
-**Directory Structure**:
+**Actual Directory Structure (Surface-Level)**:
 ```
-/mnt/flex-2/
-├── backups/
-│   ├── daily/
-│   │   ├── flex-1_backup/
-│   │   ├── database_backup/
-│   │   └── config_backup/
-│   ├── weekly/
-│   │   ├── full_system/
-│   │   ├── transcriptions/
-│   │   └── vod_content/
-│   └── monthly/
-│       ├── complete_archive/
-│       └── compliance_records/
-├── overflow/
-│   ├── videos/
-│   │   ├── older_meetings/
-│   │   ├── large_files/
-│   │   └── bulk_uploads/
-│   ├── transcriptions/
-│   │   ├── archived_scc/
-│   │   ├── batch_processed/
-│   │   └── historical/
-│   └── temp_large/
-│       ├── processing_queue/
-│       └── batch_operations/
-├── mirrors/
-│   ├── vod_published/
-│   ├── critical_content/
-│   └── disaster_recovery/
-└── staging/
-    ├── content_review/
-    ├── quality_control/
-    └── pre_publication/
+/mnt/flex-2/ (E: drive surface level)
+├── Grant City Council Meeting - 01 07 2025.mp4
+├── Grant City Council Meeting - 01 07 2024_2025-06-11_08_47_36.mp4
+├── Grant City Council (04_01_2025).mp4
+├── Grant City Council Meeting - 06 03 2025.mp4
+├── Grant City Council Meeting - 04 01 2025.mp4
+├── [video_file_1].scc (generated transcriptions)
+├── [video_file_2].scc (generated transcriptions)
+└── ... (all files at surface level)
 ```
+
+**Key Characteristics**:
+- **Surface-level storage**: All files stored directly at mount root
+- **Grant-focused content**: Primarily Grant City Council meetings
+- **Mixed content**: Video files and transcription files stored together
+- **Direct access**: Files accessible via simple filename patterns
 
 **Access Patterns**:
 - Moderate access during backup windows
@@ -582,61 +539,58 @@ for i in {1..5}; do
 done
 ```
 
-## 🗂️ Content Organization Strategies
+## 🗂️ Content Organization Strategies (Surface-Level Structure)
 
-### File Naming Conventions
+### Actual File Organization
 
-#### Video Files
+**IMPORTANT**: The flex servers use a **surface-level E: drive structure** where all files are stored directly at the mount root, not in nested directories as originally documented.
+
+#### Video Files (Surface-Level)
 
 ```
-Format: YYYY-MM-DD_EventType_Location_Additional.extension
+Location: /mnt/flex-N/ (directly at mount root)
+Format: Various naming conventions by city
 
 Examples:
-- 2024-01-15_CityCouncil_Regular_Meeting.mp4
-- 2024-01-15_PublicHearing_Planning_Commission.mp4
-- 2024-01-15_SpecialEvent_Community_Festival.mp4
+- 21413-1-Birchwood Council Me.mp4
+- Grant City Council Meeting - 01 07 2025.mp4
+- 21459-1-Lake Elmo EDA - 7_29.mp4
+- 21630-1-Mahtomedi City Council Meeting 202584.mp4
+- 21442-1-Oakdale Council Meet.mp4
+- 21441-1-White Bear Lake Coun.mp4
 ```
 
-#### Transcription Files
+#### Transcription Files (Surface-Level)
 
 ```
-Format: YYYY-MM-DD_EventType_Location_Additional.scc
+Location: /mnt/flex-N/ (same directory as video files)
+Format: [video_filename].scc
 
 Examples:
-- 2024-01-15_CityCouncil_Regular_Meeting.scc
-- 2024-01-15_PublicHearing_Planning_Commission.scc
-- 2024-01-15_SpecialEvent_Community_Festival.scc
+- 21413-1-Birchwood Council Me.scc
+- Grant City Council Meeting - 01 07 2025.scc
+- 21459-1-Lake Elmo EDA - 7_29.scc
 ```
 
-#### Directory Structure Standards
+#### Actual Directory Structure (Surface-Level)
 
 ```
-/mnt/flex-N/
-├── videos/
-│   ├── YYYY/
-│   │   ├── MM-Month/
-│   │   │   ├── DD-Day/
-│   │   │   └── event_type/
-│   │   └── special_events/
-│   └── bulk_import/
-│       ├── pending/
-│       ├── processing/
-│       └── completed/
-├── transcriptions/
-│   ├── YYYY/
-│   │   ├── MM-Month/
-│   │   │   ├── scc_files/
-│   │   │   ├── summaries/
-│   │   │   └── metadata/
-│   │   └── batch_processing/
-│   └── failed/
-│       ├── retry/
-│       └── investigation/
-└── metadata/
-    ├── catalogs/
-    ├── indexes/
-    └── search_data/
+/mnt/flex-N/ (E: drive surface level)
+├── [video_file_1].mp4
+├── [video_file_1].scc (generated transcription)
+├── [video_file_2].mp4
+├── [video_file_2].scc (generated transcription)
+├── [video_file_3].mp4
+├── [video_file_4].mp4
+├── [video_file_4].scc (generated transcription)
+└── ... (all files at surface level)
 ```
+
+**Key Differences from Original Documentation**:
+- ❌ **No nested directories**: No `/videos/`, `/transcriptions/`, etc.
+- ✅ **Surface-level storage**: All files at mount root
+- ✅ **Mixed content**: Videos and transcriptions in same directory
+- ✅ **Direct access**: Simple filename patterns for discovery
 
 ### Content Lifecycle Management
 
@@ -672,43 +626,71 @@ Examples:
    - Compliance-only access
    - Potential deletion candidates
 
-#### Automated Lifecycle Management
+#### Surface-Level File Discovery
+
+```python
+# Updated file discovery for surface-level structure
+def discover_video_files(flex_server_id: str, file_pattern: str = "*.mp4") -> List[Dict]:
+    """Discover video files on flex servers (surface-level E: drive structure)."""
+    
+    mount_path = f"/mnt/{flex_server_id}"
+    discovered_files = []
+    
+    # Surface-level file discovery (E: drive structure)
+    # Search directly in the mount root, not in subdirectories
+    pattern = os.path.join(mount_path, file_pattern)
+    video_files = glob.glob(pattern)
+    
+    for video_file in video_files:
+        if os.path.isfile(video_file) and os.path.getsize(video_file) > 1024*1024:  # > 1MB
+            file_info = {
+                'file_path': video_file,
+                'file_name': os.path.basename(video_file),
+                'file_size': os.path.getsize(video_file),
+                'modified_time': os.path.getmtime(video_file),
+                'flex_server': flex_server_id,
+                'relative_path': os.path.relpath(video_file, mount_path)
+            }
+            discovered_files.append(file_info)
+    
+    return discovered_files
+```
+
+#### Automated Lifecycle Management (Surface-Level)
 
 ```bash
 #!/bin/bash
-# content_lifecycle_manager.sh
+# surface_level_lifecycle_manager.sh
 
 LOG_FILE="/var/log/content_lifecycle.log"
 DATE=$(date '+%Y-%m-%d %H:%M:%S')
 
-# Move content from FLEX-1 to FLEX-2 (30 days old)
+# Move content from FLEX-1 to FLEX-2 (30 days old) - Surface level
 move_to_secondary() {
-    find /mnt/flex-1/videos -type f -mtime +30 -name "*.mp4" -print0 | \
+    find /mnt/flex-1 -maxdepth 1 -type f -mtime +30 -name "*.mp4" -print0 | \
     while IFS= read -r -d '' file; do
-        relative_path=${file#/mnt/flex-1/}
-        target_dir="/mnt/flex-2/$(dirname "$relative_path")"
+        filename=$(basename "$file")
+        target_file="/mnt/flex-2/$filename"
         
-        mkdir -p "$target_dir"
-        if mv "$file" "$target_dir/"; then
-            echo "[$DATE] Moved to secondary: $file" >> "$LOG_FILE"
+        if mv "$file" "$target_file"; then
+            echo "[$DATE] Moved to secondary: $filename" >> "$LOG_FILE"
         else
-            echo "[$DATE] Failed to move: $file" >> "$LOG_FILE"
+            echo "[$DATE] Failed to move: $filename" >> "$LOG_FILE"
         fi
     done
 }
 
-# Move content from FLEX-2 to FLEX-3 (90 days old)
+# Move content from FLEX-2 to FLEX-3 (90 days old) - Surface level
 move_to_archive() {
-    find /mnt/flex-2/videos -type f -mtime +90 -name "*.mp4" -print0 | \
+    find /mnt/flex-2 -maxdepth 1 -type f -mtime +90 -name "*.mp4" -print0 | \
     while IFS= read -r -d '' file; do
-        relative_path=${file#/mnt/flex-2/}
-        target_dir="/mnt/flex-3/$(dirname "$relative_path")"
+        filename=$(basename "$file")
+        target_file="/mnt/flex-3/$filename"
         
-        mkdir -p "$target_dir"
-        if mv "$file" "$target_dir/"; then
-            echo "[$DATE] Moved to archive: $file" >> "$LOG_FILE"
+        if mv "$file" "$target_file"; then
+            echo "[$DATE] Moved to archive: $filename" >> "$LOG_FILE"
         else
-            echo "[$DATE] Failed to archive: $file" >> "$LOG_FILE"
+            echo "[$DATE] Failed to archive: $filename" >> "$LOG_FILE"
         fi
     done
 }
