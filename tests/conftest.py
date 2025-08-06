@@ -3,6 +3,32 @@ import sys
 from pathlib import Path
 import pytest
 from unittest.mock import MagicMock, patch
+
+# Provide lightweight fallbacks for optional dependencies used in tests.
+try:  # pragma: no cover - dependency might be missing
+    import redis  # type: ignore
+except Exception:  # pragma: no cover - fallback when package missing
+    import types
+    redis = types.SimpleNamespace(from_url=lambda *args, **kwargs: None)
+    sys.modules["redis"] = redis
+
+try:  # pragma: no cover - dependency might be missing
+    import rq  # type: ignore
+except Exception:  # pragma: no cover - fallback when package missing
+    import types
+    rq = types.SimpleNamespace(Queue=lambda *args, **kwargs: None)
+    sys.modules["rq"] = rq
+
+try:  # pragma: no cover - dependency might be missing
+    import transformers  # type: ignore
+except Exception:  # pragma: no cover - fallback when package missing
+    import types
+    transformers = types.SimpleNamespace(
+        AutoModelForCausalLM=lambda *args, **kwargs: None,
+        AutoTokenizer=lambda *args, **kwargs: None,
+    )
+    sys.modules["transformers"] = transformers
+
 try:
     from core.app import create_app
 except Exception:  # pragma: no cover - fallback for missing deps
@@ -48,12 +74,12 @@ def setup_test_environment():
     """Setup test environment variables and logging"""
     # Set testing environment
     os.environ["TESTING"] = "true"
-    
+
     # Configure minimal logging for tests
     setup_logging(testing=True, log_level="DEBUG")
-    
+
     yield
-    
+
     # Cleanup
     os.environ.pop("TESTING", None)
 
@@ -73,11 +99,11 @@ def mock_transformers(monkeypatch):
     """Mock transformers to avoid downloading models during tests"""
     import transformers
     from unittest.mock import MagicMock
-    
+
     # Mock the AutoModelForCausalLM and AutoTokenizer
     mock_model = MagicMock()
     mock_tokenizer = MagicMock()
-    
+
     monkeypatch.setattr(transformers, "AutoModelForCausalLM", MagicMock(return_value=mock_model))
     monkeypatch.setattr(transformers, "AutoTokenizer", MagicMock(return_value=mock_tokenizer))
 
@@ -86,10 +112,10 @@ def mock_redis(monkeypatch):
     """Mock Redis connection for tests"""
     mock_redis = MagicMock()
     mock_redis.ping.return_value = True
-    
+
     # Mock redis.from_url
     monkeypatch.setattr("redis.from_url", MagicMock(return_value=mock_redis))
-    
+
     # Mock RQ Queue
     mock_queue = MagicMock()
-    monkeypatch.setattr("rq.Queue", MagicMock(return_value=mock_queue)) 
+    monkeypatch.setattr("rq.Queue", MagicMock(return_value=mock_queue))

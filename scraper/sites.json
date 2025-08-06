@@ -1,0 +1,9 @@
+[
+  {"url": "https://city1.example.com/reports", "city": "City1", "selectors": ["a[href$='.pdf']"], "google_drive": false},
+  {"url": "https://city2.example.com/reports", "city": "City2", "selectors": ["a[href$='.pdf']"], "google_drive": false},
+  {"url": "https://city3.example.com/reports", "city": "City3", "selectors": ["a[href$='.pdf']"], "google_drive": false},
+  {"url": "https://city4.example.com/reports", "city": "City4", "selectors": ["a[href$='.pdf']"], "google_drive": false},
+  {"url": "https://city5.example.com/reports", "city": "City5", "selectors": ["a[href$='.pdf']"], "google_drive": false},
+  {"url": "https://city6.example.com/reports", "city": "City6", "selectors": ["a[href$='.pdf']"], "google_drive": false},
+  {"url": "https://city7.example.com/reports", "city": "City7", "selectors": ["a[href$='.pdf']"], "google_drive": false}
+]
