@@ -263,14 +263,14 @@ class VODContentManager:
             # Update VOD metadata in Cablecast
             metadata_success = self.cablecast_client.update_vod_metadata(vod_id, metadata)
             
-            # Upload SRT file as caption sidecar
+            # Upload SCC file as caption sidecar
             caption_success = self.cablecast_client.upload_srt_file(vod_id, transcription.output_path)
             
             if metadata_success and caption_success:
-                logger.info(f"Enhanced VOD {vod_id} with transcription metadata and uploaded SRT caption")
+                logger.info(f"Enhanced VOD {vod_id} with transcription metadata and uploaded SCC caption")
                 return True
             elif metadata_success:
-                logger.warning(f"Updated VOD {vod_id} metadata but failed to upload SRT caption")
+                logger.warning(f"Updated VOD {vod_id} metadata but failed to upload SCC caption")
                 return True  # Still consider it successful if metadata was updated
             else:
                 logger.error(f"Failed to enhance VOD {vod_id} with transcription metadata")

@@ -52,7 +52,7 @@ service = TranscriptionService()
 result = service.transcribe_file("video.mp4")
 
 # Summarize transcription
-summary = service.summarize_transcription("transcript.srt")
+summary = service.summarize_transcription("transcript.scc")
 
 # Complete pipeline
 pipeline_result = service.process_video_pipeline("video.mp4")
@@ -60,7 +60,7 @@ pipeline_result = service.process_video_pipeline("video.mp4")
 
 **Key Methods:**
 - `transcribe_file(file_path, output_dir=None)` - Transcribe audio/video
-- `summarize_transcription(srt_path)` - Summarize SRT file
+- `summarize_transcription(scc_path)` - Summarize SCC file
 - `create_captions(video_path, srt_path, output_path=None)` - Create captioned video
 - `process_video_pipeline(video_path, output_dir=None)` - Complete processing pipeline
 - `get_transcription_status(file_path)` - Get transcription status
@@ -197,7 +197,7 @@ def test_transcription_service():
     with patch('core.transcription.run_whisper_transcription') as mock_transcribe:
         mock_transcribe.return_value = {
             'success': True,
-            'srt_path': '/path/to/output.srt'
+            'output_path': '/path/to/output.scc'
         }
         
         service = TranscriptionService()

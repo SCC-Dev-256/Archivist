@@ -69,7 +69,7 @@ def auto_link_transcription_to_show(transcription_id: str) -> Dict:
         
         # Prepare transcription metadata
         transcription_metadata = {
-            'duration': 0,  # Will be calculated from SRT file
+            'duration': 0,  # Will be calculated from SCC file
             'segments': 0,
             'file_path': transcription.video_path
         }

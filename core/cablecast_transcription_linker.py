@@ -198,7 +198,7 @@ class CablecastTranscriptionLinker:
             return {}
     
     def _parse_timestamp(self, timestamp: str) -> float:
-        """Parse SRT timestamp to seconds"""
+        """Parse timestamp to seconds (supports SRT and SCC formats)"""
         try:
             # Remove milliseconds comma
             timestamp = timestamp.replace(',', '.')

@@ -27,7 +27,7 @@ class TestTranscriptionService:
         """Test successful transcription."""
         mock_exists.return_value = True
         mock_transcribe.return_value = {
-            'output_path': '/path/to/output.srt',
+            'output_path': '/path/to/output.scc',
             'segments': 10,
             'duration': 120.5
         }
@@ -35,7 +35,7 @@ class TestTranscriptionService:
         service = TranscriptionService()
         result = service.transcribe_file('/path/to/video.mp4')
         
-        assert result['output_path'] == '/path/to/output.srt'
+        assert result['output_path'] == '/path/to/output.scc'
         assert result['status'] == 'completed'
         assert result['segments'] == 10
         assert result['duration'] == 120.5

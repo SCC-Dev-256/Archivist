@@ -328,7 +328,7 @@ def summarize_scc(scc_path: str) -> str:
         return None
 
 # Legacy function name for backward compatibility
-def summarize_srt(srt_path: str) -> str:
+def summarize_st(srt_path: str) -> str:
     """
     Legacy function that redirects to SCC summarization.
     

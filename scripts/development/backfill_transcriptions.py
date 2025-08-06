@@ -22,35 +22,35 @@ def backfill_transcriptions():
     
     with app.app_context():
         try:
-            # Find all .srt files in the output directory
-            srt_files = glob.glob(os.path.join(OUTPUT_DIR, "*.srt"))
-            logger.info(f"Found {len(srt_files)} SRT files to backfill")
+            # Find all .scc files in the output directory
+            scc_files = glob.glob(os.path.join(OUTPUT_DIR, "*.scc"))
+            logger.info(f"Found {len(scc_files)} SCC files to backfill")
             
-            for srt_path in srt_files:
+            for scc_path in scc_files:
                 try:
                     # Check if this transcription is already in the database
-                    existing = TranscriptionResultORM.query.filter_by(output_path=srt_path).first()
+                    existing = TranscriptionResultORM.query.filter_by(output_path=scc_path).first()
                     if existing:
-                        logger.info(f"Transcription already exists in database: {srt_path}")
+                        logger.info(f"Transcription already exists in database: {scc_path}")
                         continue
                     
-                    # Get the video path from the SRT filename
-                    video_name = os.path.splitext(os.path.basename(srt_path))[0]
+                    # Get the video path from the SCC filename
+                    video_name = os.path.splitext(os.path.basename(scc_path))[0]
                     video_path = os.path.join("/mnt", video_name)
                     
                     # Create new transcription result
                     result = TranscriptionResultORM(
                         id=str(uuid.uuid4()),
                         video_path=video_path,
-                        output_path=srt_path,
+                        output_path=scc_path,
                         status='completed',
                         completed_at=datetime.utcnow()
                     )
                     db.session.add(result)
-                    logger.info(f"Added transcription to database: {srt_path}")
+                    logger.info(f"Added transcription to database: {scc_path}")
                     
                 except Exception as e:
-                    logger.error(f"Error processing {srt_path}: {e}")
+                    logger.error(f"Error processing {scc_path}: {e}")
                     continue
             
             # Commit all changes

@@ -26,7 +26,7 @@ def setup_test_env():
 def mock_transcription_result():
     """Mock transcription results."""
     return {
-        'output_path': os.path.join(OUTPUT_DIR, 'test_output.srt'),
+        'output_path': os.path.join(OUTPUT_DIR, 'test_output.scc'),
         'status': 'completed',
         'duration': 10.5
     }
