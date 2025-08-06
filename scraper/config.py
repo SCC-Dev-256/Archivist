@@ -14,6 +14,7 @@ class SiteConfig:
     city: str
     selectors: List[str]
     google_drive: bool = False
+    notes: str = ""
 
 
 def load_config(path: str | Path) -> List[SiteConfig]:
@@ -33,6 +34,7 @@ def load_config(path: str | Path) -> List[SiteConfig]:
                 city=entry["city"],
                 selectors=entry.get("selectors", []),
                 google_drive=entry.get("google_drive", False),
+                notes=entry.get("notes", ""),
             )
         )
     return sites

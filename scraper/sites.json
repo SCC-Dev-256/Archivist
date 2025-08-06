@@ -1,9 +1,75 @@
 [
-  {"url": "https://city1.example.com/reports", "city": "City1", "selectors": ["a[href$='.pdf']"], "google_drive": false},
-  {"url": "https://city2.example.com/reports", "city": "City2", "selectors": ["a[href$='.pdf']"], "google_drive": false},
-  {"url": "https://city3.example.com/reports", "city": "City3", "selectors": ["a[href$='.pdf']"], "google_drive": false},
-  {"url": "https://city4.example.com/reports", "city": "City4", "selectors": ["a[href$='.pdf']"], "google_drive": false},
-  {"url": "https://city5.example.com/reports", "city": "City5", "selectors": ["a[href$='.pdf']"], "google_drive": false},
-  {"url": "https://city6.example.com/reports", "city": "City6", "selectors": ["a[href$='.pdf']"], "google_drive": false},
-  {"url": "https://city7.example.com/reports", "city": "City7", "selectors": ["a[href$='.pdf']"], "google_drive": false}
+  {
+    "url": "https://www.oakdalemn.gov/agendacenter",
+    "city": "Oakdale",
+    "selectors": [
+      "a[href*='/AgendaCenter/ViewFile/']",
+      "a[href*='/AgendaCenter/PreviousVersions/']"
+    ],
+    "google_drive": false,
+    "notes": "CivicEngage platform, uses ViewFile endpoints"
+  },
+  {
+    "url": "https://www.lakeelmo.gov/agendacenter",
+    "city": "Lake Elmo",
+    "selectors": [
+      "a[href*='/AgendaCenter/ViewFile/']",
+      "a[href*='/AgendaCenter/PreviousVersions/']"
+    ],
+    "google_drive": false,
+    "notes": "CivicEngage platform, same structure as Oakdale"
+  },
+  {
+    "url": "https://www.ci.mahtomedi.mn.us/AgendaCenter",
+    "city": "Mahtomedi",
+    "selectors": [
+      "a[href*='/AgendaCenter/ViewFile/']",
+      "a[href*='/AgendaCenter/PreviousVersions/']"
+    ],
+    "google_drive": false,
+    "notes": "CivicEngage platform, same structure as Oakdale"
+  },
+  {
+    "url": "https://www.whitebearlakemn.gov/meetings/recent",
+    "city": "White Bear Lake",
+    "selectors": [
+      "a[href$='.pdf']",
+      "a[href*='meeting']",
+      "a[href*='agenda']"
+    ],
+    "google_drive": false,
+    "notes": "Uses Cloudflare protection, may need JavaScript rendering"
+  },
+  {
+    "url": "http://www.ci.white-bear-township.mn.us/agendacenter",
+    "city": "White Bear Township",
+    "selectors": [
+      "a[href*='/AgendaCenter/ViewFile/']",
+      "a[href*='/AgendaCenter/PreviousVersions/']"
+    ],
+    "google_drive": false,
+    "notes": "CivicEngage platform, same structure as Oakdale"
+  },
+  {
+    "url": "https://www.cityofgrant.us/CCMeetingAgendas",
+    "city": "Grant",
+    "selectors": [
+      "a[href$='.pdf']",
+      "a[href*='agenda']",
+      "a[href*='meeting']"
+    ],
+    "google_drive": false,
+    "notes": "Drupal-based site, may need deeper crawling"
+  },
+  {
+    "url": "https://cityofbirchwood.com/general-city-information/city-council/city-council-agenda-packets/",
+    "city": "Birchwood",
+    "selectors": [
+      "a[href$='.pdf']",
+      "a[href*='agenda']",
+      "a[href*='council']"
+    ],
+    "google_drive": false,
+    "notes": "WordPress site with direct PDF links in uploads directory"
+  }
 ]
