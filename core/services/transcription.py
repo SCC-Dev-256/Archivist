@@ -22,7 +22,7 @@ import glob
 from typing import Dict, Optional, List
 from loguru import logger
 from core.exceptions import TranscriptionError, handle_transcription_error
-from core.transcription import run_whisper_transcription
+from core.transcription import _transcribe_with_faster_whisper
 from core.scc_summarizer import summarize_scc
 from core.config import WHISPER_MODEL, USE_GPU, LANGUAGE, OUTPUT_DIR, MEMBER_CITIES
 
@@ -152,7 +152,7 @@ class TranscriptionService:
                 output_dir = os.path.dirname(file_path)
             
             # Perform transcription
-            result = run_whisper_transcription(video_path=file_path)
+            result = _transcribe_with_faster_whisper(video_path=file_path)
             
             return {
                 'output_path': result.get('output_path', ''),

@@ -17,7 +17,7 @@ import os
 import time
 
 from core.tasks import celery_app
-from core.transcription import run_whisper_transcription as sync_transcribe
+from core.transcription import _transcribe_with_faster_whisper as sync_transcribe
 
 
 @celery_app.task(name="transcription.run_whisper", bind=True)

@@ -351,8 +351,8 @@ def process_recent_vods() -> Dict[str, Any]:
     transcription_service = TranscriptionService()
     results = {}
     
-    # Import Celery transcription task for integration
-    from core.tasks.transcription import run_whisper_transcription
+    # Import transcription function for integration
+    from core.transcription import _transcribe_with_faster_whisper
     
     for city_id, city_config in MEMBER_CITIES.items():
         city_name = city_config['name']
@@ -559,8 +559,8 @@ def process_single_vod(vod_id: int, city_id: str, video_path: str = None) -> Dic
     if video_path:
         logger.info(f"Using direct file path: {video_path}")
     
-    # Import Celery transcription task for integration
-    from core.tasks.transcription import run_whisper_transcription
+    # Import transcription function for integration
+    from core.transcription import _transcribe_with_faster_whisper
     
     client = CablecastAPIClient()
     transcription_service = TranscriptionService()
@@ -648,10 +648,9 @@ def process_single_vod(vod_id: int, city_id: str, video_path: str = None) -> Dic
                 'message': f'Storage not writable: {storage_mount}'
             }
         
-        # Generate captions using Celery transcription task
-        transcription_result = run_whisper_transcription.delay(local_video_path)
-        # Don't call .get() within a task - let the task complete asynchronously
-        logger.info(f"Transcription task queued: {transcription_result.id}")
+        # Generate captions using direct transcription function
+        transcription_result = _transcribe_with_faster_whisper(video_path=local_video_path)
+        logger.info(f"Transcription completed: {transcription_result.get('output_path', 'unknown')}")
         
         # For now, we'll skip the synchronous processing and let tasks run independently
         # This avoids the "Never call result.get() within a task!" error

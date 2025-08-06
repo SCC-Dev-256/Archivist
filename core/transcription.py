@@ -63,7 +63,7 @@ def _transcribe_with_faster_whisper(video_path: str) -> Dict:
             
             return {
                 'output_path': scc_path,
-                'srt_path': scc_path,  # For backward compatibility
+                'scc_path': scc_path,  # Correct SCC path
                 'segments': 0,
                 'duration': info.duration if hasattr(info, 'duration') else 0,
                 'language': info.language if hasattr(info, 'language') else LANGUAGE,
@@ -105,7 +105,7 @@ def _transcribe_with_faster_whisper(video_path: str) -> Dict:
         
         return {
             'output_path': scc_path,
-            'srt_path': scc_path,  # For backward compatibility
+            'scc_path': scc_path,  # Correct SCC path
             'segments': len(segments_list),
             'duration': info.duration if hasattr(info, 'duration') else 0,
             'language': info.language if hasattr(info, 'language') else LANGUAGE,
