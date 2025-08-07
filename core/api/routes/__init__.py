@@ -10,6 +10,7 @@ from .browse import create_browse_blueprint
 from .transcribe import create_transcribe_blueprint
 from .queue import create_queue_blueprint
 from .vod import create_vod_blueprint
+from .digitalfiles import create_digitalfiles_blueprint
 from .metrics import bp as metrics_bp
 
 def register_routes(app, limiter):
@@ -33,18 +34,21 @@ def register_routes(app, limiter):
     transcribe_bp, transcribe_ns = create_transcribe_blueprint(limiter)
     queue_bp, queue_ns = create_queue_blueprint(limiter)
     vod_bp, vod_ns = create_vod_blueprint(limiter)
+    digitalfiles_bp, digitalfiles_ns = create_digitalfiles_blueprint(limiter)
 
     # Add all namespaces to the main API
     api.add_namespace(browse_ns)
     api.add_namespace(transcribe_ns)
     api.add_namespace(queue_ns)
     api.add_namespace(vod_ns)
+    api.add_namespace(digitalfiles_ns)
 
     # Register blueprints
     app.register_blueprint(browse_bp, url_prefix='/api')
     app.register_blueprint(transcribe_bp, url_prefix='/api')
     app.register_blueprint(queue_bp, url_prefix='/api')
     app.register_blueprint(vod_bp, url_prefix='/api')
+    app.register_blueprint(digitalfiles_bp, url_prefix='/api')
     app.register_blueprint(metrics_bp, url_prefix='/api')
 
     # Register main API blueprint

@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "total_pdfs": 5,
+    "processed": 5,
+    "unmatched": 0,
+    "failed": 0,
+    "cities_processed": [
+      "Birchwood"
+    ],
+    "flex_servers_used": [
+      "flex-1"
+    ],
+    "shows_matched": 0,
+    "needs_manual_review": 0
+  },
+  "processed": [
+    {
+      "city": "Birchwood",
+      "url": "https://example.com/sample_agenda_1.pdf",
+      "local_path": "downloads/birchwood/sample_agenda_1.pdf",
+      "filename": "sample_agenda_1.pdf",
+      "original_filename": "sample_agenda_1.pdf",
+      "document_type": "City Council Agenda",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "RegularCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://example.com/sample_agenda_2.pdf",
+      "local_path": "downloads/birchwood/sample_agenda_2.pdf",
+      "filename": "sample_agenda_2.pdf",
+      "original_filename": "sample_agenda_2.pdf",
+      "document_type": "City Council Minutes",
+      "meeting_date": "2025-01-16",
+      "meeting_type": "RegularCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://example.com/sample_agenda_3.pdf",
+      "local_path": "downloads/birchwood/sample_agenda_3.pdf",
+      "filename": "sample_agenda_3.pdf",
+      "original_filename": "sample_agenda_3.pdf",
+      "document_type": "City Council Agenda",
+      "meeting_date": "2025-01-17",
+      "meeting_type": "RegularCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://example.com/sample_agenda_4.pdf",
+      "local_path": "downloads/birchwood/sample_agenda_4.pdf",
+      "filename": "sample_agenda_4.pdf",
+      "original_filename": "sample_agenda_4.pdf",
+      "document_type": "City Council Minutes",
+      "meeting_date": "2025-01-18",
+      "meeting_type": "RegularCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://example.com/sample_agenda_5.pdf",
+      "local_path": "downloads/birchwood/sample_agenda_5.pdf",
+      "filename": "sample_agenda_5.pdf",
+      "original_filename": "sample_agenda_5.pdf",
+      "document_type": "City Council Agenda",
+      "meeting_date": "2025-01-19",
+      "meeting_type": "RegularCouncil"
+    }
+  ],
+  "unmatched": [],
+  "failed": [],
+  "timestamp": 1754530345
+}

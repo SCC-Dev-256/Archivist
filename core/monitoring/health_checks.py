@@ -21,14 +21,63 @@ from core.monitoring.metrics import get_metrics_collector
 from loguru import logger
 
 
-@dataclass
+# PURPOSE: Health check system for monitoring system components
+# DEPENDENCIES: psutil, requests, redis, sqlalchemy
+# MODIFICATION NOTES: v1.0 - Initial implementation, v1.1 - Updated to handle read-only flex servers
+
+"""Health check system for monitoring system components.
+
+This module provides comprehensive health monitoring for storage, API connectivity,
+and system resources. It includes support for read-only storage locations.
+"""
+
+import os
+import time
+import psutil
+import requests
+from datetime import datetime
+from typing import Dict, List, Any, Optional
+from loguru import logger
+
+from core.monitoring.metrics import get_metrics_collector
+
+# Read-only flex servers that are accessible but not writable
+READ_ONLY_FLEX_SERVERS = {
+    "/mnt/flex-2",  # Dellwood, Grant, and Willernie
+    "/mnt/flex-3",  # Lake Elmo
+    "/mnt/flex-4",  # Mahtomedi  
+    "/mnt/flex-7",  # Oakdale
+}
+
 class HealthCheckResult:
-    component: str
-    status: str  # "healthy", "degraded", "unhealthy"
-    message: str
-    details: Dict[str, Any]
-    timestamp: datetime
-    response_time: Optional[float] = None
+    """Result of a health check."""
+    
+    def __init__(
+        self,
+        component: str,
+        status: str,
+        message: str,
+        details: Dict[str, Any],
+        timestamp: datetime,
+        response_time: float,
+    ):
+        self.component = component
+        self.status = status
+        self.message = message
+        self.details = details
+        self.timestamp = timestamp
+        self.response_time = response_time
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "component": self.component,
+            "status": self.status,
+            "message": self.message,
+            "details": self.details,
+            "timestamp": self.timestamp.isoformat(),
+            "response_time": self.response_time,
+        }
 
 
 class StorageHealthChecker:
@@ -84,28 +133,41 @@ class StorageHealthChecker:
                 logger.warning(f"Write test failed for {mount_path}: {e}")
 
             # Determine status based on mount type and permissions
-            if is_mount:
-                if writable and test_success:
+            if mount_path in READ_ONLY_FLEX_SERVERS:
+                # These servers are known to be read-only but accessible
+                if is_mount:
                     status = "healthy"
-                    message = f"Storage {mount_path} is healthy and writable"
-                elif writable:
-                    status = "degraded"
-                    message = f"Storage {mount_path} is mounted and writable but write test failed"
+                    message = f"Storage {mount_path} is read-only but accessible (expected behavior)"
                 else:
                     status = "unhealthy"
-                    message = f"Storage {mount_path} is mounted but not writable"
+                    message = f"Storage {mount_path} is not accessible"
             else:
-                # For non-mount paths (like /tmp), just check if writable
-                if writable:
-                    status = "healthy"
-                    message = f"Path {mount_path} is writable"
+                if is_mount:
+                    if writable and test_success:
+                        status = "healthy"
+                        message = f"Storage {mount_path} is healthy and writable"
+                    elif writable:
+                        status = "degraded"
+                        message = f"Storage {mount_path} is mounted and writable but write test failed"
+                    else:
+                        status = "unhealthy"
+                        message = f"Storage {mount_path} is mounted but not writable"
                 else:
-                    status = "degraded"
-                    message = f"Path {mount_path} is not writable"
+                    # For non-mount paths (like /tmp), just check if writable
+                    if writable:
+                        status = "healthy"
+                        message = f"Path {mount_path} is writable"
+                    else:
+                        status = "degraded"
+                        message = f"Path {mount_path} is not writable"
 
             self.metrics.increment("storage_checks_total")
-            if status != "healthy":
-                self.metrics.increment("storage_checks_failed")
+            if status == "healthy":
+                self.metrics.increment("storage_checks_healthy")
+            elif status == "degraded":
+                self.metrics.increment("storage_checks_degraded")
+            else:
+                self.metrics.increment("storage_checks_unhealthy")
 
             return HealthCheckResult(
                 component=f"storage:{mount_path}",
@@ -117,6 +179,7 @@ class StorageHealthChecker:
                     "writable": writable,
                     "test_write": test_success,
                     "free_space": self._get_free_space(mount_path) if is_mount else None,
+                    "read_only_expected": mount_path in READ_ONLY_FLEX_SERVERS,
                 },
                 timestamp=datetime.now(),
                 response_time=time.time() - start_time,
@@ -220,6 +283,7 @@ class SystemHealthChecker:
 
     def check_system_resources(self) -> HealthCheckResult:
         """Check system resource usage."""
+        start_time = time.time()
         try:
             # CPU usage
             cpu_percent = psutil.cpu_percent()
@@ -259,6 +323,7 @@ class SystemHealthChecker:
                     "disk_free_gb": disk.free / (1024**3),
                 },
                 timestamp=datetime.now(),
+                response_time=time.time() - start_time,
             )
 
         except Exception as e:
@@ -268,10 +333,12 @@ class SystemHealthChecker:
                 message=f"System resource check failed: {str(e)}",
                 details={"error": str(e)},
                 timestamp=datetime.now(),
+                response_time=time.time() - start_time,
             )
 
     def check_celery_workers(self) -> HealthCheckResult:
         """Check Celery worker status."""
+        start_time = time.time()
         try:
             # Check if Celery processes are running
             celery_processes = []
@@ -303,6 +370,7 @@ class SystemHealthChecker:
                     "workers": celery_processes,
                 },
                 timestamp=datetime.now(),
+                response_time=time.time() - start_time,
             )
 
         except Exception as e:
@@ -312,6 +380,7 @@ class SystemHealthChecker:
                 message=f"Celery worker check failed: {str(e)}",
                 details={"error": str(e)},
                 timestamp=datetime.now(),
+                response_time=time.time() - start_time,
             )
 
 
@@ -337,18 +406,18 @@ class HealthCheckManager:
 
         # Storage checks
         storage_results = self.storage_checker.check_all_storage()
-        results["checks"]["storage"] = [r.__dict__ for r in storage_results]
+        results["checks"]["storage"] = [r.to_dict() for r in storage_results]
 
         # API checks
         api_result = self.api_checker.check_cablecast_api()
-        results["checks"]["api"] = [api_result.__dict__]
+        results["checks"]["api"] = [api_result.to_dict()]
 
         # System checks
         system_resources = self.system_checker.check_system_resources()
         celery_workers = self.system_checker.check_celery_workers()
         results["checks"]["system"] = [
-            system_resources.__dict__,
-            celery_workers.__dict__,
+            system_resources.to_dict(),
+            celery_workers.to_dict(),
         ]
 
         # Calculate overall status

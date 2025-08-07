@@ -1,4 +1,9 @@
-"""Synchronous wrapper for the Celery WhisperX transcription task."""
+"""Synchronous wrapper for the Celery WhisperX transcription task.
+
+# PURPOSE: Expose direct Whisper transcription utils and Celery wrapper used across VOD/tests
+# DEPENDENCIES: faster_whisper (optional at runtime), celery (for task path), loguru
+# MODIFICATION NOTES: v1.1 - Re-export save_scc_file for tests expecting it here
+"""
 
 import os
 import subprocess
@@ -186,4 +191,16 @@ def run_whisper_transcription(*args, **kwargs):
             "Celery transcription failed (%s); falling back to direct transcription", exc
         )
         return _transcribe_with_faster_whisper(video_path)
+
+# Compatibility export for tests referencing save_scc_file in this module
+try:  # pragma: no cover - import path may not exist in minimal envs
+    # PURPOSE: provide save_scc_file where tests import it
+    # DEPENDENCIES: core.whisperx_helper
+    # MODIFICATION NOTES: v1.1 - shim export
+    from core.whisperx_helper import save_scc_file  # type: ignore
+except Exception:  # pragma: no cover
+    def save_scc_file(*args, **kwargs):  # type: ignore
+        raise ImportError(
+            "save_scc_file is not available; install whisperx helper dependencies"
+        )
 

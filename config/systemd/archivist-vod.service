@@ -16,7 +16,7 @@ Environment=VOD_PROCESSING_TIME=19:00
 Environment=ADMIN_HOST=0.0.0.0
 Environment=ADMIN_PORT=8080
 Environment=DASHBOARD_PORT=5051
-ExecStart=/opt/Archivist/venv_py311/bin/python3 /opt/Archivist/start_archivist_unified.py complete
+ExecStart=/opt/Archivist/venv_py311/bin/python3 /opt/Archivist/start_archivist_unified.py vod-only
 Restart=always
 RestartSec=10
 StandardOutput=journal

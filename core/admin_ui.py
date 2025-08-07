@@ -23,11 +23,12 @@ class AdminUI:
     """Main administrative interface for the VOD processing system."""
 
     def __init__(
-        self, host: str = "0.0.0.0", port: int = 8080, dashboard_port: int = 5051
+        self, host: str = "0.0.0.0", port: int = 8080, dashboard_port: int = 5051, enable_dashboard: bool = True
     ):
         self.host = host
         self.port = port
         self.dashboard_port = dashboard_port
+        self.enable_dashboard = enable_dashboard
         self.app = Flask(__name__)
         self.queue_manager = QueueManager()
 
@@ -37,8 +38,9 @@ class AdminUI:
         # Register routes
         self._register_routes()
 
-        # Start embedded dashboard
-        self._start_embedded_dashboard()
+        # Start embedded dashboard only if enabled
+        if self.enable_dashboard:
+            self._start_embedded_dashboard()
 
     def _register_routes(self):
         """Register all admin UI routes."""
@@ -887,9 +889,9 @@ class AdminUI:
         self.app.run(host=self.host, port=self.port, debug=False, threaded=True)
 
 
-def start_admin_ui(host: str = "0.0.0.0", port: int = 8080, dashboard_port: int = 5051):
-    """Start the main admin UI with embedded monitoring dashboard."""
-    admin_ui = AdminUI(host, port, dashboard_port)
+def start_admin_ui(host: str = "0.0.0.0", port: int = 8080, dashboard_port: int = 5051, enable_dashboard: bool = True):
+    """Start the main admin UI with optional embedded monitoring dashboard."""
+    admin_ui = AdminUI(host, port, dashboard_port, enable_dashboard)
     admin_ui.run()
 
 

@@ -431,7 +431,8 @@ class ServiceManager:
                     start_admin_ui(
                         host="0.0.0.0",
                         port=self.config.ports.admin_ui,
-                        dashboard_port=self.config.ports.dashboard
+                        dashboard_port=self.config.ports.dashboard,
+                        enable_dashboard=self.config.is_feature_enabled("monitoring")
                     )
                 except Exception as e:
                     logger.error(f"Admin UI error: {e}")

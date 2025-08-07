@@ -1,0 +1,33 @@
+{
+  "consolidated_pdfs": [
+    {
+      "city": "Birchwood",
+      "date": "2025-08-06",
+      "consolidated_path": "/mnt/flex-1/consolidated_documents/birchwood/Birchwood_2025-08-06_ConsolidatedDocuments.pdf",
+      "source_pdfs": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "document_types": [
+        "City Council Agenda",
+        "City Council Agenda",
+        "Street Maintenance Quote",
+        "City Council Agenda",
+        "City Council Agenda"
+      ],
+      "total_pages": 5
+    }
+  ],
+  "single_pdfs": [],
+  "failed_stitches": [],
+  "summary": {
+    "total_cities": 1,
+    "consolidated_pdfs": 1,
+    "single_pdfs": 0,
+    "failed_stitches": 0,
+    "total_pdfs_processed": 5
+  }
+}

@@ -12,6 +12,7 @@ Base = db.Model
 
 class TranscriptionJobORM(db.Model):
     __tablename__ = 'transcription_jobs'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.String(36), primary_key=True)
     video_path = db.Column(db.String(255), nullable=False)
@@ -25,6 +26,7 @@ class TranscriptionJobORM(db.Model):
 
 class TranscriptionResultORM(db.Model):
     __tablename__ = 'transcription_results'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.String(36), primary_key=True)
     video_path = db.Column(db.String(255), nullable=False)
@@ -222,6 +224,7 @@ class AuditLogEntry(BaseModel):
 
 class CablecastShowORM(db.Model):
     __tablename__ = 'cablecast_shows'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
@@ -236,6 +239,7 @@ class CablecastShowORM(db.Model):
 
 class CablecastVODORM(db.Model):
     __tablename__ = 'cablecast_vods'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     show_id = db.Column(db.Integer, db.ForeignKey('cablecast_shows.id'), nullable=False)
@@ -254,6 +258,7 @@ class CablecastVODORM(db.Model):
 
 class CablecastVODChapterORM(db.Model):
     __tablename__ = 'cablecast_vod_chapters'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     vod_id = db.Column(db.Integer, db.ForeignKey('cablecast_vods.id'), nullable=False)
@@ -323,3 +328,42 @@ class CablecastShowResponse(BaseModel):
     created_at: datetime
     transcription_available: bool = False
     vod_count: int = Field(0, ge=0) 
+
+class DigitalFileORM(db.Model):
+    """Database model for digital files stored on Flex servers."""
+    __tablename__ = 'digital_files'
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.String(36), primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    path = db.Column(db.String(500), nullable=False)
+    size = db.Column(db.BigInteger, nullable=False)
+    mime_type = db.Column(db.String(100), nullable=False)
+    file_metadata = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    city = db.Column(db.String(100), nullable=False)
+    document_type = db.Column(db.String(100), nullable=False)
+    flex_server = db.Column(db.String(50), nullable=False)
+    source_url = db.Column(db.String(500), nullable=True)
+    
+    def __repr__(self):
+        return f'<DigitalFile {self.filename} ({self.city})>'
+
+
+class DigitalFileLinkORM(db.Model):
+    """Database model for digital file links and streaming URLs."""
+    __tablename__ = 'digital_file_links'
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.String(36), primary_key=True)
+    file_id = db.Column(db.String(36), db.ForeignKey('digital_files.id'), nullable=False)
+    link_type = db.Column(db.String(50), nullable=False)  # 'stream', 'download', 'vod'
+    url = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationship
+    digital_file = db.relationship('DigitalFileORM', backref=db.backref('links', lazy=True))
+    
+    def __repr__(self):
+        return f'<DigitalFileLink {self.link_type} for {self.file_id}>' 

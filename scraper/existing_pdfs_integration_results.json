@@ -1,0 +1,76 @@
+{
+  "summary": {
+    "total_pdfs": 5,
+    "processed": 5,
+    "unmatched": 0,
+    "failed": 0,
+    "cities_processed": [
+      "Birchwood"
+    ],
+    "flex_servers_used": [
+      "flex-1"
+    ],
+    "shows_matched": 0,
+    "needs_manual_review": 0
+  },
+  "processed": [
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025-08-06/1754532985_July-22-2025-Special-Council-Agenda.pdf",
+      "local_path": "downloads/birchwood/1754532985_July-22-2025-Special-Council-Agenda.pdf",
+      "filename": "1754532985_July-22-2025-Special-Council-Agenda.pdf",
+      "original_filename": "1754532985_July-22-2025-Special-Council-Agenda.pdf",
+      "document_type": "City Council Agenda",
+      "meeting_date": "2025-08-06",
+      "meeting_type": "SpecialCouncil",
+      "file_size": 184551
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025-08-06/1754532989_20250714-Council-Agenda-1.pdf",
+      "local_path": "downloads/birchwood/1754532989_20250714-Council-Agenda-1.pdf",
+      "filename": "1754532989_20250714-Council-Agenda-1.pdf",
+      "original_filename": "1754532989_20250714-Council-Agenda-1.pdf",
+      "document_type": "City Council Agenda",
+      "meeting_date": "2025-08-06",
+      "meeting_type": "RegularCouncil",
+      "file_size": 182563
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025-08-06/1754532990_Birchwood-Village-2025-Street-Maintenance-VPI-Quote.pdf",
+      "local_path": "downloads/birchwood/1754532990_Birchwood-Village-2025-Street-Maintenance-VPI-Quote.pdf",
+      "filename": "1754532990_Birchwood-Village-2025-Street-Maintenance-VPI-Quote.pdf",
+      "original_filename": "1754532990_Birchwood-Village-2025-Street-Maintenance-VPI-Quote.pdf",
+      "document_type": "Street Maintenance Quote",
+      "meeting_date": "2025-08-06",
+      "meeting_type": "RegularCouncil",
+      "file_size": 216756
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025-08-06/1754532988_20250714-Council-Agenda-1.pdf",
+      "local_path": "downloads/birchwood/1754532988_20250714-Council-Agenda-1.pdf",
+      "filename": "1754532988_20250714-Council-Agenda-1.pdf",
+      "original_filename": "1754532988_20250714-Council-Agenda-1.pdf",
+      "document_type": "City Council Agenda",
+      "meeting_date": "2025-08-06",
+      "meeting_type": "RegularCouncil",
+      "file_size": 182563
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025-08-06/1754532987_July-22-2025-Special-Council-Agenda.pdf",
+      "local_path": "downloads/birchwood/1754532987_July-22-2025-Special-Council-Agenda.pdf",
+      "filename": "1754532987_July-22-2025-Special-Council-Agenda.pdf",
+      "original_filename": "1754532987_July-22-2025-Special-Council-Agenda.pdf",
+      "document_type": "City Council Agenda",
+      "meeting_date": "2025-08-06",
+      "meeting_type": "SpecialCouncil",
+      "file_size": 184551
+    }
+  ],
+  "unmatched": [],
+  "failed": [],
+  "timestamp": 1754536002
+}

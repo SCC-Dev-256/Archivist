@@ -1,0 +1,113 @@
+{
+  "summary": {
+    "total_pdfs": 10,
+    "processed": 10,
+    "unmatched": 0,
+    "failed": 0,
+    "cities_processed": [
+      "Birchwood"
+    ],
+    "flex_servers_used": [
+      "flex-1",
+      "flex-2",
+      "flex-7"
+    ],
+    "shows_matched": 0,
+    "needs_manual_review": 0
+  },
+  "processed": [
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/July-22-2025-Special-Council-Agenda.pdf",
+      "local_path": "downloads/birchwood/Birchwood_1_1754529950.pdf",
+      "filename": "Birchwood_1_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/July-22-2025-Special-Council-Agenda.pdf",
+      "local_path": "downloads/birchwood/Birchwood_2_1754529950.pdf",
+      "filename": "Birchwood_2_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/20250714-Council-Agenda-1.pdf",
+      "local_path": "downloads/birchwood/Birchwood_3_1754529950.pdf",
+      "filename": "Birchwood_3_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/20250714-Council-Agenda-1.pdf",
+      "local_path": "downloads/birchwood/Birchwood_4_1754529950.pdf",
+      "filename": "Birchwood_4_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/Birchwood-Village-2025-Street-Maintenance-VPI-Quote.pdf",
+      "local_path": "downloads/birchwood/Birchwood_5_1754529950.pdf",
+      "filename": "Birchwood_5_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/Birchwood-Village-2025-Street-Maintenance-VPI-Quote.pdf",
+      "local_path": "downloads/birchwood/Birchwood_6_1754529950.pdf",
+      "filename": "Birchwood_6_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/Quote-Form-1.pdf",
+      "local_path": "downloads/birchwood/Birchwood_7_1754529950.pdf",
+      "filename": "Birchwood_7_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/Quote-Form-1.pdf",
+      "local_path": "downloads/birchwood/Birchwood_8_1754529950.pdf",
+      "filename": "Birchwood_8_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/July-8-City-Council-Meeting-Packet.pdf",
+      "local_path": "downloads/birchwood/Birchwood_9_1754529950.pdf",
+      "filename": "Birchwood_9_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    },
+    {
+      "city": "Birchwood",
+      "url": "https://cityofbirchwood.com/wp-content/uploads/2025/07/July-8-City-Council-Meeting-Packet.pdf",
+      "local_path": "downloads/birchwood/Birchwood_10_1754529950.pdf",
+      "filename": "Birchwood_10_1754529950.pdf",
+      "document_type": "City Document",
+      "meeting_date": "2025-01-15",
+      "meeting_type": "CityCouncil"
+    }
+  ],
+  "unmatched": [],
+  "failed": [],
+  "timestamp": 1754529950
+}

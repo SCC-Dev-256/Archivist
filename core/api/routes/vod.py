@@ -5,6 +5,7 @@ from flask_restx import Namespace, Resource, fields
 from flask_limiter import Limiter
 from loguru import logger
 import os
+import uuid
 
 from core.services import VODService
 from core.models import TranscriptionResultORM
@@ -17,6 +18,50 @@ def create_vod_blueprint(limiter):
     
     # Create namespace for API documentation
     ns = Namespace('vod', description='VOD integration operations')
+
+    @bp.route('/vod/create', methods=['POST'])
+    @limiter.limit('20 per hour')
+    @require_csrf_token
+    def create_vod():
+        """Create a new VOD entry for a digital file."""
+        try:
+            data = request.get_json()
+            file_id = data.get('file_id')
+            title = data.get('title', 'Untitled')
+            description = data.get('description', '')
+            category = data.get('category', 'General')
+            auto_transcribe = data.get('auto_transcribe', False)
+            quality = data.get('quality', 1)
+            
+            if not file_id:
+                return jsonify({'error': 'file_id is required'}), 400
+            
+            # Get digital file
+            from core.models import DigitalFileORM
+            digital_file = DigitalFileORM.query.get_or_404(file_id)
+            
+            # Create VOD entry (placeholder for actual VOD creation)
+            vod_id = str(uuid.uuid4())
+            
+            # If auto_transcribe is enabled, queue transcription
+            if auto_transcribe and digital_file.mime_type == 'application/pdf':
+                # Queue PDF for OCR/transcription processing
+                from core.tasks.transcription import run_whisper_transcription
+                if os.path.exists(digital_file.path):
+                    run_whisper_transcription.delay(digital_file.path)
+                    logger.info(f"Queued PDF {file_id} for transcription")
+            
+            return jsonify({
+                'success': True,
+                'vod_id': vod_id,
+                'file_id': file_id,
+                'title': title,
+                'message': 'VOD entry created successfully'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error creating VOD: {e}")
+            return jsonify({'error': 'Internal server error'}), 500
 
     @bp.route('/vod/publish/<string:transcription_id>', methods=['POST'])
     @limiter.limit('10 per hour')
