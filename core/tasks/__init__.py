@@ -18,6 +18,7 @@ from celery import Celery
 from core.config import REDIS_URL
 from loguru import logger
 import os
+from core.logging_config import setup_logging
 
 celery_app = Celery(
     "archivist",
@@ -37,8 +38,17 @@ celery_app.conf.task_serializer = "json"
 celery_app.conf.result_serializer = "json"
 celery_app.conf.accept_content = ["json"]
 celery_app.conf.result_expires = 86400
-celery_app.conf.timezone = "UTC"
+celery_app.conf.timezone = os.getenv("CELERY_TIMEZONE", "UTC")
 celery_app.conf.enable_utc = True
+
+# Initialize logging early for workers/beat so logs go to file and journal
+try:
+    testing = os.getenv("ARCHIVIST_TESTING", "0").lower() in ("1", "true", "yes")
+    setup_logging(testing=testing)
+    logger.info(f"Logging initialized in Celery context. Timezone={celery_app.conf.timezone}")
+except Exception as e:
+    # Do not crash if logging setup fails; Celery will still emit stderr logs
+    logger.warning(f"Failed to initialize loguru logging in Celery context: {e}")
 
 # Allow running tasks synchronously when a broker isn't available
 if os.getenv("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true":
