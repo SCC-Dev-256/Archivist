@@ -648,19 +648,16 @@ def process_single_vod(vod_id: int, city_id: str, video_path: str = None) -> Dic
                 'message': f'Storage not writable: {storage_mount}'
             }
         
-        # Generate captions using direct transcription function
-        transcription_result = _transcribe_with_faster_whisper(video_path=local_video_path)
-        logger.info(f"Transcription completed: {transcription_result.get('output_path', 'unknown')}")
-        
-        # For now, we'll skip the synchronous processing and let tasks run independently
-        # This avoids the "Never call result.get() within a task!" error
-        logger.info(f"VOD {vod_id} processing queued successfully")
+        # Queue transcription via Celery; do not block inside this task
+        from core.tasks.transcription import run_whisper_transcription as transcribe_task
+        async_result = transcribe_task.delay(local_video_path)
+        logger.info(f"Queued transcription task {async_result.id} for VOD {vod_id}")
         return {
             'vod_id': vod_id,
             'city_id': city_id,
             'status': 'queued',
-            'transcription_task_id': transcription_result.id,
-            'message': 'VOD processing queued for asynchronous processing'
+            'transcription_task_id': async_result.id,
+            'message': 'Transcription queued; downstream steps will run asynchronously'
         }
         
         # Note: Upload and validation tasks are now handled asynchronously

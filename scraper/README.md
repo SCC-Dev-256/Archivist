@@ -8,6 +8,9 @@ A specialized web scraper for extracting PDF documents from Minnesota city gover
 - **Intelligent Parsing**: Uses platform-specific parsing strategies for optimal PDF discovery
 - **Respectful Crawling**: Implements proper delays and respects robots.txt
 - **Structured Output**: Generates JSON results with city categorization
+- **FilesPipeline-based downloads**: SHA256 checksums, deduplication, and manifest output
+- **Prometheus metrics**: Downloads, bytes, duplicates, rejects
+- **Early guard middleware**: HEAD checks for Content-Type and Content-Length, offsite blocking, and optional Redis HEAD cache
 
 ## Supported Cities
 
@@ -25,6 +28,36 @@ The scraper is configured for the following Minnesota cities:
 
 ```bash
 pip install -r requirements.txt
+## Configuration & Environment
+
+Key environment variables (can be set via shell or `.env`):
+
+```bash
+# Absolute path for Scrapy FILES_STORE
+export FILES_STORE_PATH=/opt/Archivist/downloads
+
+# Cap individual file size via HEAD Content-Length (bytes)
+export MAX_CONTENT_LENGTH=$((200*1024*1024))  # 200MB default
+
+# HEAD cache TTL for downloader middleware (seconds)
+export HEAD_CACHE_TTL=3600
+
+# Optional Redis URL for HEAD cache and metrics aggregation
+export REDIS_URL=redis://127.0.0.1:6379/0
+```
+
+Scrapy settings are wired in `scraper/main.py` and include:
+- `ITEM_PIPELINES = { 'scraper.pipelines.PdfFilesPipeline': 100 }`
+- `DOWNLOADER_MIDDLEWARES = { 'scraper.middlewares.EarlyGuardMiddleware': 500 }`
+- `FILES_EXPIRES = 0`, `MEDIA_ALLOW_REDIRECTS = True`
+
+Outputs:
+- Downloaded PDFs under `FILES_STORE_PATH/pdfs/<city>/...`
+- Manifest at `FILES_STORE_PATH/manifest.json` with URL, city, checksums, size, and timestamp
+
+Prometheus counters (if `prometheus_client` is installed and a registry is scraped):
+- `pdf_downloaded_total`, `pdf_downloaded_bytes_total`, `pdf_duplicates_total`, `pdf_rejected_total`
+
 ```
 
 ## Usage
@@ -53,6 +86,17 @@ print(summary)
 ```bash
 cd scraper
 python -m scraper.main
+### CLI (optional)
+
+The project includes a basic CLI for validation, crawl, merge, and webhook notification:
+
+```bash
+python -m scraper.cli --config scraper/sites.json \
+  --output-dir /opt/Archivist/downloads \
+  --merged-output combined_pdfs/all_merged.pdf \
+  --max-merge-size $((200*1024*1024))
+```
+
 ```
 
 ## Configuration
@@ -156,6 +200,9 @@ agenda_pdfs = [r for r in results if 'agenda' in r['url'].lower()]
 2. **Cloudflare Protection**: Sites with Cloudflare may require JavaScript rendering
 3. **Rate Limiting**: The scraper includes delays, but some sites may still block requests
 
+4. **Non-PDF responses rejected**: EarlyGuardMiddleware drops non-`application/pdf` content and oversized files before download.
+5. **Duplicates skipped**: Pipeline removes duplicates by SHA256 and records them in the manifest.
+
 ### Debugging
 
 Enable debug logging:
@@ -163,6 +210,9 @@ Enable debug logging:
 ```python
 import logging
 logging.getLogger('scraper').setLevel(logging.DEBUG)
+
+# Scrapy verbose logs
+export LOG_LEVEL=DEBUG
 ```
 
 ## Contributing

@@ -57,9 +57,9 @@ A comprehensive Flask-based REST API service for audio/video transcription, anal
 ## 🚀 Features
 
 ### Core Transcription System
-- **WhisperX Integration**: High-quality speech-to-text with timestamp alignment
+- **faster-whisper (Primary, offline-capable)**: High-quality speech-to-text with timestamp alignment using CTranslate2; works offline after one-time model cache
 - **SCC Format Output**: Industry-standard Scenarist Closed Caption files
-- **Local Model Summarization**: CPU-optimized local transformer models (facebook/bart-large-cnn)
+- **Local Model Summarization (Optional)**: CPU-optimized local transformer models (facebook/bart-large-cnn); falls back to simple summarizer if `transformers` unavailable
 - **Multi-language Support**: Configurable language detection and processing
 - **Progress Tracking**: Real-time job status and progress monitoring
 - **Error Recovery**: Robust error handling with detailed logging
@@ -148,8 +148,11 @@ pip install -r requirements/prod.txt
 # Development installation (includes testing tools)
 pip install -r requirements/dev.txt
 
-# Install faster-whisper for caption generation
+# Install faster-whisper for caption generation (primary engine)
 pip install faster-whisper
+
+# Optional: summarization stack (only if you want ML summaries)
+pip install "transformers<5,>=4.52" "tokenizers<0.22,>=0.21"
 ```
 
 ### 3. Flex Server Configuration
@@ -241,8 +244,9 @@ FLEX2_PATH=/mnt/flex-2
 ### Transcription Configuration
 
 ```bash
-# WhisperX Settings
-WHISPER_MODEL=large-v2
+# faster-whisper Settings (Primary)
+# Choose model size: tiny | base | small | medium | large-v2
+WHISPER_MODEL=base
 USE_GPU=false
 COMPUTE_TYPE=int8
 BATCH_SIZE=16
@@ -350,6 +354,35 @@ sudo systemctl status archivist
 ```
 
 ### Centralized System Startup ✅ **NEW**
+### Celery (Worker & Beat) via systemd ✅
+
+Use managed services for persistent background processing and scheduling (twice daily VOD queue rebuild, hourly health checks, etc.).
+
+```bash
+# Unit files (already provided in production setup)
+/etc/systemd/system/archivist-celery.service
+/etc/systemd/system/archivist-celery-beat.service
+
+# Environment file (tunable schedules and timezone)
+/etc/default/archivist-celery
+
+# Example env (America/Chicago timezone, two daily runs)
+cat /etc/default/archivist-celery
+# REDIS_URL=redis://127.0.0.1:6379/0
+# CELERY_TIMEZONE=America/Chicago
+# CAPTION_CHECK_TIME=03:00
+# VOD_PROCESSING_TIME=04:00
+# VOD_PROCESSING_TIME_2=19:00
+# CELERY_CONCURRENCY=6
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now archivist-celery.service archivist-celery-beat.service
+sudo systemctl --no-pager status archivist-celery.service archivist-celery-beat.service
+
+# Manual trigger (adhoc): process most recent VODs
+cd /opt/Archivist && source venv_py311/bin/activate
+python -c "from core.tasks.vod_processing import process_recent_vods as p; r=p.delay(); print(r.id)"
+```
 
 ```bash
 # Python-based startup script
@@ -657,11 +690,19 @@ ls -la /mnt/flex-*
 # Check transcription logs
 tail -f /opt/Archivist/logs/transcription.log
 
-# Test WhisperX installation
-python -c "from core.transcription import run_whisper_transcription; print('WhisperX OK')"
+# Verify faster-whisper runtime
+python -c "from faster_whisper import WhisperModel; print('faster-whisper OK')"
 
-# Check available models
-ls ~/.cache/huggingface/transformers/
+# One-time offline cache bootstrap (temporarily allow HTTPS, then disable again)
+sudo ufw allow out 443/tcp
+python -c "from faster_whisper import WhisperModel; WhisperModel('base'); print('Model cached')"
+sudo ufw delete allow out 443/tcp
+
+# If workers fail with: "Cannot find cached snapshot and outgoing traffic disabled"
+# Make sure the model is cached for the same user that runs the Celery worker, or set a shared cache:
+export HF_HOME=/opt/Archivist/.cache/huggingface
+export CTRANSLATE2_ROOT=/opt/Archivist/.cache/ctranslate2
+sudo mkdir -p "$HF_HOME" "$CTRANSLATE2_ROOT" && sudo chown -R $(whoami) "$HF_HOME" "$CTRANSLATE2_ROOT"
 ```
 
 #### VOD Integration Issues
@@ -772,6 +813,29 @@ sudo nano /etc/logrotate.d/archivist
 - Configure firewall rules for necessary ports only
 - Use VPN access for administrative functions
 - Implement network segmentation for flex servers
+
+#### SSH Hardening (applied)
+
+```bash
+# Port change & key-only auth
+sudo sed -i 's/^#\?Port .*/Port 2222/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PubkeyAuthentication .*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
+echo -e "\nMaxAuthTries 3\nClientAliveInterval 300\nClientAliveCountMax 2\nAllowUsers schum" | sudo tee -a /etc/ssh/sshd_config
+sudo systemctl reload ssh
+
+# Firewall
+sudo ufw --force enable
+sudo ufw deny 22/tcp
+sudo ufw allow from 192.168.181.0/24 to any port 2222 proto tcp
+sudo ufw allow from 192.168.201.0/24 to any port 2222 proto tcp
+
+# Fail2Ban
+sudo apt install -y fail2ban
+printf "[DEFAULT]\nbackend = systemd\nbantime = 3600\nfindtime = 600\nmaxretry = 3\n\n[sshd]\nenabled = true\nport = 2222\n" | sudo tee /etc/fail2ban/jail.local >/dev/null
+sudo systemctl enable --now fail2ban
+```
 
 ### Authentication & Authorization
 

@@ -20,6 +20,14 @@ from loguru import logger
 import os
 from core.logging_config import setup_logging
 
+# Ensure model/cache directories are consistent in all worker contexts
+_CACHE_ROOT = os.getenv("ARCHIVIST_CACHE_DIR", "/opt/Archivist/.cache")
+os.environ.setdefault("HF_HOME", f"{_CACHE_ROOT}/huggingface")
+os.environ.setdefault("TRANSFORMERS_CACHE", f"{_CACHE_ROOT}/huggingface/hub")
+os.environ.setdefault("CT2_CACHE_DIR", f"{_CACHE_ROOT}/ctranslate2")
+os.environ.setdefault("WHISPER_MODEL", os.getenv("WHISPER_MODEL", "base"))
+os.environ.setdefault("COMPUTE_TYPE", os.getenv("COMPUTE_TYPE", "int8"))
+
 celery_app = Celery(
     "archivist",
     include=[

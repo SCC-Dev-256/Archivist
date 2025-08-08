@@ -84,3 +84,25 @@
 ---
 
 **Note**: For historical information, check the `archive/` directory. For current status, refer to the consolidated documents above.
+
+## 🛠️ Celery Quick-Check
+
+Common one-liners to verify workers and scheduler:
+
+```bash
+# Service states
+sudo systemctl --no-pager status archivist-celery.service archivist-celery-beat.service
+
+# Live logs (worker)
+sudo journalctl -u archivist-celery.service -f
+
+# Live logs (beat)
+sudo journalctl -u archivist-celery-beat.service -f
+
+# Show recent task activity
+sudo journalctl -u archivist-celery.service --since "30 min ago" | grep -E "(vod_processing|transcription|process_recent_vods)"
+
+# Manually trigger processing (adhoc)
+cd /opt/Archivist && source venv_py311/bin/activate
+python -c "from core.tasks.vod_processing import process_recent_vods as p; r=p.delay(); print(r.id)"
+```
