@@ -21,13 +21,16 @@ class EnhancedPdfSpider(scrapy.Spider):
 
     name = "enhanced_pdf_spider"
 
-    def __init__(self, start_url: str, selectors: list[str], city: str, notes: str = "", **kwargs):
+    def __init__(self, start_url: str, selectors: list[str], city: str, notes: str = "", allowed_domains: list[str] | None = None, **kwargs):
         super().__init__(**kwargs)
         self.start_urls = [start_url]
         self.selectors = selectors
         self.city = city
         self.notes = notes
         self.platform = self._detect_platform(notes)
+        parsed = urlparse(start_url)
+        inferred = [parsed.hostname] if parsed.hostname else []
+        self.allowed_domains = allowed_domains or inferred
         
         # Set custom headers for better compatibility
         self.custom_settings = {
@@ -36,6 +39,7 @@ class EnhancedPdfSpider(scrapy.Spider):
             'RANDOMIZE_DOWNLOAD_DELAY': 1,
             'COOKIES_ENABLED': True,
             'DOWNLOAD_TIMEOUT': 30,
+            'ROBOTSTXT_OBEY': True,
         }
 
     def _detect_platform(self, notes: str) -> str:
@@ -81,10 +85,12 @@ class EnhancedPdfSpider(scrapy.Spider):
             for href in response.css(selector).xpath("@href").getall():
                 url = response.urljoin(href)
                 # Follow the ViewFile link to get the actual PDF
+                # Prefer HEAD to verify content-type before requesting heavy bodies
                 yield scrapy.Request(
                     url,
                     callback=self._extract_civicengage_pdf,
-                    meta={"city": self.city, "original_url": url}
+                    meta={"city": self.city, "original_url": url},
+                    headers={'Accept': 'application/pdf'},
                 )
         
         # Handle pagination - look for "View More" or "Next" links
@@ -157,14 +163,14 @@ class EnhancedPdfSpider(scrapy.Spider):
         if 'application/pdf' in content_type or response.url.endswith('.pdf'):
             # This is already a PDF file, yield it directly
             self.logger.info(f"Found direct PDF: {response.url}")
-            yield {"url": response.url, "city": self.city, "source": response.meta["original_url"]}
+            yield {"file_urls": [response.url], "city": self.city, "source": response.meta["original_url"]}
             return
         
         # Check if response is binary (PDF content)
         if len(response.body) > 1000 and not response.text.startswith('<!DOCTYPE') and not response.text.startswith('<html'):
             # Likely binary PDF content, yield the URL
             self.logger.info(f"Found binary PDF content: {response.url}")
-            yield {"url": response.url, "city": self.city, "source": response.meta["original_url"]}
+            yield {"file_urls": [response.url], "city": self.city, "source": response.meta["original_url"]}
             return
         
         # Try to find PDF links in HTML content
@@ -173,33 +179,41 @@ class EnhancedPdfSpider(scrapy.Spider):
             pdf_links = response.css("a[href$='.pdf']::attr(href)").getall()
             for pdf_link in pdf_links:
                 url = response.urljoin(pdf_link)
-                yield {"url": url, "city": self.city, "source": response.meta["original_url"]}
+                if self.allowed_domains and urlparse(url).hostname not in self.allowed_domains:
+                    continue
+                yield {"file_urls": [url], "city": self.city, "source": response.meta["original_url"]}
             
             # Look for iframe sources that might contain PDFs
             iframe_src = response.css("iframe::attr(src)").getall()
             for iframe in iframe_src:
                 if ".pdf" in iframe or "ViewFile" in iframe:
                     url = response.urljoin(iframe)
-                    yield {"url": url, "city": self.city, "source": response.meta["original_url"]}
+                    if self.allowed_domains and urlparse(url).hostname not in self.allowed_domains:
+                        continue
+                    yield {"file_urls": [url], "city": self.city, "source": response.meta["original_url"]}
             
             # Look for embed tags
             embed_src = response.css("embed::attr(src)").getall()
             for embed in embed_src:
                 if ".pdf" in embed:
                     url = response.urljoin(embed)
-                    yield {"url": url, "city": self.city, "source": response.meta["original_url"]}
+                    if self.allowed_domains and urlparse(url).hostname not in self.allowed_domains:
+                        continue
+                    yield {"file_urls": [url], "city": self.city, "source": response.meta["original_url"]}
             
             # Look for object tags
             object_data = response.css("object::attr(data)").getall()
             for obj_data in object_data:
                 if ".pdf" in obj_data:
                     url = response.urljoin(obj_data)
-                    yield {"url": url, "city": self.city, "source": response.meta["original_url"]}
+                    if self.allowed_domains and urlparse(url).hostname not in self.allowed_domains:
+                        continue
+                    yield {"file_urls": [url], "city": self.city, "source": response.meta["original_url"]}
                     
         except Exception as e:
             # If CSS parsing fails, the response might be binary
             # In this case, assume the URL itself is the PDF
-            yield {"url": response.url, "city": self.city, "source": response.meta["original_url"]}
+            yield {"file_urls": [response.url], "city": self.city, "source": response.meta["original_url"]}
 
     def _parse_wordpress(self, response):
         """Parse WordPress site pages."""
@@ -208,7 +222,9 @@ class EnhancedPdfSpider(scrapy.Spider):
             for href in response.css(selector).xpath("@href").getall():
                 url = response.urljoin(href)
                 if self._is_pdf_url(url):
-                    yield {"url": url, "city": self.city, "source": response.url}
+                    if self.allowed_domains and urlparse(url).hostname not in self.allowed_domains:
+                        continue
+                    yield {"file_urls": [url], "city": self.city, "source": response.url}
                 elif self._is_agenda_page(url):
                     # Follow links to agenda pages
                     yield scrapy.Request(
@@ -223,7 +239,9 @@ class EnhancedPdfSpider(scrapy.Spider):
         pdf_links = response.css("a[href$='.pdf']::attr(href)").getall()
         for pdf_link in pdf_links:
             url = response.urljoin(pdf_link)
-            yield {"url": url, "city": self.city, "source": response.url}
+            if self.allowed_domains and urlparse(url).hostname not in self.allowed_domains:
+                continue
+            yield {"file_urls": [url], "city": self.city, "source": response.url}
         
         # Follow agenda/minutes links to find PDFs
         agenda_selectors = [
@@ -271,7 +289,9 @@ class EnhancedPdfSpider(scrapy.Spider):
             for href in response.css(selector).xpath("@href").getall():
                 url = response.urljoin(href)
                 if self._is_pdf_url(url):
-                    yield {"url": url, "city": self.city, "source": response.url}
+                    if self.allowed_domains and urlparse(url).hostname not in self.allowed_domains:
+                        continue
+                    yield {"file_urls": [url], "city": self.city, "source": response.url}
 
     def _parse_generic(self, response):
         """Generic parsing for unknown platforms."""
@@ -287,7 +307,9 @@ class EnhancedPdfSpider(scrapy.Spider):
         pdf_links = response.css("a[href$='.pdf']::attr(href)").getall()
         for pdf_link in pdf_links:
             url = response.urljoin(pdf_link)
-            yield {"url": url, "city": response.meta["city"], "source": response.url}
+            if self.allowed_domains and urlparse(url).hostname not in self.allowed_domains:
+                continue
+            yield {"file_urls": [url], "city": response.meta["city"], "source": response.url}
 
     def _is_pdf_url(self, url: str) -> bool:
         """Check if URL points to a PDF file."""

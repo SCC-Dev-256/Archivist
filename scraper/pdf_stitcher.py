@@ -1,5 +1,5 @@
 # PURPOSE: PDF stitching utility for consolidating city documents by date
-# DEPENDENCIES: PyPDF2, pathlib, json
+# DEPENDENCIES: pypdf, pathlib, json
 # MODIFICATION NOTES: v1.0 - Initial implementation for VOD document consolidation
 
 from __future__ import annotations
@@ -13,21 +13,21 @@ from collections import defaultdict
 import logging
 
 try:
-    from PyPDF2 import PdfMerger
+    from pypdf import PdfWriter, PdfReader
     PDFMERGING_AVAILABLE = True
 except ImportError:
-    print("PyPDF2 not found. Attempting to install...")
+    print("pypdf not found. Attempting to install...")
     import subprocess
     import sys
     
     try:
-        subprocess.run([sys.executable, '-m', 'pip', 'install', 'PyPDF2'], 
+        subprocess.run([sys.executable, '-m', 'pip', 'install', 'pypdf'], 
                       check=True, capture_output=True)
-        from PyPDF2 import PdfMerger
+        from pypdf import PdfWriter, PdfReader
         PDFMERGING_AVAILABLE = True
-        print("PyPDF2 installed successfully")
+        print("pypdf installed successfully")
     except (subprocess.CalledProcessError, ImportError) as e:
-        print(f"Failed to install PyPDF2: {e}")
+        print(f"Failed to install pypdf: {e}")
         print("PDF stitching will be disabled")
         PDFMERGING_AVAILABLE = False
         PdfMerger = None
@@ -95,25 +95,30 @@ class PDFStitcher:
             output_filename = f"{city}_{date}_ConsolidatedDocuments.pdf"
             output_path = output_dir / output_filename
             
-            # Stitch PDFs
-            merger = PdfMerger()
-            
+            # Stitch PDFs using PdfWriter (pypdf>=5)
+            writer = PdfWriter()
+
             for pdf in sorted_pdfs:
                 pdf_path = Path(pdf.get('local_path', ''))
-                if pdf_path.exists():
-                    try:
-                        merger.append(str(pdf_path))
-                        logger.info(f"  Added: {pdf.get('document_type', 'Unknown')} - {pdf_path.name}")
-                    except Exception as e:
-                        logger.error(f"  Error adding {pdf_path}: {e}")
-                else:
+                if not pdf_path.exists():
                     logger.warning(f"  PDF not found: {pdf_path}")
-            
+                    continue
+                try:
+                    # Prefer fast append if available, else copy pages
+                    append = getattr(writer, 'append', None)
+                    if append is not None:
+                        append(str(pdf_path))
+                    else:
+                        reader = PdfReader(str(pdf_path))
+                        for page in reader.pages:
+                            writer.add_page(page)
+                    logger.info(f"  Added: {pdf.get('document_type', 'Unknown')} - {pdf_path.name}")
+                except Exception as e:
+                    logger.error(f"  Error adding {pdf_path}: {e}")
+
             # Write consolidated PDF
             with open(output_path, 'wb') as output_file:
-                merger.write(output_file)
-            
-            merger.close()
+                writer.write(output_file)
             
             logger.info(f"Created consolidated PDF: {output_path}")
             return output_path

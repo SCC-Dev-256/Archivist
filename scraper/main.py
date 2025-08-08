@@ -12,18 +12,13 @@ from typing import List, Dict, Any
 import scrapy
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
+from .pipelines import PdfFilesPipeline
 
 from .config import load_config, SiteConfig
 from .spiders.enhanced_pdf_spider import EnhancedPdfSpider
 
 
-class CityScraperPipeline:
-    """Pipeline to process scraped PDF URLs."""
-    
-    def process_item(self, item: Dict[str, Any], spider) -> Dict[str, Any]:
-        """Process scraped items and log them."""
-        logging.info(f"Found PDF: {item['url']} for {item['city']}")
-        return item
+ 
 
 
 class CityScraper:
@@ -47,19 +42,33 @@ class CityScraper:
         
         # Configure Scrapy settings
         settings = get_project_settings()
+        import os
+        from pathlib import Path
         settings.update({
             'USER_AGENT': 'Mozilla/5.0 (compatible; CityScraper/1.0)',
             'ROBOTSTXT_OBEY': True,
             'DOWNLOAD_DELAY': 1,  # Be respectful
             'CONCURRENT_REQUESTS': 1,
+            'RETRY_TIMES': int(os.getenv('SCRAPY_RETRY_TIMES', '2')),
+            'RETRY_HTTP_CODES': [500, 502, 503, 504, 522, 524, 408, 429],
             'ITEM_PIPELINES': {
-                'scraper.main.CityScraperPipeline': 300,
+                'scraper.pipelines.PdfFilesPipeline': 100,
             },
+            'FILES_STORE': (lambda p: str(Path(p).resolve()) if not Path(p).is_absolute() else p)(os.getenv('FILES_STORE', 'downloads')),
+            'FILES_EXPIRES': 0,
+            'MEDIA_ALLOW_REDIRECTS': True,
+            'HTTPERROR_ALLOWED_CODES': [301, 302, 303, 307, 308],
+            'DOWNLOADER_MIDDLEWARES': {
+                'scraper.middlewares.EarlyGuardMiddleware': 543,
+            },
+            'MAX_CONTENT_LENGTH': int(os.getenv('MAX_CONTENT_LENGTH', str(50 * 1024 * 1024))),
+            'HEAD_CACHE_TTL': int(os.getenv('HEAD_CACHE_TTL', '3600')),
             'FEEDS': {
                 'results.json': {
                     'format': 'json',
                     'encoding': 'utf8',
                     'indent': 2,
+                    'overwrite': True,
                 }
             }
         })

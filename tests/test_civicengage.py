@@ -7,6 +7,9 @@ import json
 import logging
 from pathlib import Path
 
+import pytest
+pytestmark = [pytest.mark.scraper, pytest.mark.network, pytest.mark.slow]
+
 import scrapy
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings

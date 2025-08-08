@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import Path
 import pytest
+import os
 from unittest.mock import MagicMock, patch
 
 # Provide lightweight fallbacks for optional dependencies used in tests.
@@ -82,6 +83,45 @@ def setup_test_environment():
 
     # Cleanup
     os.environ.pop("TESTING", None)
+
+# VCR configuration for deterministic HTTP in CI (default: no recording)
+@pytest.fixture(scope="session")
+def vcr_config():
+    """
+    # PURPOSE: Configure pytest-vcr behavior for scraper tests
+    # DEPENDENCIES: pytest-vcr (optional in CI)
+    # MODIFICATION NOTES: v1.0 - Default to strict replay; override with VCR_RECORD
+    """
+    return {
+        "record_mode": os.getenv("VCR_RECORD", "none"),
+    }
+
+# PURPOSE: Provide a Celery app fixture with eager execution for deterministic tests
+# DEPENDENCIES: core.tasks.celery_app, Redis (optional when eager)
+# MODIFICATION NOTES: v1.0 - Added to support tests/test_celery_result_debug.py
+@pytest.fixture(scope="session")
+def celery_app():
+    os.environ.setdefault("CELERY_TASK_ALWAYS_EAGER", "true")
+    from core.tasks import celery_app as app
+    # Ensure eager in-case module import happened before env var
+    app.conf.task_always_eager = True
+    app.conf.task_eager_propagates = True
+    return app
+
+# PURPOSE: Expose a known Celery task for submission tests
+# DEPENDENCIES: core.tasks.vod_processing.cleanup_temp_files
+# MODIFICATION NOTES: v1.0 - New fixture for direct task submission
+@pytest.fixture(scope="session")
+def task_func():
+    from core.tasks.vod_processing import cleanup_temp_files
+    return cleanup_temp_files
+
+# PURPOSE: Provide a submitted AsyncResult for result-inspection tests
+# DEPENDENCIES: task_func fixture
+# MODIFICATION NOTES: v1.0 - New fixture returning AsyncResult
+@pytest.fixture()
+def result(task_func):
+    return task_func.delay()
 
 @pytest.fixture
 def app():

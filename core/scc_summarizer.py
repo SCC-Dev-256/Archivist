@@ -22,7 +22,12 @@ import re
 import os
 from typing import List, Dict, Any, Optional
 from loguru import logger
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+try:
+    from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM  # noqa: F401
+    _transformers_ok = True
+except Exception:
+    pipeline = None  # type: ignore
+    _transformers_ok = False
 import torch
 from core.config import (
     SUMMARIZATION_MODEL, SUMMARIZATION_MAX_LENGTH, 
@@ -44,17 +49,19 @@ class LocalSummaryModel:
         self.min_length = SUMMARIZATION_MIN_LENGTH
         
         try:
-            # Initialize the summarization pipeline
-            self.summarizer = pipeline(
-                "summarization",
-                model=self.model_name,
-                device=0 if torch.cuda.is_available() else -1,
-                torch_dtype=torch.float32
-            )
-            logger.info(f"Successfully loaded local summarization model: {self.model_name}")
+            if _transformers_ok and pipeline is not None:
+                # Initialize the summarization pipeline
+                self.summarizer = pipeline(
+                    "summarization",
+                    model=self.model_name,
+                    device=0 if torch.cuda.is_available() else -1,
+                    torch_dtype=torch.float32,
+                )
+                logger.info(f"Successfully loaded local summarization model: {self.model_name}")
+            else:
+                raise RuntimeError("transformers pipeline unavailable")
         except Exception as e:
-            logger.error(f"Failed to load summarization model: {e}")
-            # Fallback to a simpler approach
+            logger.warning(f"Falling back to simple summarizer: {e}")
             self.summarizer = None
     
     def summarize_text(self, text: str, num_points: int = 3) -> str:

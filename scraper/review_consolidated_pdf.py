@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # PURPOSE: Review consolidated PDF and extract metadata
-# DEPENDENCIES: PyPDF2, pathlib
+# DEPENDENCIES: pypdf, pathlib
 # MODIFICATION NOTES: v1.0 - PDF review utility
 
 import sys
@@ -11,7 +11,7 @@ import json
 sys.path.insert(0, str(Path(__file__).parent))
 
 try:
-    import PyPDF2
+    import pypdf as PyPDF2
     PDF_AVAILABLE = True
 except ImportError:
     PDF_AVAILABLE = False

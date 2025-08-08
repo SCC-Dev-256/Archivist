@@ -14,6 +14,7 @@ import sys
 import time
 from datetime import datetime
 from loguru import logger
+import pytest
 from core.scc_summarizer import summarize_scc, parse_scc
 from core.services.transcription import TranscriptionService
 
@@ -82,6 +83,25 @@ def validate_scc_file(scc_path):
     except Exception as e:
         logger.error(f"Error validating SCC file: {e}")
         return False
+
+@pytest.fixture(scope="module", name="scc_path")
+def _scc_path(tmp_path_factory):
+    """Produce a small, valid SCC file for tests without needing real media."""
+    d = tmp_path_factory.mktemp("scc")
+    p = d / "sample.scc"
+    p.write_text(
+        """Scenarist_SCC V1.0
+
+00:00:00:00	00:00:02:10
+Hello world
+
+00:00:02:10	00:00:05:00
+This is a test
+
+""",
+        encoding="utf-8",
+    )
+    return str(p)
 
 def test_scc_parsing(scc_path):
     """Test SCC file parsing."""

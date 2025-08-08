@@ -9,6 +9,9 @@ import time
 from pathlib import Path
 from typing import List, Dict, Any
 
+import pytest
+pytestmark = [pytest.mark.scraper, pytest.mark.network, pytest.mark.slow]
+
 import scrapy
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings

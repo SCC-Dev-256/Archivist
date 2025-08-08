@@ -3,6 +3,8 @@
 Test script to verify API fixes for hanging issues.
 """
 
+import os
+import pytest
 import requests
 import time
 import signal
@@ -24,6 +26,18 @@ def timeout(seconds):
         signal.alarm(0)
         signal.signal(signal.SIGALRM, old_handler)
 
+# Provide concrete targets for pytest parameterization
+_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5050")
+_TARGETS = [
+    (f"{_BASE_URL}/", "Main page"),
+    (f"{_BASE_URL}/api/browse", "Browse API"),
+    (f"{_BASE_URL}/api/metrics", "Metrics API"),
+    (f"{_BASE_URL}/api/health", "Health API"),
+    (f"{_BASE_URL}/api/queue", "Queue API"),
+    (f"{_BASE_URL}/api/transcriptions", "Transcriptions API"),
+]
+
+@pytest.mark.parametrize("url,name", _TARGETS)
 def test_endpoint(url, name, timeout_seconds=10):
     """Test an endpoint with timeout protection."""
     print(f"\n🔍 Testing {name}...")
