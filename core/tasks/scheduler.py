@@ -66,7 +66,13 @@ schedule_updates = {
             "task": "health_checks.run_scheduled_health_check",
             "schedule": crontab(minute=0, hour="*/1"),  # Run every hour
             "options": {"timezone": tz},
-        }
+        },
+        # Backfill transcription when idle: every 10 minutes
+        "transcription-backfill": {
+            "task": "transcription.backfill",
+            "schedule": crontab(minute="*/10"),
+            "options": {"timezone": tz},
+        },
 }
 
 if vod2_parsed is not None:
