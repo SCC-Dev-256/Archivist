@@ -269,6 +269,46 @@ class CablecastVODChapterORM(db.Model):
     
     vod = db.relationship('CablecastVODORM', backref='chapters')
 
+# PURPOSE: Persist AJA HELO devices and scheduled actions mapped from Cablecast shows
+# DEPENDENCIES: SQLAlchemy `db`, member city mapping via config
+# MODIFICATION NOTES: v1 - initial schema for devices and schedules
+class HeloDeviceORM(db.Model):
+    __tablename__ = 'helo_devices'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    city_key = db.Column(db.String(50), nullable=False, index=True)
+    ip = db.Column(db.String(100), nullable=False)
+    username = db.Column(db.String(100), nullable=True)
+    password = db.Column(db.String(200), nullable=True)
+    rtmp_url = db.Column(db.String(300), nullable=True)
+    stream_key = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('city_key', name='uq_helo_city_key'),
+    )
+
+
+class HeloScheduleORM(db.Model):
+    __tablename__ = 'helo_schedules'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey('helo_devices.id'), nullable=False)
+    cablecast_show_id = db.Column(db.Integer, db.ForeignKey('cablecast_shows.id'), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    action = db.Column(db.String(50), nullable=False)  # 'record', 'stream', 'record+stream'
+    status = db.Column(db.String(50), nullable=False, default='scheduled')  # scheduled|queued|completed|failed|skipped
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_error = db.Column(db.Text, nullable=True)
+
+    device = db.relationship('HeloDeviceORM', backref='schedules')
+    show = db.relationship('CablecastShowORM', backref='helo_schedules')
+
 # VOD Integration Pydantic Models
 class VODContentRequest(BaseModel):
     title: str = Field(..., max_length=255, description="Content title")

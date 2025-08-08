@@ -241,3 +241,35 @@ SUMMARIZATION_MODEL = os.getenv("SUMMARIZATION_MODEL", "facebook/bart-large-cnn"
 SUMMARIZATION_MAX_LENGTH = int(os.getenv("SUMMARIZATION_MAX_LENGTH", "100"))
 SUMMARIZATION_MIN_LENGTH = int(os.getenv("SUMMARIZATION_MIN_LENGTH", "30"))
 SUMMARIZATION_CHUNK_SIZE = int(os.getenv("SUMMARIZATION_CHUNK_SIZE", "5"))
+
+# AJA HELO integration configuration
+# Map member cities to HELO device connection info. Preferred via JSON file path for flexibility.
+HELO_DEVICES_JSON = os.getenv("HELO_DEVICES_JSON", "")
+HELO_DEVICES: dict = {}
+if HELO_DEVICES_JSON and os.path.exists(HELO_DEVICES_JSON):
+    import json
+    try:
+        with open(HELO_DEVICES_JSON, "r") as f:
+            HELO_DEVICES = json.load(f)
+    except Exception:
+        HELO_DEVICES = {}
+
+# Fallback simple env-based mapping for a single device per city
+# Example: export HELO_FLEX1_IP=10.0.0.10 HELO_FLEX1_USER=admin HELO_FLEX1_PASS=admin
+for city_key in FLEX_PATHS.keys():
+    env_key = city_key.upper()
+    ip = os.getenv(f"HELO_{env_key}_IP")
+    if ip:
+        HELO_DEVICES[city_key] = {
+            "ip": ip,
+            "username": os.getenv(f"HELO_{env_key}_USER", ""),
+            "password": os.getenv(f"HELO_{env_key}_PASS", ""),
+            # Optional RTMP defaults for streaming
+            "rtmp_url": os.getenv(f"HELO_{env_key}_RTMP_URL", ""),
+            "stream_key": os.getenv(f"HELO_{env_key}_STREAM_KEY", ""),
+        }
+
+HELO_REQUEST_TIMEOUT = int(os.getenv("HELO_REQUEST_TIMEOUT", "10"))
+HELO_MAX_RETRIES = int(os.getenv("HELO_MAX_RETRIES", "3"))
+HELO_SCHEDULE_LOOKAHEAD_MIN = int(os.getenv("HELO_SCHEDULE_LOOKAHEAD_MIN", "360"))  # 6 hours
+HELO_ENABLE_RUNTIME_TRIGGERS = os.getenv("HELO_ENABLE_RUNTIME_TRIGGERS", "true").lower() == "true"

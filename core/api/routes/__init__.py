@@ -12,6 +12,7 @@ from .queue import create_queue_blueprint
 from .vod import create_vod_blueprint
 from .digitalfiles import create_digitalfiles_blueprint
 from .metrics import bp as metrics_bp
+from .helo import create_helo_blueprint
 
 def register_routes(app, limiter):
     """Register all API routes with the Flask application."""
@@ -35,6 +36,7 @@ def register_routes(app, limiter):
     queue_bp, queue_ns = create_queue_blueprint(limiter)
     vod_bp, vod_ns = create_vod_blueprint(limiter)
     digitalfiles_bp, digitalfiles_ns = create_digitalfiles_blueprint(limiter)
+    helo_bp, helo_ns = create_helo_blueprint(limiter)
 
     # Add all namespaces to the main API
     api.add_namespace(browse_ns)
@@ -42,6 +44,7 @@ def register_routes(app, limiter):
     api.add_namespace(queue_ns)
     api.add_namespace(vod_ns)
     api.add_namespace(digitalfiles_ns)
+    api.add_namespace(helo_ns)
 
     # Register blueprints
     app.register_blueprint(browse_bp, url_prefix='/api')
@@ -49,6 +52,7 @@ def register_routes(app, limiter):
     app.register_blueprint(queue_bp, url_prefix='/api')
     app.register_blueprint(vod_bp, url_prefix='/api')
     app.register_blueprint(digitalfiles_bp, url_prefix='/api')
+    app.register_blueprint(helo_bp, url_prefix='/api')
     app.register_blueprint(metrics_bp, url_prefix='/api')
 
     # Register main API blueprint

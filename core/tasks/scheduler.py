@@ -67,6 +67,18 @@ schedule_updates = {
             "schedule": crontab(minute=0, hour="*/1"),  # Run every hour
             "options": {"timezone": tz},
         },
+        # Cablecast -> HELO schedule sync every 10 minutes
+        "helo-schedule-sync": {
+            "task": "helo.sync_schedules",
+            "schedule": crontab(minute="*/10"),
+            "options": {"timezone": tz},
+        },
+        # HELO runtime triggers every minute
+        "helo-runtime-triggers": {
+            "task": "helo.trigger_runtime",
+            "schedule": crontab(minute="*"),
+            "options": {"timezone": tz},
+        },
         # Backfill transcription when idle: every 10 minutes
         "transcription-backfill": {
             "task": "transcription.backfill",

@@ -19,12 +19,14 @@ from .transcription import TranscriptionService
 from .vod import VODService
 from .file import FileService
 from .queue import QueueService
+from .helo import HeloService
 
 __all__ = [
     'TranscriptionService',
     'VODService', 
     'FileService',
-    'QueueService'
+    'QueueService',
+    'HeloService'
 ]
 
 # Create singleton instances for easy access
@@ -32,3 +34,4 @@ transcription_service = TranscriptionService()
 vod_service = VODService()
 file_service = FileService()
 queue_service = QueueService() 
+helo_service = HeloService()
