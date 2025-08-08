@@ -25,9 +25,10 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 from loguru import logger
 from core.config import (
-    CABLECAST_SERVER_URL, CABLECAST_API_KEY, 
+    CABLECAST_API_URL, CABLECAST_API_KEY,
     CABLECAST_USER_ID, CABLECAST_PASSWORD,
-    REQUEST_TIMEOUT, MAX_RETRIES
+    REQUEST_TIMEOUT, MAX_RETRIES,
+    CABLECAST_VERIFY_SSL,
 )
 
 class CablecastAPIClient:
@@ -35,7 +36,8 @@ class CablecastAPIClient:
     
     def __init__(self):
         """Initialize the Cablecast API client."""
-        self.base_url = CABLECAST_SERVER_URL.rstrip('/')
+        # Use REST API base (e.g. https://host/CablecastAPI/v1)
+        self.base_url = CABLECAST_API_URL.rstrip('/')
         self.api_key = CABLECAST_API_KEY
         self.username = CABLECAST_USER_ID
         self.password = CABLECAST_PASSWORD
@@ -94,6 +96,7 @@ class CablecastAPIClient:
                     method, url, 
                     timeout=REQUEST_TIMEOUT,
                     params=params,
+                    verify=CABLECAST_VERIFY_SSL,
                     **kwargs
                 )
                 
@@ -217,26 +220,66 @@ class CablecastAPIClient:
             logger.error(f"Error getting shows: {e}")
             return []
 
-    def get_runs(self, start: Optional[datetime] = None, end: Optional[datetime] = None, location_id: Optional[int] = None, limit: int = 500) -> List[Dict]:
-        """Get scheduled runs (airings) for shows within a time window.
+    def get_runs(
+        self,
+        start: Optional[datetime] = None,
+        end: Optional[datetime] = None,
+        channel_id: Optional[int] = None,
+        location_id: Optional[int] = None,
+        page_size: int = 200,
+    ) -> List[Dict]:
+        """Get scheduled runs from Cablecast scheduleitems, normalized for HELO planner.
 
-        Note: Endpoint path is inferred and may need adjustment to match your Cablecast server.
+        PURPOSE: Query top-level /scheduleitems with filters; normalize keys to
+                 show_id, channel_id, starts_at, ends_at, location_id when derivable.
+        DEPENDENCIES: Cablecast REST /scheduleitems
+        MODIFICATION NOTES: v2025-08-08 switch from /runs to /scheduleitems and add normalization
         """
         try:
-            params: Dict[str, Any] = {"limit": limit}
+            params: Dict[str, Any] = {"page_size": page_size}
             if start:
-                params["start"] = start.isoformat()
+                # Cablecast expects YYYY-MM-DD for date filters; allow ISO too
+                params["startDate"] = start.date().isoformat()
             if end:
-                params["end"] = end.isoformat()
-            if location_id:
-                params["location_id"] = location_id
-            response = self._make_request('GET', '/runs', params=params)
-            if response:
-                runs = response.get('runs') or response.get('data') or response
-                if isinstance(runs, list):
-                    logger.debug(f"Retrieved {len(runs)} runs from Cablecast")
-                    return runs
-            return []
+                params["endDate"] = end.date().isoformat()
+            if channel_id is not None:
+                # Some builds accept channel or channelId
+                params["channel"] = channel_id
+            if location_id is not None:
+                params["locationId"] = location_id
+
+            response = self._make_request('GET', '/scheduleitems', params=params)
+            if not response:
+                return []
+
+            raw_items: List[Dict[str, Any]] = response.get('scheduleItems') or response.get('scheduleitems') or []
+            normalized: List[Dict[str, Any]] = []
+            for item in raw_items:
+                # Fields seen in probe: id, channel, show, runDateTime, crawlLength, recordEvents, runStatus
+                show_id = item.get('show') or item.get('showId')
+                chan = item.get('channel') or item.get('channelId')
+                start_iso = item.get('runDateTime') or item.get('startTime')
+
+                # Derive duration or end; if crawlLength or recordEvents hints exist, we still need end
+                # Cablecast scheduleitems often lacks explicit end; we cannot guess perfectly.
+                # If next item's start on same channel exists, consumer can compute. Here set ends_at == start when unknown.
+                end_iso = item.get('endTime') or start_iso
+
+                norm = {
+                    'id': item.get('id'),
+                    'show_id': show_id,
+                    'channel_id': chan,
+                    'starts_at': start_iso,
+                    'ends_at': end_iso,
+                    'location_id': item.get('location') or item.get('locationId'),
+                    'raw': item,
+                }
+                # Only include if we have the minimum
+                if norm['show_id'] and norm['channel_id'] and norm['starts_at']:
+                    normalized.append(norm)
+
+            logger.debug(f"Retrieved {len(normalized)} normalized schedule runs")
+            return normalized
         except Exception as e:
             logger.error(f"Error getting runs: {e}")
             return []

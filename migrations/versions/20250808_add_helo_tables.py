@@ -8,8 +8,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '20250808_add_helo_tables'
-down_revision = None
+revision = "20250808_add_helo_tables"
+down_revision = "add_error_column"
 branch_labels = None
 depends_on = None
 
@@ -42,6 +42,7 @@ def upgrade():
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.Column('last_error', sa.Text(), nullable=True),
     )
+
 
 
 def downgrade():

@@ -197,17 +197,69 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://archivist:GLUc*p.XC=uM>WD
 # Cablecast configuration
 CABLECAST_BASE_URL = os.getenv("CABLECAST_BASE_URL", "https://rays-house.cablecast.net")
 CABLECAST_SERVER_URL = os.getenv("CABLECAST_SERVER_URL", CABLECAST_BASE_URL)  # Backward compatibility
-CABLECAST_API_URL = os.getenv("CABLECAST_API_URL", "https://vod.scctv.org/CablecastAPI/v1")
+"""
+PURPOSE: CABLECAST_API_URL should point to the full REST base, e.g. https://<host>/CablecastAPI/v1
+DEPENDENCIES: core.cablecast_client.CablecastAPIClient
+MODIFICATION NOTES: v2025-08-08 ensure single source of truth and remove duplicate override
+"""
+CABLECAST_API_URL = os.getenv("CABLECAST_API_URL", "https://192.168.181.55/CablecastAPI/v1")
 CABLECAST_USER_ID = os.getenv("CABLECAST_USER_ID", "admin")
-CABLECAST_PASSWORD = os.getenv("CABLECAST_PASSWORD", "u:S@-lKJm1yB<F_zM4X(Y_D&")
+CABLECAST_PASSWORD = os.getenv("CABLECAST_PASSWORD", "rwscctrms")
 CABLECAST_LOCATION_ID = os.getenv("CABLECAST_LOCATION_ID", "3")
+CABLECAST_API_KEY = os.getenv("CABLECAST_API_KEY", "")
+CABLECAST_VERIFY_SSL = os.getenv("CABLECAST_VERIFY_SSL", "false").lower() == "true"
+CABLECAST_CHANNEL_ID = os.getenv("CABLECAST_CHANNEL_ID", "")
+CABLECAST_DEFAULT_RUN_SECONDS = int(os.getenv("CABLECAST_DEFAULT_RUN_SECONDS", "7200"))
+
+# Optional: Channel ID -> city key mapping for precise device targeting by channel
+#I personally don't understand this, but it's here for reference
+CABLECAST_CHANNEL_TO_CITY_JSON = os.getenv("CABLECAST_CHANNEL_TO_CITY_JSON", "")
+CABLECAST_CHANNEL_TO_CITY: dict[str, str] = {}
+if CABLECAST_CHANNEL_TO_CITY_JSON and os.path.exists(CABLECAST_CHANNEL_TO_CITY_JSON):
+    try:
+        import json
+        with open(CABLECAST_CHANNEL_TO_CITY_JSON, "r") as f:
+            CABLECAST_CHANNEL_TO_CITY = json.load(f)
+    except Exception:
+        CABLECAST_CHANNEL_TO_CITY = {}
+
+_CHANNEL_TO_CITY_INLINE = os.getenv("CABLECAST_CHANNEL_TO_CITY", "")
+if _CHANNEL_TO_CITY_INLINE:
+    try:
+        import json
+        CABLECAST_CHANNEL_TO_CITY = json.loads(_CHANNEL_TO_CITY_INLINE)
+    except Exception:
+        pass
+
+# Channel ID mapping for reference
+CABLECAST_CHANNEL_IDS = {
+    3: "SCC Community",
+    4: "SCC Community2",
+    5: "Birchwood",
+    6: "Dellwood Grant Willernie",
+    7: "Lake Elmo",
+    8: "Mahtomedi",
+    #9: "SCC Community (?)",
+    #10: "SCC Community (?)",
+    11: "Oakdale",
+    12: "White Bear Lake",
+    13: "White Bear Township",
+    #14: "SCC Community (?)",
+    #15: "SCC Community (?)",
+    #16: "SCC Community (?)",
+    18: "SCC Government",
+    #23: "SCC Community (?)",
+    24: "Commission Meetings",
+    #27: "SCC Community (?)",
+    #1034: "Unknown"
+}
+
 
 # Request configuration
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
 
 # VOD Integration Configuration
-CABLECAST_API_URL = os.getenv("CABLECAST_API_URL", "https://vod.scctv.org/ui/api-docs/explorer")
 VOD_DEFAULT_QUALITY = int(os.getenv("VOD_DEFAULT_QUALITY", "1"))
 VOD_UPLOAD_TIMEOUT = int(os.getenv("VOD_UPLOAD_TIMEOUT", "300"))
 VOD_MAX_RETRIES = int(os.getenv("VOD_MAX_RETRIES", "3"))

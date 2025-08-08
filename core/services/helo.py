@@ -20,6 +20,11 @@ from core.models import HeloDeviceORM, HeloScheduleORM, CablecastShowORM
 from core.database import db
 from core.config import HELO_DEVICES, HELO_ENABLE_RUNTIME_TRIGGERS, HELO_SCHEDULE_LOOKAHEAD_MIN
 from core.config import CABLECAST_LOCATION_ID, CITY_ALIASES_TO_HELO
+from core.config import CABLECAST_CHANNEL_ID, CABLECAST_DEFAULT_RUN_SECONDS
+try:
+    from core.config import CABLECAST_CHANNEL_TO_CITY  # optional mapping
+except Exception:
+    CABLECAST_CHANNEL_TO_CITY = {}
 try:
     from core.config import CABLECAST_LOCATION_TO_CITY  # optional mapping
 except Exception:
@@ -55,6 +60,18 @@ class HeloService:
             device.rtmp_url = conf.get("rtmp_url", device.rtmp_url)
             device.stream_key = conf.get("stream_key", device.stream_key)
             updated += 1
+        # Optional: tie devices to configured channel ids for index/reporting
+        for ch, city in (CABLECAST_CHANNEL_TO_CITY or {}).items():
+            dev = HeloDeviceORM.query.filter_by(city_key=city).first()
+            if not dev:
+                continue
+            try:
+                ch_int = int(ch)
+            except Exception:
+                continue
+            if getattr(dev, "cablecast_channel_id", None) != ch_int:
+                dev.cablecast_channel_id = ch_int
+                updated += 1
         db.session.commit()
         return updated
 
@@ -68,7 +85,12 @@ class HeloService:
         preroll_delta = timedelta(seconds=preroll_seconds)
 
         # Prefer precise runs from Cablecast if available
-        runs = self.cablecast.get_runs(start=now, end=horizon, location_id=int(CABLECAST_LOCATION_ID) if CABLECAST_LOCATION_ID else None)
+        runs = self.cablecast.get_runs(
+            start=now,
+            end=horizon,
+            channel_id=int(CABLECAST_CHANNEL_ID) if CABLECAST_CHANNEL_ID else None,
+            location_id=int(CABLECAST_LOCATION_ID) if CABLECAST_LOCATION_ID else None,
+        )
         if runs:
             return self._plans_from_runs(runs, preroll_delta)
 
@@ -101,6 +123,7 @@ class HeloService:
             start_str = r.get('starts_at') or r.get('start')
             end_str = r.get('ends_at') or r.get('end')
             loc_id = r.get('location_id') or r.get('location')
+            chan_id = r.get('channel_id') or r.get('channel')
             if not (show_id and start_str and end_str):
                 continue
             show = CablecastShowORM.query.filter_by(cablecast_id=show_id).first()
@@ -109,11 +132,19 @@ class HeloService:
                 continue
             try:
                 start_time = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
-                end_time = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+                # If ends_at equals starts_at, synthesize a default window
+                end_iso = end_str or start_str
+                end_time = datetime.fromisoformat(end_iso.replace('Z', '+00:00'))
+                if end_time <= start_time:
+                    end_time = start_time + timedelta(seconds=CABLECAST_DEFAULT_RUN_SECONDS)
             except Exception:
                 continue
             start_time = start_time - preroll_delta
-            city_key = self._city_from_location(loc_id) or self._infer_city_key_from_show(show)
+            city_key = (
+                self._city_from_channel(chan_id)
+                or self._city_from_location(loc_id)
+                or self._infer_city_key_from_show(show)
+            )
             if not city_key:
                 continue
             device = devices.get(city_key)
@@ -145,6 +176,16 @@ class HeloService:
             # direct mapping if configured
             if CABLECAST_LOCATION_TO_CITY and str(loc_id) in CABLECAST_LOCATION_TO_CITY:
                 return CABLECAST_LOCATION_TO_CITY[str(loc_id)]
+        except Exception:
+            pass
+        return None
+
+    def _city_from_channel(self, channel_id: Any) -> Optional[str]:
+        try:
+            if channel_id is None:
+                return None
+            if CABLECAST_CHANNEL_TO_CITY and str(channel_id) in CABLECAST_CHANNEL_TO_CITY:
+                return CABLECAST_CHANNEL_TO_CITY[str(channel_id)]
         except Exception:
             pass
         return None

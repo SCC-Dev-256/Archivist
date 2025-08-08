@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: archivist
       POSTGRES_USER: archivist
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-archivist_password}
+      POSTGRES_PASSWORD: GLUc*p.XC=uM>WDQL$X3nbX=
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -55,7 +55,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=archivist
       - POSTGRES_USER=archivist
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-archivist_password}
+      - POSTGRES_PASSWORD=GLUc*p.XC=uM>WDQL$X3nbX=
       - PYTHONPATH=/opt/Archivist
     volumes:
       - ./:/opt/Archivist
@@ -87,7 +87,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=archivist
       - POSTGRES_USER=archivist
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-archivist_password}
+      - POSTGRES_PASSWORD=GLUc*p.XC=uM>WDQL$X3nbX=
       - PYTHONPATH=/opt/Archivist
     volumes:
       - ./:/opt/Archivist
@@ -112,7 +112,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=archivist
       - POSTGRES_USER=archivist
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-archivist_password}
+      - POSTGRES_PASSWORD=GLUc*p.XC=uM>WDQL$X3nbX=
       - DASHBOARD_SECRET_KEY=${DASHBOARD_SECRET_KEY:-archivist-dashboard-secret-2025}
       - PYTHONPATH=/opt/Archivist
     ports:

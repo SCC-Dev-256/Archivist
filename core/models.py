@@ -278,11 +278,13 @@ class HeloDeviceORM(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     city_key = db.Column(db.String(50), nullable=False, index=True)
+    cablecast_channel_id = db.Column(db.Integer, nullable=True, index=True)  # NEW: Channel ID from Cablecast
     ip = db.Column(db.String(100), nullable=False)
     username = db.Column(db.String(100), nullable=True)
     password = db.Column(db.String(200), nullable=True)
     rtmp_url = db.Column(db.String(300), nullable=True)
     stream_key = db.Column(db.String(200), nullable=True)
+    cablecast_channel_id = db.Column(db.Integer, nullable=True, index=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
