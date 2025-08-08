@@ -57,13 +57,17 @@ class HeloClient:
         return r is not None
 
     def set_rtmp(self, rtmp_url: str, stream_key: str | None = None) -> bool:
-        # Many deployments require full RTMP url including key; expose both
-        payload = {
-            "rtmp_url": rtmp_url,
-            "stream_key": stream_key or ""
-        }
-        r = self._request("POST", "/api/rtmp", json=payload)
-        return r is not None
+        # Try common variants across firmware
+        # Variant 1: consolidated JSON endpoint
+        payload = {"rtmp_url": rtmp_url, "stream_key": stream_key or ""}
+        if self._request("POST", "/api/rtmp", json=payload) is not None:
+            return True
+        # Variant 2: individual config keys (if supported)
+        ok1 = self._request("POST", f"/config?action=rtmp_url", data={}) is not None
+        ok2 = True
+        if stream_key is not None:
+            ok2 = self._request("POST", f"/config?action=stream_key", data={}) is not None
+        return ok1 and ok2
 
     def status(self) -> Optional[Dict[str, Any]]:
         return self._request("GET", "/status")

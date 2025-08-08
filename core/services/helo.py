@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 
@@ -16,8 +17,13 @@ from sqlalchemy import and_
 from core.cablecast_client import CablecastAPIClient
 from core.helo_client import HeloClient
 from core.models import HeloDeviceORM, HeloScheduleORM, CablecastShowORM
-from core.app import db
+from core.database import db
 from core.config import HELO_DEVICES, HELO_ENABLE_RUNTIME_TRIGGERS, HELO_SCHEDULE_LOOKAHEAD_MIN
+from core.config import CABLECAST_LOCATION_ID, CITY_ALIASES_TO_HELO
+try:
+    from core.config import CABLECAST_LOCATION_TO_CITY  # optional mapping
+except Exception:
+    CABLECAST_LOCATION_TO_CITY = {}
 
 
 @dataclass
@@ -57,18 +63,23 @@ class HeloService:
         lookahead = lookahead_minutes or HELO_SCHEDULE_LOOKAHEAD_MIN
         now = datetime.now(timezone.utc)
         horizon = now + timedelta(minutes=lookahead)
+        # Pre-roll so streams start a bit early
+        preroll_seconds = int(os.getenv("HELO_PREROLL_SECONDS", "60"))
+        preroll_delta = timedelta(seconds=preroll_seconds)
 
-        # Heuristic: map shows to city by title prefix or metadata if present
-        # Expectation: CablecastShowORM has title and maybe city naming convention
+        # Prefer precise runs from Cablecast if available
+        runs = self.cablecast.get_runs(start=now, end=horizon, location_id=int(CABLECAST_LOCATION_ID) if CABLECAST_LOCATION_ID else None)
+        if runs:
+            return self._plans_from_runs(runs, preroll_delta)
+
+        # Fallback to heuristic on shows in local DB
         shows: List[CablecastShowORM] = (
             CablecastShowORM.query
             .filter(CablecastShowORM.created_at <= horizon)
             .all()
         )
-
         devices = {d.city_key: d for d in HeloDeviceORM.query.all()}
         plans: List[SchedulePlan] = []
-
         for show in shows:
             city_key = self._infer_city_key_from_show(show)
             if not city_key:
@@ -77,29 +88,65 @@ class HeloService:
             if not device:
                 logger.warning(f"No HELO device registered for city {city_key} – skipping show {show.id}")
                 continue
-
-            # TODO: fetch actual start/end from Cablecast show metadata once available
-            # For now, derive from created_at + duration
             start_time = (show.created_at.replace(tzinfo=timezone.utc))
-            if show.duration:
-                end_time = start_time + timedelta(seconds=show.duration)
-            else:
-                end_time = start_time + timedelta(hours=2)
+            end_time = start_time + timedelta(seconds=show.duration or 7200)
+            plans.append(SchedulePlan(city_key, device, show, start_time, end_time, "record+stream"))
+        return plans
 
-            action = "record+stream"
-            plans.append(SchedulePlan(city_key, device, show, start_time, end_time, action))
-
+    def _plans_from_runs(self, runs: List[dict], preroll_delta: timedelta) -> List[SchedulePlan]:
+        devices = {d.city_key: d for d in HeloDeviceORM.query.all()}
+        plans: List[SchedulePlan] = []
+        for r in runs:
+            show_id = r.get('show') or r.get('show_id')
+            start_str = r.get('starts_at') or r.get('start')
+            end_str = r.get('ends_at') or r.get('end')
+            loc_id = r.get('location_id') or r.get('location')
+            if not (show_id and start_str and end_str):
+                continue
+            show = CablecastShowORM.query.filter_by(cablecast_id=show_id).first()
+            if not show:
+                # optionally pull from API; skip for now
+                continue
+            try:
+                start_time = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+                end_time = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+            except Exception:
+                continue
+            start_time = start_time - preroll_delta
+            city_key = self._city_from_location(loc_id) or self._infer_city_key_from_show(show)
+            if not city_key:
+                continue
+            device = devices.get(city_key)
+            if not device:
+                logger.warning(f"No HELO device for city {city_key} – skipping run for show {show.id}")
+                continue
+            plans.append(SchedulePlan(city_key, device, show, start_time, end_time, "record+stream"))
         return plans
 
     def _infer_city_key_from_show(self, show: CablecastShowORM) -> Optional[str]:
-        # Simple inference: title contains city name keywords mapped to member city keys
+        # Prefer alias mapping for multi-city devices
         title = (show.title or "").lower()
+        for alias, city_key in (CITY_ALIASES_TO_HELO or {}).items():
+            if alias.lower() in title:
+                return city_key
+        # Fallback: city key present in title
         for city_key in HELO_DEVICES.keys():
-            if city_key.replace("flex", "") in title:
+            if city_key.lower() in title:
                 return city_key
         # Fallback: single device setup
         if len(HELO_DEVICES) == 1:
             return list(HELO_DEVICES.keys())[0]
+        return None
+
+    def _city_from_location(self, loc_id: Any) -> Optional[str]:
+        try:
+            if loc_id is None:
+                return None
+            # direct mapping if configured
+            if CABLECAST_LOCATION_TO_CITY and str(loc_id) in CABLECAST_LOCATION_TO_CITY:
+                return CABLECAST_LOCATION_TO_CITY[str(loc_id)]
+        except Exception:
+            pass
         return None
 
     # Scheduling (idempotent) ----------------------------------------------

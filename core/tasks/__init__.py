@@ -36,6 +36,7 @@ celery_app = Celery(
         "core.tasks.transcription",
         "core.tasks.transcription_linking",
         "core.tasks.health_checks",
+        "core.tasks.helo",
     ],
 )
 
@@ -107,3 +108,5 @@ for task in vod_tasks:
     logger.debug(f"  - {task}")
 for task in transcription_tasks:
     logger.debug(f"  - {task}") 
+
+# HELO tasks are imported via Celery include list above
