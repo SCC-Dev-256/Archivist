@@ -192,15 +192,15 @@ POSTGRES_CONFIG = {
 }
 
 # Database URL configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://archivist:archivist_password@localhost:5432/archivist")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://archivist:GLUc*p.XC=uM>WDQL$X3nbX=@localhost:5432/archivist")
 
 # Cablecast configuration
 CABLECAST_BASE_URL = os.getenv("CABLECAST_BASE_URL", "https://rays-house.cablecast.net")
 CABLECAST_SERVER_URL = os.getenv("CABLECAST_SERVER_URL", CABLECAST_BASE_URL)  # Backward compatibility
-CABLECAST_API_KEY = os.getenv("CABLECAST_API_KEY", "your_api_key_here")
-CABLECAST_USER_ID = os.getenv("CABLECAST_USER_ID", "")
-CABLECAST_PASSWORD = os.getenv("CABLECAST_PASSWORD", "")
-CABLECAST_LOCATION_ID = os.getenv("CABLECAST_LOCATION_ID", "123456")
+CABLECAST_API_URL = os.getenv("CABLECAST_API_URL", "https://vod.scctv.org/CablecastAPI/v1")
+CABLECAST_USER_ID = os.getenv("CABLECAST_USER_ID", "admin")
+CABLECAST_PASSWORD = os.getenv("CABLECAST_PASSWORD", "u:S@-lKJm1yB<F_zM4X(Y_D&")
+CABLECAST_LOCATION_ID = os.getenv("CABLECAST_LOCATION_ID", "3")
 
 # Request configuration
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
@@ -273,3 +273,42 @@ HELO_REQUEST_TIMEOUT = int(os.getenv("HELO_REQUEST_TIMEOUT", "10"))
 HELO_MAX_RETRIES = int(os.getenv("HELO_MAX_RETRIES", "3"))
 HELO_SCHEDULE_LOOKAHEAD_MIN = int(os.getenv("HELO_SCHEDULE_LOOKAHEAD_MIN", "360"))  # 6 hours
 HELO_ENABLE_RUNTIME_TRIGGERS = os.getenv("HELO_ENABLE_RUNTIME_TRIGGERS", "true").lower() == "true"
+
+# Optional: Cablecast location -> city key mapping for precise targeting
+CABLECAST_LOCATION_TO_CITY_JSON = os.getenv("CABLECAST_LOCATION_TO_CITY_JSON", "")
+CABLECAST_LOCATION_TO_CITY: dict = {}
+if CABLECAST_LOCATION_TO_CITY_JSON and os.path.exists(CABLECAST_LOCATION_TO_CITY_JSON):
+    import json  # safe: may already be imported above
+    try:
+        with open(CABLECAST_LOCATION_TO_CITY_JSON, "r") as f:
+            CABLECAST_LOCATION_TO_CITY = json.load(f)
+    except Exception:
+        CABLECAST_LOCATION_TO_CITY = {}
+
+# Also allow inline JSON in env var for convenience
+_LOC_TO_CITY_INLINE = os.getenv("CABLECAST_LOCATION_TO_CITY", "")
+if _LOC_TO_CITY_INLINE:
+    try:
+        import json
+        CABLECAST_LOCATION_TO_CITY = json.loads(_LOC_TO_CITY_INLINE)
+    except Exception:
+        pass
+
+# Optional: Title alias -> HELO city key mapping to map show titles to a specific device
+CITY_ALIASES_TO_HELO_JSON = os.getenv("CITY_ALIASES_TO_HELO_JSON", "")
+CITY_ALIASES_TO_HELO: dict[str, str] = {}
+if CITY_ALIASES_TO_HELO_JSON and os.path.exists(CITY_ALIASES_TO_HELO_JSON):
+    try:
+        import json
+        with open(CITY_ALIASES_TO_HELO_JSON, "r") as f:
+            CITY_ALIASES_TO_HELO = json.load(f)
+    except Exception:
+        CITY_ALIASES_TO_HELO = {}
+
+_CITY_ALIASES_INLINE = os.getenv("CITY_ALIASES_TO_HELO", "")
+if _CITY_ALIASES_INLINE:
+    try:
+        import json
+        CITY_ALIASES_TO_HELO = json.loads(_CITY_ALIASES_INLINE)
+    except Exception:
+        pass

@@ -18,9 +18,11 @@ Example:
 """
 
 import os
+import time
 import requests
 import base64
 from typing import Dict, List, Optional, Any
+from datetime import datetime
 from loguru import logger
 from core.config import (
     CABLECAST_SERVER_URL, CABLECAST_API_KEY, 
@@ -213,6 +215,30 @@ class CablecastAPIClient:
             
         except Exception as e:
             logger.error(f"Error getting shows: {e}")
+            return []
+
+    def get_runs(self, start: Optional[datetime] = None, end: Optional[datetime] = None, location_id: Optional[int] = None, limit: int = 500) -> List[Dict]:
+        """Get scheduled runs (airings) for shows within a time window.
+
+        Note: Endpoint path is inferred and may need adjustment to match your Cablecast server.
+        """
+        try:
+            params: Dict[str, Any] = {"limit": limit}
+            if start:
+                params["start"] = start.isoformat()
+            if end:
+                params["end"] = end.isoformat()
+            if location_id:
+                params["location_id"] = location_id
+            response = self._make_request('GET', '/runs', params=params)
+            if response:
+                runs = response.get('runs') or response.get('data') or response
+                if isinstance(runs, list):
+                    logger.debug(f"Retrieved {len(runs)} runs from Cablecast")
+                    return runs
+            return []
+        except Exception as e:
+            logger.error(f"Error getting runs: {e}")
             return []
     
     def get_show(self, show_id: int) -> Optional[Dict]:

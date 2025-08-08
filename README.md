@@ -265,8 +265,8 @@ SUMMARIZATION_CHUNK_SIZE=10
 ```bash
 # Cablecast API Configuration
 CABLECAST_LOCATION_ID=1
-CABLECAST_USER_ID=your_user_id
-CABLECAST_PASSWORD=your_password
+CABLECAST_USER_ID=admin
+CABLECAST_PASSWORD=rwscctrms
 
 # VOD Processing Settings
 AUTO_PUBLISH_TO_VOD=true
