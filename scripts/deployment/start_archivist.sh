@@ -3,8 +3,12 @@
 # Exit on any error
 set -e
 
-# Load environment variables
-source /opt/Archivist/.env
+# Load environment variables robustly
+if [ -f "/opt/Archivist/scripts/shell/load_env.sh" ]; then
+  . /opt/Archivist/scripts/shell/load_env.sh /opt/Archivist/.env
+elif [ -f "/opt/Archivist/.env" ]; then
+  set -a; . /opt/Archivist/.env; set +a
+fi
 
 # Create necessary directories
 mkdir -p logs
@@ -23,8 +27,7 @@ export REDIS_PORT=${REDIS_PORT:-"6379"}
 export REDIS_DB=${REDIS_DB:-"0"}
 export REDIS_URL="redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
 
-# Set PostgreSQL configuration
-export DATABASE_URL=postgresql://archivist:archivist_password@localhost:5432/archivist
+# Respect DATABASE_URL from environment; do not override here
 
 # Set API configuration
 export API_HOST=${API_HOST:-"0.0.0.0"}

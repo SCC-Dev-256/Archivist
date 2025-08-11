@@ -11,11 +11,17 @@ fi
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
+# Load environment robustly
+export PYTHONPATH=/opt/Archivist
+if [ -f "/opt/Archivist/scripts/shell/load_env.sh" ]; then
+  . /opt/Archivist/scripts/shell/load_env.sh /opt/Archivist/.env
+elif [ -f "/opt/Archivist/.env" ]; then
+  set -a; . /opt/Archivist/.env; set +a
+fi
+
 # Set Flask environment variables
 export FLASK_APP=core.app
 export FLASK_ENV=production
-export PYTHONPATH=/opt/Archivist
-export DATABASE_URL="postgresql://archivist:archivist_password@localhost:5432/archivist"
 
 # Check if Redis is running
 if ! command -v redis-cli &> /dev/null; then

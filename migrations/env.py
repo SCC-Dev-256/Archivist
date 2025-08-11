@@ -18,8 +18,17 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Get the database URL from environment variable
-database_url = os.getenv('DATABASE_URL', 'postgresql://user:password@192.168.181.154:5432/Archivist')
+# Get the database URL from environment variable (no insecure default)
+database_url = os.getenv('DATABASE_URL')
+if not database_url:
+    # Try to assemble from POSTGRES_* variables for local dev
+    from urllib.parse import quote_plus
+    user = os.getenv('POSTGRES_USER', 'archivist')
+    password = quote_plus(os.getenv('POSTGRES_PASSWORD', 'archivist_password'))
+    host = os.getenv('POSTGRES_HOST', 'localhost')
+    port = os.getenv('POSTGRES_PORT', '5432')
+    db = os.getenv('POSTGRES_DB', 'archivist')
+    database_url = f"postgresql://{user}:{password}@{host}:{port}/{db}"
 
 # Set the database URL in the alembic.ini file
 config.set_main_option('sqlalchemy.url', database_url)

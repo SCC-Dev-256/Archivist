@@ -21,6 +21,7 @@ Example:
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
 
 # Load environment variables
 load_dotenv()
@@ -192,7 +193,18 @@ POSTGRES_CONFIG = {
 }
 
 # Database URL configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://archivist:GLUc*p.XC=uM>WDQL$X3nbX=@localhost:5432/archivist")
+# Prefer explicit DATABASE_URL; otherwise, build from POSTGRES_* with proper URL-encoding
+_env_database_url = os.getenv("DATABASE_URL", "").strip()
+if _env_database_url:
+    DATABASE_URL = _env_database_url
+else:
+    _pg_user = os.getenv("POSTGRES_USER", "archivist")
+    _pg_pass_raw = os.getenv("POSTGRES_PASSWORD", "archivist_password")
+    _pg_pass = quote_plus(_pg_pass_raw)
+    _pg_host = os.getenv("POSTGRES_HOST", "localhost")
+    _pg_port = os.getenv("POSTGRES_PORT", "5432")
+    _pg_db = os.getenv("POSTGRES_DB", "archivist")
+    DATABASE_URL = f"postgresql://{_pg_user}:{_pg_pass}@{_pg_host}:{_pg_port}/{_pg_db}"
 
 # Cablecast configuration
 CABLECAST_BASE_URL = os.getenv("CABLECAST_BASE_URL", "https://rays-house.cablecast.net")

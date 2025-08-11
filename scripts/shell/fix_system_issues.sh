@@ -57,9 +57,9 @@ REDIS_URL=redis://localhost:6379/0
 
 # Database configuration
 POSTGRES_USER=archivist
-POSTGRES_PASSWORD=GLUc*p.XC=uM>WDQL$X3nbX=
+POSTGRES_PASSWORD=pTwef35YjQ98
 POSTGRES_DB=archivist
-DATABASE_URL=postgresql://archivist:GLUc*p.XC=uM>WDQL$X3nbX=@localhost:5432/archivist
+DATABASE_URL=postgresql://archivist:pTwef35YjQ98@localhost:5432/archivist
 
 # API configuration
 API_HOST=0.0.0.0
@@ -159,7 +159,7 @@ DASHBOARD_SECRET_KEY=a2323a9dee5145673fb72d5e62f437cc2ca25d1d5d69a19395ceb8ba646
 # All passwords and keys are randomly generated and unique
 # 
 # CREDENTIALS UPDATED:
-# - Database password: GLUc*p.XC=uM>WDQL$X3nbX=
+# - Database password: pTwef35YjQ98
 # - Secret key: 85b187fa9e22e2aa98c03840b5da72a21168d482723f44b299b0f5471e6c9c75
 # - JWT secret: 43c132addbf5654a5d7607d0822fbf8a51004bc7eb24d8e9b20964e8fb078f9b
 # - Dashboard secret: a2323a9dee5145673fb72d5e62f437cc2ca25d1d5d69a19395ceb8ba646d0854
@@ -271,7 +271,7 @@ else
 fi
 
 # Test PostgreSQL
-if PGPASSWORD='GLUc*p.XC=uM>WDQL$X3nbX=' psql -h localhost -U archivist -d archivist -c "SELECT 1;" >/dev/null 2>&1; then
+if PGPASSWORD='pTwef35YjQ98' psql -h localhost -U archivist -d archivist -c "SELECT 1;" >/dev/null 2>&1; then
     print_status "$GREEN" "✅ PostgreSQL connection: OK"
 else
     print_status "$RED" "❌ PostgreSQL connection: FAILED"
