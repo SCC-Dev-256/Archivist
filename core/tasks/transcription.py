@@ -12,11 +12,14 @@ Key Features:
 
 from celery import current_task
 from loguru import logger
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Set
 import os
 import time
+import glob
+import redis
 
 from core.tasks import celery_app
+from core.config import MEMBER_CITIES, REDIS_URL
 from core.transcription import _transcribe_with_faster_whisper as sync_transcribe
 
 
@@ -352,6 +355,177 @@ def enqueue_transcription(video_path: str, position: Optional[int] = None) -> st
     logger.info(f"Transcription task submitted: {task.id}")
     return task.id
 
+
+# ---------------------------------------------------------------------------
+# Auto-prioritization of newest videos (run morning and night)
+# ---------------------------------------------------------------------------
+
+def _list_recent_videos_for_city(mount_path: str, max_scan: int = 100) -> List[str]:
+    """Return newest-to-oldest video file paths from a flex root (surface-level only)."""
+    if not os.path.isdir(mount_path):
+        return []
+    entries: List[tuple[float, str]] = []
+    try:
+        with os.scandir(mount_path) as it:
+            for entry in it:
+                if not entry.is_file():
+                    continue
+                name = entry.name.lower()
+                if not (name.endswith('.mp4') or name.endswith('.mkv') or name.endswith('.mov') or name.endswith('.ts')):
+                    continue
+                try:
+                    st = entry.stat()
+                    entries.append((st.st_mtime, entry.path))
+                except OSError:
+                    continue
+    except PermissionError:
+        return []
+    # Sort newest first and cap scan size for performance
+    entries.sort(reverse=True)
+    return [p for _, p in entries[:max_scan]]
+
+
+def _is_already_captioned(video_path: str) -> bool:
+    base, _ = os.path.splitext(video_path)
+    scc = base + '.scc'
+    return os.path.exists(scc)
+
+
+def _gather_queued_video_args() -> Set[str]:
+    """Collect video paths currently active/reserved/scheduled in Celery to avoid duplicates."""
+    queued: Set[str] = set()
+    try:
+        inspect = celery_app.control.inspect()
+        active = inspect.active() or {}
+        reserved = inspect.reserved() or {}
+        scheduled = inspect.scheduled() or {}
+        for coll in (active, reserved, scheduled):
+            for _worker, tasks in (coll or {}).items():
+                for task in tasks:
+                    args = task.get('argsrepr') or ''
+                    # argsrepr looks like "('path',)"; do a best-effort parse
+                    if isinstance(args, str) and args.startswith("('"):
+                        try:
+                            path = args.split("'", 2)[1]
+                            if path:
+                                queued.add(path)
+                        except Exception:
+                            pass
+                    # Also check kwargs repr
+                    kwargs = task.get('kwargsrepr') or ''
+                    if isinstance(kwargs, str) and 'video_path' in kwargs:
+                        try:
+                            # crude parse video_path='...'
+                            marker = "video_path='"
+                            if marker in kwargs:
+                                part = kwargs.split(marker, 1)[1]
+                                path = part.split("'", 1)[0]
+                                if path:
+                                    queued.add(path)
+                        except Exception:
+                            pass
+    except Exception:
+        # If inspect fails, return empty set
+        return queued
+    return queued
+
+
+@celery_app.task(name="transcription.autoprioritize_newest")
+def autoprioritize_newest(max_per_city: int = 1, scan_limit_per_city: int = 50) -> Dict:
+    """
+    Discover the newest uncaptioned videos on each flex server and enqueue them
+    onto a priority queue so they execute immediately after the currently running task.
+
+    Notes:
+    - Celery with Redis does not support per-task numeric priority; we emulate
+      "second from top" by routing to a dedicated queue consumed first by workers.
+    - Ensure workers run with: celery -Q caption_priority,celery -Ofair -c 1
+      so the next task after the current one comes from the priority queue.
+    """
+    results: Dict[str, Dict] = {}
+
+    # Track already enqueued paths in Redis for a short window to prevent dupes
+    r = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+    seen_key = 'caption_autopriority:seen_paths'
+    try:
+        # Ensure key has an expiry (7 days); refresh at each run
+        r.expire(seen_key, 7 * 24 * 3600)
+    except Exception:
+        pass
+
+    queued_now: Set[str] = _gather_queued_video_args()
+
+    # Simple metric keys for Prometheus/Grafana via redis-exporter or custom scraper
+    METRIC_KEYS = {
+        'scanned': 'caption_autopriority_scanned_total',
+        'enqueued': 'caption_autopriority_enqueued_total',
+        'skipped_captioned': 'caption_autopriority_skipped_captioned_total',
+        'skipped_alreadyqueued': 'caption_autopriority_skipped_alreadyqueued_total',
+    }
+
+    def _incr(key: str, n: int) -> None:
+        try:
+            r.incrby(key, int(n))
+        except Exception:
+            pass
+
+    for city_id, cfg in MEMBER_CITIES.items():
+        mount = cfg.get('mount_path') or f'/mnt/{city_id}'
+        city_name = cfg.get('name', city_id)
+        picked: List[str] = []
+        skipped_captioned_count = 0
+        skipped_alreadyqueued_count = 0
+        scanned = _list_recent_videos_for_city(mount, max_scan=scan_limit_per_city)
+        for video_path in scanned:
+            if _is_already_captioned(video_path):
+                skipped_captioned_count += 1
+                continue
+            if video_path in queued_now:
+                skipped_alreadyqueued_count += 1
+                continue
+            try:
+                if r.sismember(seen_key, video_path):
+                    skipped_alreadyqueued_count += 1
+                    continue
+            except Exception:
+                pass
+            picked.append(video_path)
+            if len(picked) >= max_per_city:
+                break
+
+        enqueued: List[str] = []
+        for path in picked:
+            try:
+                # Route to priority queue so it runs next
+                async_res = run_whisper_transcription.apply_async(args=[path], queue='caption_priority')
+                enqueued.append(path)
+                try:
+                    r.sadd(seen_key, path)
+                    r.expire(seen_key, 7 * 24 * 3600)
+                except Exception:
+                    pass
+            except Exception as e:
+                logger.error(f"Failed to enqueue priority transcription for {path}: {e}")
+
+        # Emit counters (totals) and per-city enqueued metric
+        _incr(METRIC_KEYS['scanned'], len(scanned))
+        _incr(METRIC_KEYS['enqueued'], len(enqueued))
+        _incr(METRIC_KEYS['skipped_captioned'], skipped_captioned_count)
+        _incr(METRIC_KEYS['skipped_alreadyqueued'], skipped_alreadyqueued_count)
+        try:
+            r.hincrby('caption_autopriority_city_enqueued_total', city_id, len(enqueued))
+        except Exception:
+            pass
+
+        results[city_id] = {
+            'city_name': city_name,
+            'scanned': len(scanned),
+            'enqueued': enqueued,
+            'skipped_captioned': skipped_captioned_count,
+            'skipped_alreadyqueued': skipped_alreadyqueued_count,
+        }
+
+    return results
 
 # Export for backward compatibility
 __all__ = [

@@ -236,3 +236,43 @@ def api_performance():
     except Exception as e:
         logger.error(f"Error fetching performance metrics: {e}")
         return jsonify({'error': str(e)}), 500 
+
+
+@bp.route('/metrics/caption-autopriority', methods=['GET'])
+def caption_autopriority_metrics():
+    """Expose Redis-backed counters for caption autopriority.
+
+    Returns JSON with total counters and per-city enqueued totals.
+    """
+    try:
+        r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+        keys = {
+            'scanned_total': 'caption_autopriority_scanned_total',
+            'enqueued_total': 'caption_autopriority_enqueued_total',
+            'skipped_captioned_total': 'caption_autopriority_skipped_captioned_total',
+            'skipped_alreadyqueued_total': 'caption_autopriority_skipped_alreadyqueued_total',
+        }
+        counters = {}
+        for field, key in keys.items():
+            try:
+                val = r.get(key)
+                counters[field] = int(val) if val is not None else 0
+            except Exception:
+                counters[field] = 0
+
+        city_map = {}
+        try:
+            city_map = r.hgetall('caption_autopriority_city_enqueued_total') or {}
+            # cast values to int
+            city_map = {k: int(v) for k, v in city_map.items()}
+        except Exception:
+            city_map = {}
+
+        return jsonify({
+            'timestamp': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+            'counters': counters,
+            'city_enqueued_total': city_map,
+        })
+    except Exception as e:
+        logger.error(f"caption_autopriority metrics error: {e}")
+        return jsonify({'error': str(e)}), 500

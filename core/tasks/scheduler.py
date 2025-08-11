@@ -67,6 +67,17 @@ schedule_updates = {
             "schedule": crontab(minute=0, hour="*/1"),  # Run every hour
             "options": {"timezone": tz},
         },
+        # Auto-prioritize newest uncaptioned videos morning and night (UTC)
+        "auto-prioritize-newest-morning": {
+            "task": "transcription.autoprioritize_newest",
+            "schedule": crontab(minute=0, hour=6),  # 06:00 UTC
+            "options": {"timezone": tz},
+        },
+        "auto-prioritize-newest-night": {
+            "task": "transcription.autoprioritize_newest",
+            "schedule": crontab(minute=0, hour=18),  # 18:00 UTC
+            "options": {"timezone": tz},
+        },
         # Cablecast -> HELO schedule sync every 10 minutes
         "helo-schedule-sync": {
             "task": "helo.sync_schedules",
@@ -110,3 +121,4 @@ logger.info("Registered VOD cleanup task at 02:30 UTC via Celery beat")
 logger.info("Registered transcription linking queue processing task every 2 hours via Celery beat")
 logger.info("Registered transcription linking cleanup task at 03:45 UTC via Celery beat")
 logger.info("Registered system health check task every hour via Celery beat") 
+logger.info("Registered auto-prioritize newest tasks at 06:00 and 18:00 UTC via Celery beat")
