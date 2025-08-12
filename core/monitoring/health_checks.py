@@ -41,13 +41,11 @@ from loguru import logger
 
 from core.monitoring.metrics import get_metrics_collector
 
-# Read-only flex servers that are accessible but not writable
-READ_ONLY_FLEX_SERVERS = {
-    "/mnt/flex-2",  # Dellwood, Grant, and Willernie
-    "/mnt/flex-3",  # Lake Elmo
-    "/mnt/flex-4",  # Mahtomedi  
-    "/mnt/flex-7",  # Oakdale
-}
+# Read-only flex servers policy
+# Updated: admin should have RW privileges on each flex server, so no mounts are
+# treated as expected read-only in health checks. If any mount is RO, it will be
+# flagged accordingly for remediation rather than suppressed as expected.
+READ_ONLY_FLEX_SERVERS = set()
 
 class HealthCheckResult:
     """Result of a health check."""
@@ -133,33 +131,24 @@ class StorageHealthChecker:
                 logger.warning(f"Write test failed for {mount_path}: {e}")
 
             # Determine status based on mount type and permissions
-            if mount_path in READ_ONLY_FLEX_SERVERS:
-                # These servers are known to be read-only but accessible
-                if is_mount:
+            if is_mount:
+                if writable and test_success:
                     status = "healthy"
-                    message = f"Storage {mount_path} is read-only but accessible (expected behavior)"
+                    message = f"Storage {mount_path} is healthy and writable"
+                elif writable:
+                    status = "degraded"
+                    message = f"Storage {mount_path} is mounted and writable but write test failed"
                 else:
                     status = "unhealthy"
-                    message = f"Storage {mount_path} is not accessible"
+                    message = f"Storage {mount_path} is mounted but not writable"
             else:
-                if is_mount:
-                    if writable and test_success:
-                        status = "healthy"
-                        message = f"Storage {mount_path} is healthy and writable"
-                    elif writable:
-                        status = "degraded"
-                        message = f"Storage {mount_path} is mounted and writable but write test failed"
-                    else:
-                        status = "unhealthy"
-                        message = f"Storage {mount_path} is mounted but not writable"
+                # For non-mount paths (like /tmp), just check if writable
+                if writable:
+                    status = "healthy"
+                    message = f"Path {mount_path} is writable"
                 else:
-                    # For non-mount paths (like /tmp), just check if writable
-                    if writable:
-                        status = "healthy"
-                        message = f"Path {mount_path} is writable"
-                    else:
-                        status = "degraded"
-                        message = f"Path {mount_path} is not writable"
+                    status = "degraded"
+                    message = f"Path {mount_path} is not writable"
 
             self.metrics.increment("storage_checks_total")
             if status == "healthy":

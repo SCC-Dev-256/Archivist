@@ -37,6 +37,8 @@ celery_app = Celery(
         "core.tasks.transcription_linking",
         "core.tasks.health_checks",
         "core.tasks.helo",
+        # Ensure watchdog/backfill tasks are registered for beat and workers
+        "core.tasks.transcription_watchdog",
     ],
 )
 
@@ -97,6 +99,13 @@ try:
     logger.info("Health check tasks imported successfully")
 except Exception as e:
     logger.error(f"Failed to import health check tasks: {e}")
+
+# Ensure transcription watchdog/backfill tasks are imported and registered
+try:
+    import core.tasks.transcription_watchdog  # noqa: E402,F401
+    logger.info("Transcription watchdog/backfill tasks imported successfully")
+except Exception as e:
+    logger.error(f"Failed to import transcription watchdog/backfill tasks: {e}")
 
 # Verify task registration
 registered_tasks = celery_app.tasks.keys()

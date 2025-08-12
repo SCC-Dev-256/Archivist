@@ -19,7 +19,7 @@ import glob
 import redis
 
 from core.tasks import celery_app
-from core.config import MEMBER_CITIES, REDIS_URL
+from core.config import MEMBER_CITIES, REDIS_URL, OUTPUT_DIR
 from core.transcription import _transcribe_with_faster_whisper as sync_transcribe
 
 
@@ -361,34 +361,86 @@ def enqueue_transcription(video_path: str, position: Optional[int] = None) -> st
 # ---------------------------------------------------------------------------
 
 def _list_recent_videos_for_city(mount_path: str, max_scan: int = 100) -> List[str]:
-    """Return newest-to-oldest video file paths from a flex root (surface-level only)."""
+    """Return newest-to-oldest video paths from mount root and common subdirs (one level deep).
+
+    Scans the mount root plus typical content directories used by VOD ingestion to better
+    prioritize truly recent content. Only surface-level files within those directories
+    are considered to keep performance predictable.
+    """
     if not os.path.isdir(mount_path):
         return []
+
+    # Common subfolders aligned with VOD discovery
+    candidate_dirs: List[str] = [
+        mount_path,
+        os.path.join(mount_path, 'videos'),
+        os.path.join(mount_path, 'vod_content'),
+        os.path.join(mount_path, 'city_council'),
+        os.path.join(mount_path, 'meetings'),
+        os.path.join(mount_path, 'content'),
+        os.path.join(mount_path, 'incoming'),
+        os.path.join(mount_path, 'recordings'),
+    ]
+
+    video_exts = ('.mp4', '.mkv', '.mov', '.ts', '.m4v', '.avi')
     entries: List[tuple[float, str]] = []
+
     try:
-        with os.scandir(mount_path) as it:
-            for entry in it:
-                if not entry.is_file():
-                    continue
-                name = entry.name.lower()
-                if not (name.endswith('.mp4') or name.endswith('.mkv') or name.endswith('.mov') or name.endswith('.ts')):
-                    continue
-                try:
-                    st = entry.stat()
-                    entries.append((st.st_mtime, entry.path))
-                except OSError:
-                    continue
-    except PermissionError:
-        return []
+        for folder in candidate_dirs:
+            if not os.path.isdir(folder):
+                continue
+            try:
+                with os.scandir(folder) as it:
+                    for entry in it:
+                        if not entry.is_file():
+                            continue
+                        name_lower = entry.name.lower()
+                        if not name_lower.endswith(video_exts):
+                            continue
+                        try:
+                            st = entry.stat()
+                            entries.append((st.st_mtime, entry.path))
+                        except OSError:
+                            continue
+            except PermissionError:
+                # Skip folders without read permission
+                continue
+    except Exception:
+        # Fail-safe: return what we have gathered so far
+        pass
+
     # Sort newest first and cap scan size for performance
     entries.sort(reverse=True)
     return [p for _, p in entries[:max_scan]]
 
 
 def _is_already_captioned(video_path: str) -> bool:
-    base, _ = os.path.splitext(video_path)
-    scc = base + '.scc'
-    return os.path.exists(scc)
+    """Return True if there is a matching SCC for the given video.
+
+    Checks adjacent file, common sibling caption folders, and the global OUTPUT_DIR.
+    """
+    try:
+        base_dir = os.path.dirname(video_path)
+        base_name = os.path.splitext(os.path.basename(video_path))[0]
+        candidates: List[str] = []
+
+        # Adjacent SCC
+        candidates.append(os.path.join(base_dir, f"{base_name}.scc"))
+
+        # Common sibling caption folders
+        for sibling in ('transcriptions', 'scc_files', 'captions'):
+            candidates.append(os.path.join(base_dir, sibling, f"{base_name}.scc"))
+
+        # Global output directory (if configured)
+        if OUTPUT_DIR:
+            candidates.append(os.path.join(OUTPUT_DIR, f"{base_name}.scc"))
+
+        for p in candidates:
+            if os.path.exists(p):
+                return True
+    except Exception:
+        pass
+    return False
 
 
 def _gather_queued_video_args() -> Set[str]:
@@ -448,8 +500,9 @@ def autoprioritize_newest(max_per_city: int = 1, scan_limit_per_city: int = 50) 
     r = redis.Redis.from_url(REDIS_URL, decode_responses=True)
     seen_key = 'caption_autopriority:seen_paths'
     try:
-        # Ensure key has an expiry (7 days); refresh at each run
-        r.expire(seen_key, 7 * 24 * 3600)
+        # Ensure key has an expiry; refresh at each run (default 24h, configurable)
+        ttl_hours = int(os.getenv('CAPTION_AUTOPRIORITY_SEEN_TTL_HOURS', '24'))
+        r.expire(seen_key, max(1, ttl_hours) * 3600)
     except Exception:
         pass
 
@@ -483,6 +536,7 @@ def autoprioritize_newest(max_per_city: int = 1, scan_limit_per_city: int = 50) 
             if video_path in queued_now:
                 skipped_alreadyqueued_count += 1
                 continue
+            # Skip if seen recently (but only as a secondary guard after real queue inspection)
             try:
                 if r.sismember(seen_key, video_path):
                     skipped_alreadyqueued_count += 1
@@ -501,7 +555,8 @@ def autoprioritize_newest(max_per_city: int = 1, scan_limit_per_city: int = 50) 
                 enqueued.append(path)
                 try:
                     r.sadd(seen_key, path)
-                    r.expire(seen_key, 7 * 24 * 3600)
+                    ttl_hours = int(os.getenv('CAPTION_AUTOPRIORITY_SEEN_TTL_HOURS', '24'))
+                    r.expire(seen_key, max(1, ttl_hours) * 3600)
                 except Exception:
                     pass
             except Exception as e:

@@ -27,7 +27,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/Archivist/logs /opt/Archivist/output /mnt/flex-1 /mnt/flex-2 /mnt/flex-3 /mnt/flex-4 /mnt/flex-5 /tmp
+ReadWritePaths=/opt/Archivist/logs /opt/Archivist/output /mnt/flex-1 /mnt/flex-2 /mnt/flex-3 /mnt/flex-4 /mnt/flex-5 /mnt/flex-6 /mnt/flex-7 /mnt/flex-8 /mnt/flex-9 /tmp
 
 # Resource limits
 LimitNOFILE=65536
