@@ -1,0 +1,7 @@
+process_names:
+  - name: "celery_worker"
+    cmdline:
+      - '.*/venv_py311/bin/celery.*worker.*'
+  - name: "celery_beat"
+    cmdline:
+      - '.*/venv_py311/bin/celery.*beat.*'

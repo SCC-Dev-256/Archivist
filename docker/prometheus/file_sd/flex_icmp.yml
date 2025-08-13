@@ -1,0 +1,20 @@
+- targets: [192.168.181.56]
+  labels: {flex_id: "1", city: "Birchwood", role: "flex"}
+- targets: [192.168.181.57]
+  labels: {flex_id: "2", city: "Dellwood-Grant-Willernie", role: "flex"}
+- targets: [192.168.181.58]
+  labels: {flex_id: "3", city: "Lake Elmo", role: "flex"}
+- targets: [192.168.181.59]
+  labels: {flex_id: "4", city: "Mahtomedi", role: "flex"}
+- targets: [192.168.181.60]
+  labels: {flex_id: "5", city: "Spare1", role: "flex"}
+- targets: [192.168.181.61]
+  labels: {flex_id: "6", city: "Spare2", role: "flex"}
+- targets: [192.168.181.62]
+  labels: {flex_id: "7", city: "Oakdale", role: "flex"}
+- targets: [192.168.181.63]
+  labels: {flex_id: "8", city: "White Bear Lake", role: "flex"}
+- targets: [192.168.181.64]
+  labels: {flex_id: "9", city: "White Bear Township", role: "flex"}
+- targets: [192.168.181.65]
+  labels: {flex_id: "10", city: "VIO4", role: "vio4"}

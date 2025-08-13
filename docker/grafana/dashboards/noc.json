@@ -1,0 +1,34 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "Archivist NOC",
+  "uid": "archivist-noc",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "API Health",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "probe_success{job=\"blackbox_http_api\"}", "legendFormat": "health"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Flex ICMP Down",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "targets": [
+        {"expr": "sum((probe_success{job=\"blackbox_icmp_flex\"}==0))", "legendFormat": "down"}
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Celery Workers (process-exporter up)",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "up{job=\"process_exporter\"}", "legendFormat": "up"}
+      ]
+    }
+  ]
+}

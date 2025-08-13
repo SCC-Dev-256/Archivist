@@ -1,0 +1,82 @@
+groups:
+  - name: archivist-core
+    rules:
+      - alert: APIHealthDown
+        expr: probe_success{job="blackbox_http_api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: API health probe failing
+          description: API health endpoint is not returning 2xx.
+
+      - alert: FlexICMPDown
+        expr: probe_success{job="blackbox_icmp_flex"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Flex host ICMP down ({{ $labels.instance }} - {{ $labels.city }})
+          description: ICMP failed for {{ $labels.instance }} ({{ $labels.city }}) for over 2 minutes.
+
+      - alert: FlexSMBPortDown
+        expr: probe_success{job="blackbox_tcp_smb"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Flex SMB port down ({{ $labels.instance }} - {{ $labels.city }})
+          description: TCP:445 probe failing for {{ $labels.instance }} ({{ $labels.city }}).
+
+      - alert: NodeExporterDown
+        expr: up{job="node_exporter"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: node_exporter down
+          description: node_exporter not scraping.
+
+      - alert: ProcessExporterDown
+        expr: up{job="process_exporter"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: process-exporter down
+          description: process-exporter not scraping.
+
+      - alert: PVEExporterDown
+        expr: up{job="pve"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: pve exporter down
+          description: pve exporter not responding.
+  - name: archivist-celery
+    rules:
+      - alert: CeleryQueueBacklogHigh
+        expr: sum by (queue) (celery_queue_length) > 100
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: High Celery backlog for {{ $labels.queue }}
+
+      - alert: CeleryQueueBacklogCritical
+        expr: sum by (queue) (celery_queue_length) > 500
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: Critical Celery backlog for {{ $labels.queue }}
+
+      - alert: CeleryTaskFailRateHigh
+        expr: (
+          rate(celery_task_failed_total[10m])
+          /
+          (rate(celery_task_succeeded_total[10m]) + rate(celery_task_failed_total[10m]))
+        ) > 0.05
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: High Celery task failure rate (>5%)

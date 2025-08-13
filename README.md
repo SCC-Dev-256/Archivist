@@ -1008,3 +1008,15 @@ The Archivist system provides two canonical web GUIs:
 ### Deployment
 
 Deployment scripts (`start_complete_system.py`, `start_integrated_system.py`, etc.) have been updated to only start the canonical GUIs. 
+## Monitoring & Observability
+See `docs/monitoring.md` for setup, configuration, dashboards, alerts, and runbooks. The stack includes Prometheus, Grafana, Alertmanager, and exporters (node, process, blackbox, Postgres, Celery, Proxmox). Environment variables are managed via `.env` at the repo root (not committed).
+
+### Ports and Reverse Proxy
+Open TCP 3000, 9090, 9093 on the monitoring VLAN or front them with Nginx/Traefik. See `docs/deployment.md`.
+
+### Endpoints
+- App `/healthz` and `/metrics`: see `docs/app_endpoints.md`.
+
+### Security
+- Secrets: `.env`, see `docs/security.md`.
+- Token/role rotations: see runbooks in `runbooks/`.

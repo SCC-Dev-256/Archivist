@@ -1,13 +1,94 @@
 global:
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["127.0.0.1:9093"]
+
   scrape_interval: 15s
   evaluation_interval: 15s
 
-scrape_configs:
-  - job_name: 'archivist-dashboard'
-    static_configs:
-      - targets: ['dashboard:8080']
-    metrics_path: '/api/metrics'
+rule_files:
+  - /etc/prometheus/alerting/*.yml
 
-  - job_name: 'prometheus'
+scrape_configs:
+  - job_name: prometheus
     static_configs:
-      - targets: ['prometheus:9090']
+      - targets: ["127.0.0.1:9090"]
+
+  - job_name: node_exporter
+    static_configs:
+      - targets: ["127.0.0.1:9100"]
+
+  - job_name: process_exporter
+    static_configs:
+      - targets: ["127.0.0.1:9256"]
+
+  - job_name: redis_exporter
+    static_configs:
+      - targets: ["127.0.0.1:9121"]
+
+  - job_name: postgres_exporter
+    static_configs:
+      - targets: ["127.0.0.1:9187"]
+
+  - job_name: blackbox_http_api
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://127.0.0.1:8585/healthz
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  - job_name: pve
+    metrics_path: /pve
+    params:
+      module: [default]
+    static_configs:
+      - targets: ["https://dc-pve04:8006"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9221
+
+  - job_name: blackbox_icmp_flex
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    file_sd_configs:
+      - files: ["/etc/prometheus/file_sd/flex_icmp.yml"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  - job_name: blackbox_tcp_smb
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    file_sd_configs:
+      - files: ["/etc/prometheus/file_sd/flex_smb.yml"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  - job_name: celery_exporter
+    static_configs:
+      - targets: ["127.0.0.1:9808"]

@@ -1,0 +1,15 @@
+route:
+  receiver: 'email'
+  group_by: ['alertname']
+  group_wait: 5s
+  group_interval: 1m
+  repeat_interval: 2h
+receivers:
+  - name: 'email'
+    email_configs:
+      - to: 'utility@scctv.org'
+        from: 'archivist@scctv.org'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'archivist'
+        auth_password: 'cableTV21'
+        require_tls: true

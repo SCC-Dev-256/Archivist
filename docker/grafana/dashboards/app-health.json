@@ -1,0 +1,21 @@
+{
+  "title": "Archivist App Health",
+  "uid": "archivist-app-health",
+  "version": 1,
+  "schemaVersion": 38,
+  "panels": [
+    {"type":"stat","title":"Postgres UP","gridPos":{"h":4,"w":6,"x":0,"y":0},
+     "targets":[{"expr":"up{job=\"postgres_exporter\"}"}]},
+    {"type":"graph","title":"PG connections","gridPos":{"h":8,"w":12,"x":6,"y":0},
+     "targets":[{"expr":"sum(pg_stat_database_numbackends)","legendFormat":"connections"}]},
+    {"type":"graph","title":"PG commits/rollbacks","gridPos":{"h":8,"w":12,"x":0,"y":4},
+     "targets":[
+        {"expr":"sum(rate(pg_stat_database_xact_commit[5m]))","legendFormat":"commit/s"},
+        {"expr":"sum(rate(pg_stat_database_xact_rollback[5m]))","legendFormat":"rollback/s"}
+     ]},
+    {"type":"graph","title":"Celery queue length","gridPos":{"h":8,"w":12,"x":12,"y":4},
+     "targets":[{"expr":"sum by (queue) (celery_queue_length)","legendFormat":"{{queue}}"}]},
+    {"type":"graph","title":"Celery task failure rate","gridPos":{"h":8,"w":12,"x":0,"y":12},
+     "targets":[{"expr":"(rate(celery_task_failed_total[5m])) / (rate(celery_task_succeeded_total[5m]) + rate(celery_task_failed_total[5m]))","legendFormat":"fail rate"}]}
+  ]
+}
