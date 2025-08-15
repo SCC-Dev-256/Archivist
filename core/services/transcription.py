@@ -129,6 +129,55 @@ class TranscriptionService:
         
         logger.info(f"Found {len(untranscribed)} videos needing transcription")
         return untranscribed
+
+    def pick_newest_uncaptioned(self, max_per_city: int = 1, scan_limit: int = 50) -> Dict[str, List[str]]:
+        """Pick newest uncaptioned videos per city (surface-level), newest-first.
+
+        Args:
+            max_per_city: max items to pick per city
+            scan_limit: max files to scan per city before picking
+
+        Returns:
+            Dict mapping city_id -> list of absolute video paths
+        """
+        picks: Dict[str, List[str]] = {}
+        # Iterate configured member cities; stay surface-level by design
+        for city_id, cfg in MEMBER_CITIES.items():
+            mount_path = cfg.get('mount_path')
+            if not mount_path or not os.path.isdir(mount_path):
+                continue
+            # Discover surface-level videos newest-first
+            videos = []
+            try:
+                with os.scandir(mount_path) as it:
+                    for e in it:
+                        if not e.is_file():
+                            continue
+                        name = e.name.lower()
+                        if not (name.endswith('.mp4') or name.endswith('.mkv') or name.endswith('.mov') or name.endswith('.ts')):
+                            continue
+                        try:
+                            st = e.stat()
+                            videos.append((st.st_mtime, e.path))
+                        except OSError:
+                            continue
+            except PermissionError:
+                continue
+            videos.sort(reverse=True)
+            if scan_limit:
+                videos = videos[:scan_limit]
+            # Filter to uncaptioned
+            picked: List[str] = []
+            for _mtime, path in videos:
+                base, _ = os.path.splitext(path)
+                if os.path.exists(base + '.scc'):
+                    continue
+                picked.append(path)
+                if len(picked) >= max_per_city:
+                    break
+            if picked:
+                picks[city_id] = picked
+        return picks
     
     @handle_transcription_error
     def transcribe_file(self, file_path: str, output_dir: Optional[str] = None) -> Dict:

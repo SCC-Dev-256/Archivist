@@ -450,106 +450,58 @@ def process_recent_vods() -> Dict[str, Any]:
     return results
 
 def get_recent_vods_from_flex_server(mount_path: str, city_id: str, limit: int = 5) -> List[Dict]:
-    """Get recent VOD files from flex server mount point (surface-level E: drive structure).
-    
-    This function scans mounted flex servers for video files at the surface level
-    and creates VOD entries that can be processed locally without downloading from Cablecast.
-    It prioritizes the most recently recorded content and filters out already processed files.
-    
+    """Get recent VOD files for a city using the consolidated TranscriptionService.
+
+    Uses `TranscriptionService.find_untranscribed_videos(city)` to list surface-level
+    videos without SCC, sorts newest-first, and maps to the VOD entry structure
+    expected by downstream logic.
+
     Args:
-        mount_path: Path to flex server mount
-        city_id: Member city ID
+        mount_path: Path to flex server mount (kept for signature compatibility)
+        city_id: Member city ID (flex key)
         limit: Maximum number of VODs to return
-        
+
     Returns:
         List of VOD dictionaries with file information
     """
-    logger.info(f"Scanning flex server {city_id} at {mount_path} for recent VODs (surface-level)")
-    
-    vod_files = []
-    
     try:
-        # Check if mount is accessible
-        if not os.path.ismount(mount_path):
-            logger.warning(f"Mount point {mount_path} is not mounted")
-            return []
-        
-        if not os.access(mount_path, os.R_OK):
-            logger.warning(f"Mount point {mount_path} is not readable")
-            return []
-        
-        # Surface-level file discovery (E: drive structure)
-        # Search directly in the mount root, not in subdirectories
-        import glob
-        
-        # Look for video files at surface level
-        video_patterns = ['*.mp4', '*.mov', '*.avi', '*.mkv', '*.m4v', '*.wmv']
-        
-        for pattern in video_patterns:
-            pattern_path = os.path.join(mount_path, pattern)
-            video_files = glob.glob(pattern_path)
-            
-            for file_path in video_files:
-                if os.path.isfile(file_path):
-                    try:
-                        stat = os.stat(file_path)
-                        file_size = stat.st_size
-                        mod_time = stat.st_mtime
-                        file_name = os.path.basename(file_path)
-                        
-                        # Skip files that are too small (likely not complete videos)
-                        if file_size < 5 * 1024 * 1024:
-                            continue
-                        
-                        # Check if SCC file already exists (skip if already processed)
-                        base_name = os.path.splitext(file_name)[0]
-                        scc_path = os.path.join(mount_path, f"{base_name}.scc")
-                        if os.path.exists(scc_path):
-                            logger.debug(f"Skipping {file_name} - SCC already exists")
-                            continue
-                        
-                        # Create VOD entry with surface-level information
-                        vod_entry = {
-                            'id': f"flex_{city_id}_{len(vod_files)}",
-                            'title': base_name,
-                            'file_path': file_path,
-                            'file_name': file_name,
-                            'file_size': file_size,
-                            'modified_time': mod_time,
-                            'source': 'flex_server',
-                            'city_id': city_id,
-                            'relative_path': file_name,  # Just the filename since it's surface-level
-                            'directory': '',  # Empty since files are at surface level
-                            'extension': os.path.splitext(file_name)[1].lower(),
-                            'recording_date': mod_time,  # For sorting by recording time
-                            'priority': 1  # All files at surface level have same priority
-                        }
-                        
-                        vod_files.append(vod_entry)
-                        logger.debug(f"Found video: {file_name} ({file_size} bytes)")
-                        
-                        if len(vod_files) >= limit * 3:  # Get more than needed for better filtering
-                            break
-                            
-                    except OSError as e:
-                        logger.warning(f"Error accessing file {file_path}: {e}")
-                        continue
-            
-            if len(vod_files) >= limit * 3:
-                break
-        
-        # Sort by modification time (newest first)
-        vod_files.sort(key=lambda x: x['modified_time'], reverse=True)
-        
-        # Limit results
-        vod_files = vod_files[:limit]
-        
-        logger.info(f"Found {len(vod_files)} video files on {city_id} (surface-level)")
-        
+        svc = TranscriptionService()
+        # Get all untranscribed videos for this city, newest first
+        untx = svc.find_untranscribed_videos(flex_server_id=city_id)
+        # Sort by modified time desc and cap limit
+        untx.sort(key=lambda x: x.get('modified_time', 0), reverse=True)
+        if limit:
+            untx = untx[:limit]
+
+        vod_files: List[Dict] = []
+        for idx, info in enumerate(untx):
+            file_path = info['file_path']
+            file_name = info['file_name']
+            file_size = info.get('file_size', 0)
+            mod_time = info.get('modified_time', 0)
+            base_name, ext = os.path.splitext(file_name)
+            vod_files.append({
+                'id': f"flex_{city_id}_{idx}",
+                'title': base_name,
+                'file_path': file_path,
+                'file_name': file_name,
+                'file_size': file_size,
+                'modified_time': mod_time,
+                'source': 'flex_server',
+                'city_id': city_id,
+                'relative_path': info.get('relative_path', file_name),
+                'directory': '',
+                'extension': ext.lower(),
+                'recording_date': mod_time,
+                'priority': 1,
+            })
+
+        logger.info(f"Found {len(vod_files)} video files on {city_id} (via service)")
+        return vod_files
+
     except Exception as e:
-        logger.error(f"Error scanning flex server {city_id}: {e}")
-    
-    return vod_files
+        logger.error(f"Error listing recent VODs for {city_id} via service: {e}")
+        return []
 
 @celery_app.task(name="vod_processing.process_single_vod")
 @track_vod_processing

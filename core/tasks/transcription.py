@@ -20,6 +20,8 @@ import redis
 
 from core.tasks import celery_app
 from core.config import MEMBER_CITIES, REDIS_URL, OUTPUT_DIR
+from core.services.transcription import TranscriptionService
+from core.monitoring.autopriority_metrics import increment_counters
 from core.transcription import _transcribe_with_faster_whisper as sync_transcribe
 
 
@@ -508,47 +510,29 @@ def autoprioritize_newest(max_per_city: int = 1, scan_limit_per_city: int = 50) 
 
     queued_now: Set[str] = _gather_queued_video_args()
 
-    # Simple metric keys for Prometheus/Grafana via redis-exporter or custom scraper
-    METRIC_KEYS = {
-        'scanned': 'caption_autopriority_scanned_total',
-        'enqueued': 'caption_autopriority_enqueued_total',
-        'skipped_captioned': 'caption_autopriority_skipped_captioned_total',
-        'skipped_alreadyqueued': 'caption_autopriority_skipped_alreadyqueued_total',
-    }
+    # Use service-layer selection to avoid duplication
+    svc = TranscriptionService()
+    city_to_picks = svc.pick_newest_uncaptioned(max_per_city=max_per_city, scan_limit=scan_limit_per_city)
 
-    def _incr(key: str, n: int) -> None:
-        try:
-            r.incrby(key, int(n))
-        except Exception:
-            pass
-
-    for city_id, cfg in MEMBER_CITIES.items():
-        mount = cfg.get('mount_path') or f'/mnt/{city_id}'
-        city_name = cfg.get('name', city_id)
-        picked: List[str] = []
-        skipped_captioned_count = 0
+    for city_id, picks in city_to_picks.items():
+        city_name = MEMBER_CITIES.get(city_id, {}).get('name', city_id)
+        # De-duplicate against queue and seen set
+        filtered: List[str] = []
         skipped_alreadyqueued_count = 0
-        scanned = _list_recent_videos_for_city(mount, max_scan=scan_limit_per_city)
-        for video_path in scanned:
-            if _is_already_captioned(video_path):
-                skipped_captioned_count += 1
-                continue
+        for video_path in picks:
             if video_path in queued_now:
                 skipped_alreadyqueued_count += 1
                 continue
-            # Skip if seen recently (but only as a secondary guard after real queue inspection)
             try:
                 if r.sismember(seen_key, video_path):
                     skipped_alreadyqueued_count += 1
                     continue
             except Exception:
                 pass
-            picked.append(video_path)
-            if len(picked) >= max_per_city:
-                break
+            filtered.append(video_path)
 
         enqueued: List[str] = []
-        for path in picked:
+        for path in filtered:
             try:
                 # Route to priority queue so it runs next
                 async_res = run_whisper_transcription.apply_async(args=[path], queue='caption_priority')
@@ -562,21 +546,20 @@ def autoprioritize_newest(max_per_city: int = 1, scan_limit_per_city: int = 50) 
             except Exception as e:
                 logger.error(f"Failed to enqueue priority transcription for {path}: {e}")
 
-        # Emit counters (totals) and per-city enqueued metric
-        _incr(METRIC_KEYS['scanned'], len(scanned))
-        _incr(METRIC_KEYS['enqueued'], len(enqueued))
-        _incr(METRIC_KEYS['skipped_captioned'], skipped_captioned_count)
-        _incr(METRIC_KEYS['skipped_alreadyqueued'], skipped_alreadyqueued_count)
-        try:
-            r.hincrby('caption_autopriority_city_enqueued_total', city_id, len(enqueued))
-        except Exception:
-            pass
+        # Emit counters via shared helper
+        increment_counters(
+            scanned=len(picks),
+            enqueued=len(enqueued),
+            skipped_captioned=0,  # already filtered in service
+            skipped_seen=skipped_alreadyqueued_count,
+            city_enqueued={city_id: len(enqueued)},
+        )
 
         results[city_id] = {
             'city_name': city_name,
-            'scanned': len(scanned),
+            'scanned': len(picks),
             'enqueued': enqueued,
-            'skipped_captioned': skipped_captioned_count,
+            'skipped_captioned': 0,
             'skipped_alreadyqueued': skipped_alreadyqueued_count,
         }
 
